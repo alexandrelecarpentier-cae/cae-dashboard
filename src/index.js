@@ -340,7 +340,11 @@ async function handleSalarie(url, env) {
     const perfByMission = new Map(performance.map((p) => [p.mission_id, p]));
     const missionsAvecPerf = missions.map((m) => ({
       ...m,
-      ...(perfByMission.get(m.mission_id) || { bs_reel: 0, heures_rue: 0, taux_reel: null }),
+      ...(perfByMission.get(m.mission_id) || {
+        bs_reel: 0, heures_rue: 0, heures_remuneration: 0, nb_lots: 0,
+        taux_reel: null, taux_h: null, taux_absence: null,
+        don_moyen: null, pct_plus_25: null, score_qualite: null,
+      }),
     }));
 
     return jsonResponse({

@@ -49,14 +49,34 @@
   .section-label .diamond{width:6px; height:6px; background:var(--red); transform:rotate(45deg); flex:0 0 auto;}
 
   .mission-list{background:#fff; border:1px solid var(--line); border-radius:var(--sharp); overflow:hidden;}
-  .mission-row{display:flex; align-items:center; gap:12px; padding:12px 14px; border-bottom:1px solid var(--line);}
+  .mission-row{padding:14px; border-bottom:1px solid var(--line);}
   .mission-row:last-child{border-bottom:none;}
+  .mission-header{display:flex; align-items:center; gap:12px;}
   .mission-body{flex:1 1 auto; min-width:0;}
   .mission-name{font-size:14px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .mission-sub{font-size:11.5px; color:var(--muted); margin-top:2px;}
   .mission-vals{text-align:right; flex:0 0 auto;}
   .mission-vals .taux{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:15px; font-weight:800;}
   .mission-vals .bs{font-size:10.5px; color:var(--muted); margin-top:1px;}
+
+  .metric-grid{display:grid; grid-template-columns:repeat(2, 1fr); gap:8px; margin-top:10px;}
+  @media (min-width:480px){ .metric-grid{grid-template-columns:repeat(3, 1fr);} }
+  .metric{background:var(--surface-2); border-radius:var(--sharp); padding:8px 10px;}
+  .metric .v{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:14px; font-weight:800;}
+  .metric .l{font-size:9.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; margin-top:2px;}
+
+  .score-badge{display:inline-block; font-size:10px; font-weight:800; text-transform:uppercase;
+    letter-spacing:.02em; padding:2px 7px; border-radius:var(--sharp); margin-left:8px; vertical-align:middle;}
+  .score-badge.alerte{background:#FFE0E0; color:#A31515;}
+  .score-badge.moyen{background:#FFF3D6; color:#8A6100;}
+  .score-badge.fiable{background:#E1F2E7; color:#1F7A44;}
+  .score-badge.tres-fiable{background:#D6EFFF; color:#0B5FA5;}
+
+  .score-card{background:#fff; border:1px solid var(--line); border-left:2px solid var(--red);
+    border-radius:var(--sharp); padding:14px 16px; margin-top:10px; display:flex; align-items:center;
+    justify-content:space-between; flex-wrap:wrap; gap:8px;}
+  .score-card .score-val{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:26px; font-weight:800;}
+  .score-card .score-lbl{font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.03em;}
 
   .empty{padding:24px 16px; text-align:center; color:var(--muted); font-size:13px;}
 </style>
@@ -84,6 +104,28 @@
   function fmtDate(d) {
     if (!d) return '—';
     return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }
+  function fmtPct(n, digits = 1) {
+    if (n === null || n === undefined) return '—';
+    return (Number(n) * 100).toLocaleString('fr-FR', { maximumFractionDigits: digits, minimumFractionDigits: digits }) + ' %';
+  }
+  function fmtMoney(n, digits = 2) {
+    if (n === null || n === undefined) return '—';
+    return Number(n).toLocaleString('fr-FR', { maximumFractionDigits: digits, minimumFractionDigits: digits }) + ' €';
+  }
+  // Barème v2 (fichier "Score Qualité") : score = don moyen x % de donateurs de + de 25 ans
+  function scoreBareme(score) {
+    if (score === null || score === undefined) return null;
+    const s = Number(score);
+    if (s < 4) return { label: 'Alerte', desc: 'Pas fiable', cls: 'alerte' };
+    if (s < 5.5) return { label: 'RD-RDC', desc: 'Fiable moyen', cls: 'moyen' };
+    if (s < 6.5) return { label: 'RDC+', desc: 'Fiable', cls: 'fiable' };
+    return { label: 'RDE', desc: 'Très fiable', cls: 'tres-fiable' };
+  }
+  function scoreBadgeHtml(score) {
+    const b = scoreBareme(score);
+    if (!b) return '';
+    return `<span class="score-badge ${b.cls}">${b.label} · ${b.desc}</span>`;
   }
   function showError(msg) {
     document.getElementById('errorDetail').textContent = msg;
@@ -153,6 +195,23 @@
         <div class="kpi"><div class="val">${tauxMoyen != null ? fmtNum(tauxMoyen, 3) : '—'}</div><div class="lbl">Taux réel moyen</div></div>
       </div>
 
+      <div class="section-label"><span class="diamond"></span>Score qualité — global</div>
+      <div class="score-card">
+        <div>
+          <div class="score-val">${resume.score_qualite_total != null ? fmtNum(resume.score_qualite_total, 2) : '—'}</div>
+          <div class="score-lbl">Don moyen × % donateurs +25 ans</div>
+        </div>
+        <div>${scoreBadgeHtml(resume.score_qualite_total)}</div>
+      </div>
+      <div class="metric-grid">
+        <div class="metric"><div class="v">${resume.taux_h_total != null ? fmtNum(resume.taux_h_total, 3) : '—'}</div><div class="l">Taux heures rue / rémunérées</div></div>
+        <div class="metric"><div class="v">${resume.taux_absence_total != null ? fmtPct(resume.taux_absence_total) : '—'}</div><div class="l">Taux d'absence</div></div>
+        <div class="metric"><div class="v">${resume.don_moyen_total != null ? fmtMoney(resume.don_moyen_total) : '—'}</div><div class="l">Don moyen</div></div>
+        <div class="metric"><div class="v">${resume.pct_plus_25_total != null ? fmtPct(resume.pct_plus_25_total) : '—'}</div><div class="l">Donateurs +25 ans</div></div>
+        <div class="metric"><div class="v">${resume.heures_rue_total != null ? fmtNum(resume.heures_rue_total, 1) : '—'}</div><div class="l">Heures de rue cumulées</div></div>
+        <div class="metric"><div class="v">${resume.heures_remuneration_total != null ? fmtNum(resume.heures_remuneration_total, 1) : '—'}</div><div class="l">Heures rémunérées cumulées</div></div>
+      </div>
+
       <div class="section-label"><span class="diamond"></span>Historique des missions</div>
       <div class="mission-list" id="missionList"></div>
     `;
@@ -169,13 +228,22 @@
         .filter(Boolean).join(' · ');
       return `
       <div class="mission-row">
-        <div class="mission-body">
-          <div class="mission-name">${missionLabel}</div>
-          <div class="mission-sub">${sub}</div>
+        <div class="mission-header">
+          <div class="mission-body">
+            <div class="mission-name">${missionLabel}${scoreBadgeHtml(m.score_qualite)}</div>
+            <div class="mission-sub">${sub}</div>
+          </div>
+          <div class="mission-vals">
+            <div class="taux">${m.taux_reel != null ? fmtNum(m.taux_reel, 3) : '—'}</div>
+            <div class="bs">${fmtNum(m.bs_reel)} BS réel</div>
+          </div>
         </div>
-        <div class="mission-vals">
-          <div class="taux">${m.taux_reel != null ? fmtNum(m.taux_reel, 3) : '—'}</div>
-          <div class="bs">${fmtNum(m.bs_reel)} BS réel</div>
+        <div class="metric-grid">
+          <div class="metric"><div class="v">${m.taux_h != null ? fmtNum(m.taux_h, 3) : '—'}</div><div class="l">Taux heures rue / rémunérées</div></div>
+          <div class="metric"><div class="v">${m.taux_absence != null ? fmtPct(m.taux_absence) : '—'}</div><div class="l">Taux d'absence</div></div>
+          <div class="metric"><div class="v">${m.don_moyen != null ? fmtMoney(m.don_moyen) : '—'}</div><div class="l">Don moyen</div></div>
+          <div class="metric"><div class="v">${m.pct_plus_25 != null ? fmtPct(m.pct_plus_25) : '—'}</div><div class="l">Donateurs +25 ans</div></div>
+          <div class="metric"><div class="v">${m.score_qualite != null ? fmtNum(m.score_qualite, 2) : '—'}</div><div class="l">Score qualité</div></div>
         </div>
       </div>`;
     }).join('');
