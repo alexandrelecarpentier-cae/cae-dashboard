@@ -73,6 +73,23 @@
   .score-card .score-val{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:26px; font-weight:800;}
   .score-card .score-lbl{font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.03em;}
 
+  .info-wrap{position:relative; display:inline-flex;}
+  .info-btn{width:15px; height:15px; border-radius:50%; border:1px solid var(--muted); color:var(--muted);
+    background:none; font-size:10px; line-height:13px; text-align:center; padding:0; cursor:pointer;
+    font-family:inherit; font-weight:700;}
+  .info-btn:hover, .info-btn.active{border-color:var(--red); color:var(--red);}
+  .info-panel{display:none; position:absolute; top:20px; left:0; z-index:30; width:260px; max-width:80vw;
+    background:#fff; border:1px solid var(--line); border-radius:var(--sharp);
+    box-shadow:0 6px 20px rgba(0,0,0,.12); padding:12px 14px; font-weight:400; text-transform:none;
+    letter-spacing:normal; font-size:11.5px; line-height:1.5; color:var(--text);}
+  .info-panel.show{display:block;}
+  .info-panel h4{margin:0 0 4px; font-size:10.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted);}
+  .info-panel p{margin:0 0 8px;}
+  .info-panel ul{margin:0; padding-left:16px; list-style:none;}
+  .info-panel li{display:flex; justify-content:space-between; gap:8px; padding:3px 0; border-top:1px solid var(--line);}
+  .info-panel li:first-child{border-top:none;}
+  .info-panel li b{white-space:nowrap;}
+
   .empty{padding:24px 16px; text-align:center; color:var(--muted); font-size:13px;}
 </style>
 </head>
@@ -192,7 +209,24 @@
         <div class="kpi"><div class="val">${resume.taux_absence_total != null ? fmtPct(resume.taux_absence_total) : '—'}</div><div class="lbl">Taux d'absence</div></div>
       </div>
 
-      <div class="section-label"><span class="diamond"></span>Statut global — 270 dernières heures rémunérées</div>
+      <div class="section-label">
+        <span class="diamond"></span>Statut global — 270 dernières heures rémunérées
+        <span class="info-wrap">
+          <button type="button" class="info-btn" id="statutInfoBtn" aria-label="Règles de calcul">i</button>
+          <div class="info-panel" id="statutInfoPanel">
+            <h4>Calcul</h4>
+            <p>Sur les lots des 270 dernières heures rémunérées <b>déclarées</b> (heures non déclarées exclues) :<br>
+            Score qualité = Don moyen × % de donateurs de plus de 25 ans (âge calculé à la date du don).</p>
+            <h4>Barème</h4>
+            <ul>
+              <li><span>Score &lt; 4</span><b>Alerte · Pas fiable</b></li>
+              <li><span>4 ≤ Score &lt; 5,5</span><b>RD-RDC · Fiable moyen</b></li>
+              <li><span>5,5 ≤ Score &lt; 6,5</span><b>RDC+ · Fiable</b></li>
+              <li><span>Score ≥ 6,5</span><b>RDE · Très fiable</b></li>
+            </ul>
+          </div>
+        </span>
+      </div>
       <div class="score-card">
         <div>
           <div class="score-val">${statut.score_qualite_270 != null ? fmtNum(statut.score_qualite_270, 2) : '—'}</div>
@@ -210,6 +244,22 @@
       <div class="section-label"><span class="diamond"></span>Historique des missions</div>
       <div class="mission-list" id="missionList"></div>
     `;
+
+    const infoBtn = document.getElementById('statutInfoBtn');
+    const infoPanel = document.getElementById('statutInfoPanel');
+    if (infoBtn && infoPanel) {
+      infoBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        infoPanel.classList.toggle('show');
+        infoBtn.classList.toggle('active');
+      });
+      document.addEventListener('click', (e) => {
+        if (!infoPanel.contains(e.target) && e.target !== infoBtn) {
+          infoPanel.classList.remove('show');
+          infoBtn.classList.remove('active');
+        }
+      });
+    }
 
     const listEl = document.getElementById('missionList');
     if (!missions.length) {
