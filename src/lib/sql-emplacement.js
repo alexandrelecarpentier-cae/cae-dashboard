@@ -1,8 +1,7 @@
 // Requêtes SQL pour la fiche "emplacement" (/emplacement?id_emplacement=...).
-// Vue centrée sur UN lieu de rue : quelles missions y sont passées, quels
-// indicateurs (BS réel, taux réel) par mission, et comment ce lieu se
-// compare aux autres emplacements. id_emplacement est un UUID déjà validé
-// par metabase.js (RE_UUID) avant d'arriver ici.
+// Vue centrée sur UN lieu de rue : quelles missions y sont passées, avec
+// quels indicateurs (BS réel, taux réel) par mission. id_emplacement est un
+// UUID déjà validé par metabase.js (RE_UUID) avant d'arriver ici.
 const STATUTS_VALIDES = "('nouveau','en_attente','transmis')";
 
 function buildInfoQuery(id_emplacement) {
@@ -40,33 +39,6 @@ left join dons_e de on de.mission_id = pm.mission_id
 order by pm.derniere_date desc;`;
 }
 
-// Classement de tous les emplacements par taux réel (BS réel / heures rue),
-// tous temps confondus, pour situer celui-ci par rapport aux autres. Seuil
-// minimum d'heures de rue pour écarter les emplacements testés une seule
-// fois (taux non représentatif).
-function buildComparaisonQuery() {
-  return `with par_emplacement as (
-  select l.emplacement_id,
-    sum(l.nombre_horaires_rue) filter (where coalesce(l.presence_recruteur,true)) as heures_rue
-  from lots l
-  group by 1
-),
-dons_emp as (
-  select l.emplacement_id, count(distinct d.id) as bs_reel
-  from lots l join dons d on d.lot_id = l.id and d.statut in ${STATUTS_VALIDES}
-  group by 1
-)
-select e.id, e.nom, e.ville,
-  coalesce(de.bs_reel,0) as bs_reel, coalesce(pe.heures_rue,0) as heures_rue,
-  case when coalesce(pe.heures_rue,0) > 0 then coalesce(de.bs_reel,0)::float / pe.heures_rue else null end as taux_reel
-from par_emplacement pe
-join emplacements e on e.id = pe.emplacement_id
-left join dons_emp de on de.emplacement_id = pe.emplacement_id
-where coalesce(pe.heures_rue,0) >= 20
-order by taux_reel desc nulls last
-limit 15;`;
-}
-
 // Nombre de recruteurs différents ayant travaillé sur cet emplacement,
 // toutes missions confondues (indicateur global de la fiche, pas par
 // mission).
@@ -80,7 +52,6 @@ function buildEmplacementQueries(id_emplacement) {
   return {
     info: buildInfoQuery(id_emplacement),
     missions: buildMissionsQuery(id_emplacement),
-    comparaison: buildComparaisonQuery(),
     recruteurs: buildRecruteursDistinctsQuery(id_emplacement),
   };
 }

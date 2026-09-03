@@ -365,16 +365,14 @@ async function handleEmplacement(url, env) {
   const queries = buildEmplacementQueries(id_emplacement);
 
   try {
-    const [info, missions, comparaison, recruteurs] = await Promise.all([
+    const [info, missions, recruteurs] = await Promise.all([
       runQuery(env, queries.info),
       runQuery(env, queries.missions),
-      runQuery(env, queries.comparaison),
       runQuery(env, queries.recruteurs),
     ]);
     return jsonResponse({
       info: info[0] || null,
       missions,
-      comparaison,
       nb_recruteurs_distincts: (recruteurs[0] && recruteurs[0].nb_recruteurs) || 0,
     });
   } catch (e) {
@@ -431,11 +429,18 @@ async function handleLogo(url, env) {
   const cached = await cache.match(cacheKey);
   if (cached) return cached;
 
+  // logo_url_source (colonne directe sur clients, ex.
+  // "gallery/2025-01-27/logosnsm....jpg") est la source privilégiée —
+  // vérifié empiriquement : la clé pointe vers un objet du même bucket S3
+  // (captive-cae-production), juste non public (403 sans signature), donc
+  // signable avec presignS3GetUrl comme l'ancienne clé ActiveStorage.
+  // Repli sur l'attachment ActiveStorage (clients.logo) pour les clients
+  // qui n'ont pas encore de logo_url_source renseigné.
   const sql = `
-    SELECT b.key
+    SELECT c.logo_url_source, b.key AS legacy_key
     FROM public.clients c
-    JOIN public.active_storage_attachments a ON a.record_id = c.id AND a.record_type = 'Client' AND a.name = 'logo'
-    JOIN public.active_storage_blobs b ON b.id = a.blob_id
+    LEFT JOIN public.active_storage_attachments a ON a.record_id = c.id AND a.record_type = 'Client' AND a.name = 'logo'
+    LEFT JOIN public.active_storage_blobs b ON b.id = a.blob_id
     WHERE c.nom = '${sanitized.value}'
     LIMIT 1`;
 
@@ -446,7 +451,8 @@ async function handleLogo(url, env) {
     return jsonResponse({ error: 'metabase_error', message: String(e.message || e) }, 502);
   }
 
-  const key = rows[0] && rows[0].key;
+  const row = rows[0];
+  const key = row && (row.logo_url_source || row.legacy_key);
   if (!key) {
     return jsonResponse({ error: 'logo_not_found', client: clientNameRaw }, 404);
   }

@@ -40,7 +40,7 @@
     letter-spacing:.08em; color:var(--muted); font-weight:700; margin:22px 2px 8px;}
   .section-label .diamond{width:6px; height:6px; background:var(--red); transform:rotate(45deg); flex:0 0 auto;}
 
-  .mission-list, .leaderboard{background:#fff; border:1px solid var(--line); border-radius:var(--sharp); overflow:hidden;}
+  .mission-list{background:#fff; border:1px solid var(--line); border-radius:var(--sharp); overflow:hidden;}
   .mission-row{display:flex; align-items:center; gap:12px; padding:12px 14px; border-bottom:1px solid var(--line);}
   .mission-row:last-child{border-bottom:none;}
   .client-avatar{width:32px; height:32px; border-radius:50%; flex:0 0 auto; display:flex; align-items:center;
@@ -53,18 +53,6 @@
   .mission-vals{text-align:right; flex:0 0 auto;}
   .mission-vals .taux{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:15px; font-weight:800;}
   .mission-vals .bs{font-size:10.5px; color:var(--muted); margin-top:1px;}
-
-  .row{display:flex; align-items:center; gap:12px; padding:12px 14px; border-bottom:1px solid var(--line);}
-  .row:last-child{border-bottom:none;}
-  .row.current{background:#FFF6F7;}
-  .rank-num{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-weight:800; font-size:14px;
-    width:26px; height:26px; flex:0 0 auto; border-radius:var(--sharp); display:flex; align-items:center;
-    justify-content:center; background:var(--surface-2); color:var(--muted);}
-  .row.current .rank-num{background:var(--red); color:#fff;}
-  .row-body{flex:1 1 auto; min-width:0;}
-  .row-name{font-size:14px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-  .row-sub{font-size:11.5px; color:var(--muted); margin-top:1px;}
-  .row-val{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:15px; font-weight:800; flex:0 0 auto;}
 
   .empty{padding:24px 16px; text-align:center; color:var(--muted); font-size:13px;}
 </style>
@@ -165,9 +153,6 @@
 
       <div class="section-label"><span class="diamond"></span>Missions passées ici</div>
       <div class="mission-list" id="missionList"></div>
-
-      <div class="section-label"><span class="diamond"></span>Comparaison — meilleurs emplacements (taux réel)</div>
-      <div class="leaderboard" id="comparaisonList"></div>
     `;
 
     const missionList = document.getElementById('missionList');
@@ -189,25 +174,6 @@
             <div class="taux">${m.taux_reel != null ? fmtNum(m.taux_reel, 3) : '—'}</div>
             <div class="bs">${fmtNum(m.bs_reel)} BS réel</div>
           </div>
-        </div>`;
-      }).join('');
-    }
-
-    const comparaisonList = document.getElementById('comparaisonList');
-    const comparaison = data.comparaison || [];
-    if (!comparaison.length) {
-      comparaisonList.innerHTML = '<div class="empty">Pas assez de données pour comparer</div>';
-    } else {
-      comparaisonList.innerHTML = comparaison.map((e, i) => {
-        const isCurrent = e.id === id;
-        return `
-        <div class="row ${isCurrent ? 'current' : ''}">
-          <div class="rank-num">${i + 1}</div>
-          <div class="row-body">
-            <div class="row-name">${e.nom || 'Emplacement'}${isCurrent ? ' (ici)' : ''}</div>
-            <div class="row-sub">${e.ville || ''}</div>
-          </div>
-          <div class="row-val">${e.taux_reel != null ? fmtNum(e.taux_reel, 3) : '—'}</div>
         </div>`;
       }).join('');
     }
