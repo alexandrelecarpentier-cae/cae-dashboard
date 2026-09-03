@@ -92,7 +92,7 @@ left join dons_u d on d.mission_id = h.mission_id;`;
 function buildResumeQuery(id_utilisateur) {
   return `with u as (select '${id_utilisateur}'::uuid as id),
 lots_u as (
-  select l.id, l.nombre_horaires_rue, l.nombre_horaires_remuneration, l.presence_recruteur
+  select l.id, l.mission_id, l.nombre_horaires_rue, l.nombre_horaires_remuneration, l.presence_recruteur
   from lots l join u on l.utilisateur_id = u.id
 ),
 heures as (
