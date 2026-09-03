@@ -18,10 +18,11 @@ natif sur la base "Production").
 | Mission | `/mission.html?code_mission=<code>` | Détail d'une mission |
 | RD | `/rd.html?id_mission=<uuid>&id_utilisateur=<uuid>` | Un recruteur, une mission |
 
-`salarie.html` et `emplacement.html` incluent un écran de recherche quand le
-paramètre d'URL est absent. `client.html`, `mission.html` et `rd.html` sont
-accessibles uniquement par lien direct (fournis depuis la vue RM ou une autre
-page) — pas encore de picker dédié.
+Toutes les pages autres que RM et Challenge n'ont pas de champ de recherche
+ni de picker : l'identifiant (`id_client`, `id_mission`, `id_utilisateur`,
+`id_emplacement`) est toujours fourni via l'URL, chaque page étant intégrée
+à un endroit précis avec un accès restreint plutôt que navigable depuis le
+dashboard lui-même.
 
 ## Architecture
 

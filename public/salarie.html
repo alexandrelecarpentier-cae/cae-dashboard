@@ -28,19 +28,6 @@
 
   main{padding:4px 16px 40px; max-width:900px; margin:0 auto;}
 
-  /* Écran de recherche */
-  .search-box{margin-top:16px;}
-  .search-input{width:100%; padding:12px 14px; border:1px solid var(--line); border-radius:var(--sharp);
-    font-size:15px; font-family:inherit;}
-  .search-results{margin-top:10px; border:1px solid var(--line); border-radius:var(--sharp); overflow:hidden;}
-  .search-row{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 14px;
-    border-bottom:1px solid var(--line); cursor:pointer;}
-  .search-row:last-child{border-bottom:none;}
-  .search-row:hover{background:var(--surface-2);}
-  .search-name{font-weight:700; font-size:14.5px;}
-  .search-grade{font-size:11px; color:var(--muted); text-transform:uppercase; font-weight:700;}
-  .search-empty{padding:20px 14px; text-align:center; color:var(--muted); font-size:13px;}
-
   /* Fiche */
   .profile-card{background:#fff; border:1px solid var(--line); border-radius:var(--sharp); padding:18px;
     margin-top:16px;}
@@ -78,18 +65,13 @@
 
 <header>
   <h1>Fiche <em>salarié</em></h1>
-  <div class="sub" id="subLabel">Recherchez un RD, RE ou RM par nom</div>
+  <div class="sub" id="subLabel"></div>
   <div class="error-banner" id="errorBanner">
     <b>Connexion impossible.</b> <span id="errorDetail"></span>
   </div>
 </header>
 
 <main id="content">
-  <div class="search-box" id="searchBox">
-    <input class="search-input" id="searchInput" type="text" placeholder="Prénom ou nom…" autocomplete="off">
-    <div class="search-results" id="searchResults"></div>
-  </div>
-
   <div id="profileArea" style="display:none;"></div>
 </main>
 
@@ -115,54 +97,9 @@
   const idUtilisateur = qs.get('id_utilisateur');
 
   if (idUtilisateur) {
-    document.getElementById('searchBox').style.display = 'none';
     loadProfile(idUtilisateur);
   } else {
-    setupSearch();
-  }
-
-  function setupSearch() {
-    const input = document.getElementById('searchInput');
-    const results = document.getElementById('searchResults');
-    let debounce;
-    input.addEventListener('input', () => {
-      clearTimeout(debounce);
-      const q = input.value.trim();
-      if (q.length < 2) { results.innerHTML = ''; return; }
-      debounce = setTimeout(() => runSearch(q), 300);
-    });
-
-    async function runSearch(q) {
-      try {
-        const res = await fetch('/api/salarie-recherche?q=' + encodeURIComponent(q), { cache: 'no-store' });
-        const data = await res.json();
-        if (!res.ok || data.error) throw new Error(data.error || 'Erreur inconnue');
-        clearError();
-        renderResults(data.results || []);
-      } catch (err) {
-        showError(err.message);
-      }
-    }
-
-    function renderResults(rows) {
-      if (!rows.length) {
-        results.innerHTML = '<div class="search-empty">Aucun résultat</div>';
-        return;
-      }
-      results.innerHTML = rows.map((r) => {
-        const name = [r.prenom, r.nom].filter(Boolean).join(' ') || 'Sans nom';
-        return `
-        <div class="search-row" data-id="${r.utilisateur_id}">
-          <div class="search-name">${name}</div>
-          <div class="search-grade">${r.dernier_grade || '—'}</div>
-        </div>`;
-      }).join('');
-      results.querySelectorAll('.search-row').forEach((el) => {
-        el.addEventListener('click', () => {
-          window.location.search = '?id_utilisateur=' + encodeURIComponent(el.dataset.id);
-        });
-      });
-    }
+    showError('Lien invalide : le paramètre id_utilisateur est manquant dans l\'URL.');
   }
 
   function roleLabel(m) {

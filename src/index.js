@@ -26,8 +26,8 @@ import {
   buildRecruteurPerformanceQueries,
 } from './lib/sql-mission.js';
 import { buildChallengeQueries } from './lib/sql-challenge.js';
-import { buildSalarieQueries, buildRechercheQuery as buildSalarieRechercheQuery } from './lib/sql-salarie.js';
-import { buildEmplacementQueries, buildRechercheQuery as buildEmplacementRechercheQuery } from './lib/sql-emplacement.js';
+import { buildSalarieQueries } from './lib/sql-salarie.js';
+import { buildEmplacementQueries } from './lib/sql-emplacement.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -41,9 +41,7 @@ export default {
       if (url.pathname === '/api/recruteur-performance') return await handleRecruteurPerformance(url, env);
       if (url.pathname === '/api/challenge') return await handleChallenge(env);
       if (url.pathname === '/api/salarie') return await handleSalarie(url, env);
-      if (url.pathname === '/api/salarie-recherche') return await handleSalarieRecherche(url, env);
       if (url.pathname === '/api/emplacement') return await handleEmplacement(url, env);
-      if (url.pathname === '/api/emplacement-recherche') return await handleEmplacementRecherche(url, env);
       if (url.pathname === '/api/rm-missions') return await handleRmMissions(env);
       if (url.pathname === '/api/logo') return await handleLogo(url, env);
     } catch (err) {
@@ -328,27 +326,8 @@ async function handleSalarie(url, env) {
   }
 }
 
-async function handleSalarieRecherche(url, env) {
-  const q = url.searchParams.get('q') || '';
-  if (q.trim().length < 2) {
-    return jsonResponse({ error: 'q doit contenir au moins 2 caractères' }, 400);
-  }
-  const sanitized = sanitizeFreeText(q, 100);
-  if (!sanitized || sanitized.error) return jsonResponse({ error: 'q invalide' }, 400);
-
-  const configError = requireConfig(env);
-  if (configError) return jsonResponse({ error: configError }, 500);
-
-  try {
-    const rows = await runQuery(env, buildSalarieRechercheQuery(sanitized.value));
-    return jsonResponse({ results: rows });
-  } catch (e) {
-    return jsonResponse({ error: String(e.message || e) }, 502);
-  }
-}
-
 // ---------------------------------------------------------------
-// /api/emplacement, /api/emplacement-recherche
+// /api/emplacement
 // ---------------------------------------------------------------
 async function handleEmplacement(url, env) {
   const id_emplacement = url.searchParams.get('id_emplacement') || '';
@@ -362,31 +341,18 @@ async function handleEmplacement(url, env) {
   const queries = buildEmplacementQueries(id_emplacement);
 
   try {
-    const [info, missions, comparaison] = await Promise.all([
+    const [info, missions, comparaison, recruteurs] = await Promise.all([
       runQuery(env, queries.info),
       runQuery(env, queries.missions),
       runQuery(env, queries.comparaison),
+      runQuery(env, queries.recruteurs),
     ]);
-    return jsonResponse({ info: info[0] || null, missions, comparaison });
-  } catch (e) {
-    return jsonResponse({ error: String(e.message || e) }, 502);
-  }
-}
-
-async function handleEmplacementRecherche(url, env) {
-  const q = url.searchParams.get('q') || '';
-  if (q.trim().length < 2) {
-    return jsonResponse({ error: 'q doit contenir au moins 2 caractères' }, 400);
-  }
-  const sanitized = sanitizeFreeText(q, 100);
-  if (!sanitized || sanitized.error) return jsonResponse({ error: 'q invalide' }, 400);
-
-  const configError = requireConfig(env);
-  if (configError) return jsonResponse({ error: configError }, 500);
-
-  try {
-    const rows = await runQuery(env, buildEmplacementRechercheQuery(sanitized.value));
-    return jsonResponse({ results: rows });
+    return jsonResponse({
+      info: info[0] || null,
+      missions,
+      comparaison,
+      nb_recruteurs_distincts: (recruteurs[0] && recruteurs[0].nb_recruteurs) || 0,
+    });
   } catch (e) {
     return jsonResponse({ error: String(e.message || e) }, 502);
   }

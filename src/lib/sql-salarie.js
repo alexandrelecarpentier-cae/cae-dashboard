@@ -72,22 +72,6 @@ select
   (select bs_reel from dons_u) as bs_reel_total;`;
 }
 
-// Recherche d'un salarié par nom/prénom pour l'écran de sélection (pas de
-// id_utilisateur connu à l'avance côté page). searchTerm doit déjà être
-// passé par sanitizeFreeText() côté appelant (apostrophes échappées).
-function buildRechercheQuery(searchTerm) {
-  return `select u.id as utilisateur_id, uip.prenom, uip.nom,
-  max(ctr.statut) as dernier_grade
-from utilisateurs u
-join utilisateur_informations_personnelles uip on uip.utilisateur_id = u.id
-left join contrats ctr on ctr.utilisateur_id = u.id
-where u.utilisateur_type = 'salarie'
-  and (uip.prenom ilike '%${searchTerm}%' or uip.nom ilike '%${searchTerm}%')
-group by 1,2,3
-order by uip.nom
-limit 20;`;
-}
-
 function buildSalarieQueries(id_utilisateur) {
   return {
     identite: buildIdentiteQuery(id_utilisateur),
@@ -97,4 +81,4 @@ function buildSalarieQueries(id_utilisateur) {
   };
 }
 
-export { buildSalarieQueries, buildRechercheQuery };
+export { buildSalarieQueries };

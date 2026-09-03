@@ -67,16 +67,13 @@ order by taux_reel desc nulls last
 limit 15;`;
 }
 
-// Recherche d'un emplacement par nom/ville pour l'écran de sélection.
-// searchTerm doit déjà être passé par sanitizeFreeText() côté appelant.
-function buildRechercheQuery(searchTerm) {
-  return `select e.id, e.nom, e.ville, count(distinct l.mission_id) as nb_missions
-from emplacements e
-join lots l on l.emplacement_id = e.id
-where e.nom ilike '%${searchTerm}%' or e.ville ilike '%${searchTerm}%'
-group by 1,2,3
-order by nb_missions desc
-limit 20;`;
+// Nombre de recruteurs différents ayant travaillé sur cet emplacement,
+// toutes missions confondues (indicateur global de la fiche, pas par
+// mission).
+function buildRecruteursDistinctsQuery(id_emplacement) {
+  return `select count(distinct l.utilisateur_id) as nb_recruteurs
+from lots l
+where l.emplacement_id = '${id_emplacement}';`;
 }
 
 function buildEmplacementQueries(id_emplacement) {
@@ -84,7 +81,8 @@ function buildEmplacementQueries(id_emplacement) {
     info: buildInfoQuery(id_emplacement),
     missions: buildMissionsQuery(id_emplacement),
     comparaison: buildComparaisonQuery(),
+    recruteurs: buildRecruteursDistinctsQuery(id_emplacement),
   };
 }
 
-export { buildEmplacementQueries, buildRechercheQuery };
+export { buildEmplacementQueries };
