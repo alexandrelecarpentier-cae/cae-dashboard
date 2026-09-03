@@ -45,13 +45,17 @@ order by m.date_debut desc nulls last;`;
 function buildPerformanceParMissionQuery(id_utilisateur) {
   return `with u as (select '${id_utilisateur}'::uuid as id),
 lots_u as (
-  select l.id, l.mission_id, l.nombre_horaires_rue, l.nombre_horaires_remuneration, l.presence_recruteur
+  select l.id, l.mission_id, l.nombre_horaires_rue, l.nombre_horaires_remuneration, l.presence_recruteur, l.heures_remuneration_completes
   from lots l join u on l.utilisateur_id = u.id
 ),
 heures as (
+  -- heures_remuneration ne compte que les heures rémunérées déclarées :
+  -- coalesce(...,true) garde l'historique (flag jamais renseigné avant la
+  -- mise en place de cette déclaration) mais exclut les lots explicitement
+  -- marqués comme non déclarés (heures_remuneration_completes = false).
   select mission_id,
     sum(nombre_horaires_rue) filter (where coalesce(presence_recruteur,true)) as heures_rue,
-    sum(nombre_horaires_remuneration) filter (where coalesce(presence_recruteur,true)) as heures_remuneration,
+    sum(nombre_horaires_remuneration) filter (where coalesce(presence_recruteur,true) and coalesce(heures_remuneration_completes,true)) as heures_remuneration,
     count(*) as nb_lots
   from lots_u group by 1
 ),
@@ -97,13 +101,16 @@ left join dons_u d on d.mission_id = h.mission_id;`;
 function buildResumeQuery(id_utilisateur) {
   return `with u as (select '${id_utilisateur}'::uuid as id),
 lots_u as (
-  select l.id, l.nombre_horaires_rue, l.nombre_horaires_remuneration, l.presence_recruteur
+  select l.id, l.nombre_horaires_rue, l.nombre_horaires_remuneration, l.presence_recruteur, l.heures_remuneration_completes
   from lots l join u on l.utilisateur_id = u.id
 ),
 heures as (
+  -- cf. buildPerformanceParMissionQuery : heures_remuneration ne compte
+  -- que les heures rémunérées déclarées (coalesce(...,true) préserve
+  -- l'historique où ce flag n'existait pas encore).
   select
     sum(nombre_horaires_rue) filter (where coalesce(presence_recruteur,true)) as heures_rue_total,
-    sum(nombre_horaires_remuneration) filter (where coalesce(presence_recruteur,true)) as heures_remuneration_total,
+    sum(nombre_horaires_remuneration) filter (where coalesce(presence_recruteur,true) and coalesce(heures_remuneration_completes,true)) as heures_remuneration_total,
     count(*) as nb_lots_total
   from lots_u
 ),
@@ -123,24 +130,27 @@ from heures h cross join dons_u d;`;
 }
 
 // Statut global (score qualité) calculé sur les lots des 270 dernières
-// heures de rue uniquement (les plus récentes en premier, cumul jusqu'à
-// 270h) — pas sur toute la carrière, pour refléter la fiabilité récente
-// plutôt qu'un historique potentiellement ancien/sans donnée donateur.
+// heures RÉMUNÉRÉES déclarées uniquement (les plus récentes en premier,
+// cumul jusqu'à 270h) — pas sur toute la carrière, pour refléter la
+// fiabilité récente plutôt qu'un historique potentiellement ancien/sans
+// donnée donateur. coalesce(heures_remuneration_completes,true) exclut les
+// lots explicitement non déclarés tout en préservant l'historique où ce
+// flag n'existait pas encore.
 function buildStatutGlobalQuery(id_utilisateur) {
   return `with u as (select '${id_utilisateur}'::uuid as id),
 lots_u as (
-  select l.id, l.date, l.nombre_horaires_rue
+  select l.id, l.date, l.nombre_horaires_remuneration
   from lots l join u on l.utilisateur_id = u.id
-  where coalesce(l.presence_recruteur, true)
+  where coalesce(l.presence_recruteur, true) and coalesce(l.heures_remuneration_completes, true)
 ),
 lots_cumul as (
-  select id, nombre_horaires_rue,
-    sum(nombre_horaires_rue) over (order by date desc nulls last, id) as cumul_rue
+  select id, nombre_horaires_remuneration,
+    sum(nombre_horaires_remuneration) over (order by date desc nulls last, id) as cumul_remuneration
   from lots_u
 ),
 lots_270 as (
-  select id, nombre_horaires_rue from lots_cumul
-  where cumul_rue - nombre_horaires_rue < 270
+  select id, nombre_horaires_remuneration from lots_cumul
+  where cumul_remuneration - nombre_horaires_remuneration < 270
 ),
 dons_270 as (
   select
@@ -153,7 +163,7 @@ dons_270 as (
   left join donateurs don on don.id = d.donateur_id
 )
 select
-  (select coalesce(sum(nombre_horaires_rue),0) from lots_270) as heures_rue_270,
+  (select coalesce(sum(nombre_horaires_remuneration),0) from lots_270) as heures_remuneration_270,
   d.bs_reel as bs_reel_270,
   d.don_moyen as don_moyen_270,
   case when coalesce(d.nb_dons_avec_naissance,0) > 0 then coalesce(d.nb_dons_plus_25,0)::float / d.nb_dons_avec_naissance else null end as pct_plus_25_270,
