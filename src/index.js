@@ -24,6 +24,7 @@ import {
   buildMissionDaysQuery,
   buildMissionPerformanceQueries,
   buildRecruteurPerformanceQueries,
+  buildResolveMissionIdQuery,
 } from './lib/sql-mission.js';
 import { buildChallengeQueries } from './lib/sql-challenge.js';
 import { buildSalarieQueries } from './lib/sql-salarie.js';
@@ -179,14 +180,38 @@ async function handleClientMissions(url, env) {
 // ---------------------------------------------------------------
 // /api/mission-days, /api/mission-performance, /api/recruteur-performance
 // ---------------------------------------------------------------
-async function handleMissionDays(url, env) {
-  const id_mission = url.searchParams.get('id_mission') || '';
-  if (!RE_UUID.test(id_mission)) {
-    return jsonResponse({ error: 'id_mission manquant ou invalide' }, 400);
+
+// Résout id_mission à partir des paramètres d'URL : accepte soit id_mission
+// (UUID direct, cas normal — lien fourni depuis client.html/salarie.html/
+// etc.), soit code_mission (résolu via une requête Metabase — cas de la
+// modale ouverte depuis rm.html, qui ne connaît que le code puisque la
+// question Metabase "Missions en cours" n'expose pas l'id).
+async function resolveMissionId(url, env) {
+  const idParam = url.searchParams.get('id_mission') || '';
+  if (idParam) {
+    if (!RE_UUID.test(idParam)) return { error: 'id_mission invalide' };
+    return { id_mission: idParam };
   }
 
+  const codeParam = url.searchParams.get('code_mission') || '';
+  if (!codeParam) return { error: 'id_mission ou code_mission manquant' };
+  if (!RE_CODE.test(codeParam)) return { error: 'code_mission invalide' };
+
+  try {
+    const rows = await runQuery(env, buildResolveMissionIdQuery(codeParam));
+    if (!rows[0] || !rows[0].id) return { error: 'mission introuvable pour ce code_mission', notFound: true };
+    return { id_mission: rows[0].id };
+  } catch (e) {
+    return { error: String(e.message || e), upstream: true };
+  }
+}
+
+async function handleMissionDays(url, env) {
   const configError = requireConfig(env);
   if (configError) return jsonResponse({ error: configError }, 500);
+
+  const { id_mission, error, notFound, upstream } = await resolveMissionId(url, env);
+  if (error) return jsonResponse({ error }, upstream ? 502 : notFound ? 404 : 400);
 
   try {
     const rows = await runQuery(env, buildMissionDaysQuery(id_mission));
@@ -209,16 +234,15 @@ function readDatesParam(url) {
 }
 
 async function handleMissionPerformance(url, env) {
-  const id_mission = url.searchParams.get('id_mission') || '';
-  if (!RE_UUID.test(id_mission)) {
-    return jsonResponse({ error: 'id_mission manquant ou invalide' }, 400);
-  }
+  const configError = requireConfig(env);
+  if (configError) return jsonResponse({ error: configError }, 500);
+
+  const resolved = await resolveMissionId(url, env);
+  if (resolved.error) return jsonResponse({ error: resolved.error }, resolved.upstream ? 502 : resolved.notFound ? 404 : 400);
+  const { id_mission } = resolved;
 
   const { dates, error } = readDatesParam(url);
   if (error) return jsonResponse({ error }, 400);
-
-  const configError = requireConfig(env);
-  if (configError) return jsonResponse({ error: configError }, 500);
 
   const queries = buildMissionPerformanceQueries(id_mission, dates);
 

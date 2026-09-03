@@ -7,6 +7,14 @@
 const STATUTS_VALIDES = "('nouveau','en_attente','transmis')";
 const STATUTS_RUE = "('nouveau','en_attente','transmis','incomplet','annule')";
 
+// Résolution code_mission -> id_mission : utilisée quand mission.html est
+// ouverte depuis la modale de rm.html, qui ne connaît que le code_mission
+// (la question Metabase "Missions en cours" n'expose pas l'id). code_mission
+// est déjà validé par RE_CODE côté appelant avant d'arriver ici.
+function buildResolveMissionIdQuery(code_mission) {
+  return `select id from missions where code_mission = '${code_mission}' limit 1;`;
+}
+
 function ctePrefix(id_mission, dates) {
   const dateFilter = dates && dates.length
     ? ` and l.date in (${dates.map((d) => `'${d}'`).join(',')})`
@@ -191,4 +199,9 @@ order by 1;`,
   };
 }
 
-export { buildMissionPerformanceQueries, buildMissionDaysQuery, buildRecruteurPerformanceQueries };
+export {
+  buildMissionPerformanceQueries,
+  buildMissionDaysQuery,
+  buildRecruteurPerformanceQueries,
+  buildResolveMissionIdQuery,
+};

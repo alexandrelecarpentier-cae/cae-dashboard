@@ -125,16 +125,20 @@
   // Page interne (équipe CAE) — pas de branding client. Reproduit les
   // questions Metabase 441 "Suivi mission RE" et 442 "Suivi par RD v3"
   // (dashboard 15), filtrées sur une seule mission via /api/mission-performance.
-  // Accès par id_mission (UUID non devinable), comme le dashboard client.
+  // Accès normal par id_mission (UUID non devinable, comme le dashboard
+  // client) — mais accepte aussi code_mission, résolu côté serveur, pour la
+  // modale ouverte depuis rm.html qui ne connaît que le code de la mission.
   // ---------------------------------------------------------------
   const qs = new URLSearchParams(window.location.search);
   const idMission = qs.get('id_mission') || '';
+  const codeMission = qs.get('code_mission') || '';
+  const missionRefParams = idMission ? { id_mission: idMission } : { code_mission: codeMission };
 
   const stateEl = document.getElementById('state');
   const contentEl = document.getElementById('content');
 
-  if (!idMission) {
-    stateEl.textContent = "Lien invalide : le paramètre id_mission est manquant dans l'URL.";
+  if (!idMission && !codeMission) {
+    stateEl.textContent = "Lien invalide : le paramètre id_mission (ou code_mission) est manquant dans l'URL.";
     stateEl.classList.add('error');
     return;
   }
@@ -189,7 +193,8 @@
   }
   async function loadDays() {
     try {
-      const res = await fetch('/api/mission-days?id_mission=' + encodeURIComponent(idMission), { cache: 'no-store' });
+      const p = new URLSearchParams(missionRefParams);
+      const res = await fetch('/api/mission-days?' + p.toString(), { cache: 'no-store' });
       const days = await res.json();
       if (!res.ok || days.error) throw new Error(days.error || 'Erreur jours');
       renderDayTags(days);
@@ -200,7 +205,7 @@
 
   async function refreshData() {
     try {
-      const p = new URLSearchParams({ id_mission: idMission });
+      const p = new URLSearchParams(missionRefParams);
       if (selectedDates.size) p.set('dates', [...selectedDates].join(','));
       const res = await fetch('/api/mission-performance?' + p.toString(), { cache: 'no-store' });
       const data = await res.json();
