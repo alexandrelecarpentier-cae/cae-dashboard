@@ -56,9 +56,14 @@ heures as (
   from lots_u group by 1
 ),
 dons_u as (
+  -- nb_dons_avec_naissance = dons dont on connaît la date de naissance du
+  -- donateur (donc dont l'âge est calculable). Si aucun don de la mission
+  -- n'a cette donnée, don_moyen/pct_plus_25/score_qualite restent null :
+  -- pas de calcul faute de donnée fiable (cf. demande utilisateur).
   select l.mission_id,
     count(distinct d.id) as bs_reel,
-    avg(d.montant) as don_moyen,
+    count(distinct d.id) filter (where don.date_de_naissance is not null) as nb_dons_avec_naissance,
+    avg(d.montant) filter (where don.date_de_naissance is not null) as don_moyen,
     count(distinct d.id) filter (where (d.created_at::date - don.date_de_naissance) / 365.0 >= 25) as nb_dons_plus_25
   from lots_u l
   join dons d on d.lot_id = l.id and d.statut in ${STATUTS_VALIDES}
@@ -73,10 +78,10 @@ select h.mission_id,
   case when coalesce(h.heures_rue,0) > 0 then coalesce(d.bs_reel,0)::float / h.heures_rue else null end as taux_reel,
   case when coalesce(h.heures_remuneration,0) > 0 then coalesce(h.heures_rue,0)::float / h.heures_remuneration else null end as taux_h,
   case when h.nb_lots > 0 then coalesce(h.heures_remuneration,0)::float / (h.nb_lots * 7) else null end as taux_absence,
-  d.don_moyen,
-  case when coalesce(d.bs_reel,0) > 0 then coalesce(d.nb_dons_plus_25,0)::float / d.bs_reel else null end as pct_plus_25,
-  case when d.don_moyen is not null and coalesce(d.bs_reel,0) > 0
-    then d.don_moyen * (coalesce(d.nb_dons_plus_25,0)::float / d.bs_reel)
+  case when coalesce(d.nb_dons_avec_naissance,0) > 0 then d.don_moyen else null end as don_moyen,
+  case when coalesce(d.nb_dons_avec_naissance,0) > 0 then coalesce(d.nb_dons_plus_25,0)::float / d.nb_dons_avec_naissance else null end as pct_plus_25,
+  case when coalesce(d.nb_dons_avec_naissance,0) > 0 and d.don_moyen is not null
+    then d.don_moyen * (coalesce(d.nb_dons_plus_25,0)::float / d.nb_dons_avec_naissance)
     else null end as score_qualite
 from heures h
 left join dons_u d on d.mission_id = h.mission_id;`;
@@ -97,13 +102,29 @@ heures as (
     count(*) as nb_lots_total
   from lots_u
 ),
-dons_u as (
-  select count(distinct d.id) as bs_reel,
-    avg(d.montant) as don_moyen,
+dons_par_mission as (
+  select l.mission_id,
+    count(distinct d.id) as bs_reel,
+    count(distinct d.id) filter (where don.date_de_naissance is not null) as nb_dons_avec_naissance,
+    avg(d.montant) filter (where don.date_de_naissance is not null) as don_moyen,
     count(distinct d.id) filter (where (d.created_at::date - don.date_de_naissance) / 365.0 >= 25) as nb_dons_plus_25
   from lots_u l
   join dons d on d.lot_id = l.id and d.statut in ${STATUTS_VALIDES}
   left join donateurs don on don.id = d.donateur_id
+  group by 1
+),
+dons_u as (
+  -- bs_reel_total reste sur toutes les missions (indicateur de volume).
+  -- don_moyen/pct_plus_25/score_qualite globaux n'agrègent que les
+  -- missions où au moins un don a une date de naissance connue — les
+  -- missions sans aucune donnée donateur sont exclues de ce calcul.
+  select
+    sum(bs_reel) as bs_reel,
+    sum(nb_dons_avec_naissance) filter (where nb_dons_avec_naissance > 0) as nb_dons_avec_naissance,
+    sum(don_moyen * nb_dons_avec_naissance) filter (where nb_dons_avec_naissance > 0)
+      / nullif(sum(nb_dons_avec_naissance) filter (where nb_dons_avec_naissance > 0), 0) as don_moyen,
+    sum(nb_dons_plus_25) filter (where nb_dons_avec_naissance > 0) as nb_dons_plus_25
+  from dons_par_mission
 )
 select
   (select min(date_debut) from contrats c join u on c.utilisateur_id = u.id) as premiere_mission_le,
@@ -113,9 +134,9 @@ select
   case when h.nb_lots_total > 0 then coalesce(h.heures_remuneration_total,0)::float / (h.nb_lots_total * 7) else null end as taux_absence_total,
   d.bs_reel as bs_reel_total,
   d.don_moyen as don_moyen_total,
-  case when coalesce(d.bs_reel,0) > 0 then coalesce(d.nb_dons_plus_25,0)::float / d.bs_reel else null end as pct_plus_25_total,
-  case when d.don_moyen is not null and coalesce(d.bs_reel,0) > 0
-    then d.don_moyen * (coalesce(d.nb_dons_plus_25,0)::float / d.bs_reel)
+  case when coalesce(d.nb_dons_avec_naissance,0) > 0 then coalesce(d.nb_dons_plus_25,0)::float / d.nb_dons_avec_naissance else null end as pct_plus_25_total,
+  case when d.don_moyen is not null and coalesce(d.nb_dons_avec_naissance,0) > 0
+    then d.don_moyen * (coalesce(d.nb_dons_plus_25,0)::float / d.nb_dons_avec_naissance)
     else null end as score_qualite_total
 from heures h cross join dons_u d;`;
 }
