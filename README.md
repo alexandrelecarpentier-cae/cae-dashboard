@@ -2,8 +2,8 @@
 
 Projet unique regroupant les 7 dashboards de suivi mission/recrutement :
 client, salarié, emplacement, mission, RD, RM et le challenge recruteurs.
-Cloudflare Pages + Pages Functions, données via Metabase (SQL natif sur la
-base "Production").
+Cloudflare Worker (assets statiques + routes API), données via Metabase (SQL
+natif sur la base "Production").
 
 ## Pages
 
@@ -26,24 +26,34 @@ page) — pas encore de picker dédié.
 ## Architecture
 
 ```
-public/            fichiers statiques servis tels quels (Cloudflare Pages)
-functions/api/     un fichier = une route API (Pages Functions)
-functions/lib/     code partagé : client Metabase, requêtes SQL, signature S3
+public/            fichiers statiques servis tels quels (via le binding ASSETS)
+src/index.js        point d'entrée du Worker : routage de toutes les /api/*
+src/lib/            code partagé : client Metabase, requêtes SQL, signature S3
 ```
 
-- `functions/lib/metabase.js` — `runQuery` (SQL natif via `/api/dataset`),
+Ce projet est déployé sur Cloudflare comme un **Worker** (commande
+`wrangler deploy`, pas `wrangler pages deploy`) — d'où un point d'entrée
+unique `src/index.js` plutôt qu'un dossier `functions/` façon Pages
+Functions. Le binding `ASSETS` (configuré dans `wrangler.toml`) sert les
+fichiers de `public/` pour toute requête qui ne matche pas une route `/api/*`.
+
+- `src/lib/metabase.js` — `runQuery` (SQL natif via `/api/dataset`),
   `runCardQuery` (question Metabase déjà construite, utilisée par `/rm.html`),
   validation des paramètres (`RE_UUID`, `sanitizeFreeText`).
 - Les requêtes SQL interpolent des identifiants déjà validés par `RE_UUID`
   (jamais de valeur utilisateur brute) — voir le commentaire en tête de
-  chaque `functions/lib/sql-*.js`.
-- `functions/api/logo.js` — logos clients (bucket S3 Scaleway, URL signée
-  SigV4), nécessite les secrets `SCW_ACCESS_KEY` / `SCW_SECRET_KEY`.
+  chaque `src/lib/sql-*.js`.
+- Route `/api/logo` (dans `src/index.js`) — logos clients (bucket S3
+  Scaleway, URL signée SigV4), nécessite les secrets `SCW_ACCESS_KEY` /
+  `SCW_SECRET_KEY`.
 
-## Variables d'environnement (secrets Cloudflare Pages)
+Un dossier `functions/` (ancienne convention Pages Functions) subsiste dans
+le dépôt mais n'est plus utilisé par le build — il peut être supprimé.
 
-À configurer dans Cloudflare : projet Pages → Settings → Environment
-variables (Production **et** Preview) :
+## Variables d'environnement (secrets du Worker)
+
+À configurer dans Cloudflare : le service Worker `cae-dashboard` → Settings
+→ Variables and Secrets (Production **et**, si utilisé, Preview) :
 
 - `METABASE_URL` — ex. `https://prod.metabase.cae.captive.dev`
 - `METABASE_API_KEY` — clé API Metabase
@@ -71,24 +81,20 @@ git remote add origin https://github.com/<ton-compte>/cae-dashboard.git
 git push -u origin main
 ```
 
-### 3. Connecter Cloudflare Pages au dépôt (déploiement automatique)
+### 3. Connecter le Worker au dépôt (déploiement automatique)
 
-1. [dash.cloudflare.com](https://dash.cloudflare.com) → **Workers & Pages** → **Create** → **Pages** → **Connect to Git**
-2. Sélectionner le dépôt `cae-dashboard`
-3. Build settings :
-   - Framework preset : `None`
-   - Build command : *(laisser vide)*
-   - Build output directory : `public`
-4. Ajouter les variables d'environnement ci-dessus (Production et Preview)
-5. **Save and Deploy**
-
-À partir de là, chaque `git push` sur `main` redéploie automatiquement.
+Le service Cloudflare `cae-dashboard` est déjà provisionné comme **Worker**
+avec build Git ("Workers Builds") — déployer commande `npx wrangler deploy`.
+Une fois ce dépôt poussé sur `main`, ce build doit fonctionner directement
+puisque `wrangler.toml` définit maintenant `main = "src/index.js"`. Vérifier
+seulement que les variables d'environnement ci-dessus sont bien renseignées
+dans le service → Settings → Variables and Secrets.
 
 ### 4. Développement local (optionnel)
 
 ```bash
 npm install
-npm run dev     # wrangler pages dev public
+npm run dev     # wrangler dev
 ```
 
 Nécessite un fichier `.dev.vars` local (non commité, voir `.gitignore`) avec
