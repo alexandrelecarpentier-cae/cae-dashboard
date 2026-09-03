@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mobilisation RE — CAE</title>
+<style>
+  :root{
+    --bg:#FFFFFF; --surface:#FFFFFF; --surface-2:#F5F5F6; --line:#E4E4E8;
+    --red:#E2173B; --text:#0F0F11; --muted:#75757C;
+    --sharp:2px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;}
+  @media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important; transition-duration:.001ms !important;}}
+
+  header{position:sticky; top:0; z-index:20; background:rgba(255,255,255,.92); backdrop-filter:blur(8px);
+    padding:calc(env(safe-area-inset-top) + 14px) 16px 12px; border-bottom:1px solid var(--line);}
+  h1{margin:0 0 4px; font-size:20px; font-weight:800; letter-spacing:-.01em; line-height:1.2; text-transform:uppercase;}
+  h1 em{color:var(--red); font-style:normal;}
+  .sub{font-size:12.5px; color:var(--muted);}
+  .error-banner{margin-top:12px; padding:10px 12px; border:1px solid var(--line); border-left:3px solid var(--red);
+    background:#FFF6F7; font-size:12px; color:#7A1225; display:none; line-height:1.5;}
+  .error-banner.show{display:block;}
+  .error-banner b{color:var(--red);}
+
+  main{padding:4px 16px 40px; max-width:1000px; margin:0 auto;}
+
+  .kpi-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-top:16px;}
+  @media (min-width:480px){ .kpi-grid{grid-template-columns:repeat(3,1fr);} }
+  @media (min-width:720px){ .kpi-grid{grid-template-columns:repeat(5,1fr);} }
+  .kpi{background:var(--surface-2); border:1px solid var(--line); border-left:2px solid var(--red);
+    border-radius:var(--sharp); padding:12px 14px;}
+  .kpi .val{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:20px; font-weight:800;}
+  .kpi .lbl{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-top:4px;}
+
+  .section-label{display:flex; align-items:center; gap:6px; font-size:10px; text-transform:uppercase;
+    letter-spacing:.08em; color:var(--muted); font-weight:700; margin:22px 2px 8px;}
+  .section-label .diamond{width:6px; height:6px; background:var(--red); transform:rotate(45deg); flex:0 0 auto;}
+
+  .statut-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:10px;}
+  @media (min-width:480px){ .statut-grid{grid-template-columns:repeat(4,1fr);} }
+  .statut-card{background:#fff; border:1px solid var(--line); border-radius:var(--sharp); padding:12px 14px;}
+  .statut-card .n{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:19px; font-weight:800;}
+  .statut-card .l{font-size:10.5px; color:var(--muted); margin-top:3px;}
+  .statut-card .pct{font-size:10.5px; color:var(--muted); margin-top:1px;}
+  .statut-card.porte_ouverte{border-left:2px solid #2E9E5B;}
+  .statut-card.non_conforme{border-left:2px solid var(--red);}
+  .statut-card.repasse{border-left:2px solid #B8860B;}
+  .statut-card.absent{border-left:2px solid var(--muted);}
+
+  table{width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--line); border-radius:var(--sharp); overflow:hidden;}
+  th, td{text-align:left; padding:9px 10px; font-size:12.5px; border-bottom:1px solid var(--line);}
+  th{font-size:10px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); font-weight:700; background:var(--surface-2);}
+  tr:last-child td{border-bottom:none;}
+  td.num, th.num{text-align:right; font-family:ui-monospace,SFMono-Regular,Consolas,monospace;}
+  .table-wrap{overflow-x:auto; border-radius:var(--sharp);}
+  .table-wrap table{border-radius:0;}
+
+  #state{padding:60px 16px; text-align:center; color:var(--muted); font-size:14px;}
+  #state.error{color:var(--red);}
+  .hidden{display:none;}
+  .empty{padding:20px 14px; text-align:center; color:var(--muted); font-size:13px; background:#fff; border:1px solid var(--line); border-radius:var(--sharp);}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Mobilisation <em>RE</em></h1>
+  <div class="sub" id="missionSub">Chargement…</div>
+  <div class="error-banner" id="errorBanner">
+    <b>Connexion impossible.</b> <span id="errorDetail"></span>
+  </div>
+</header>
+
+<div id="state">Chargement des données depuis Metabase…</div>
+
+<main id="content" class="hidden">
+  <div class="kpi-grid" id="kpiRow"></div>
+
+  <div class="section-label"><span class="diamond"></span>Répartition par statut</div>
+  <div class="statut-grid" id="statutGrid"></div>
+
+  <div class="section-label"><span class="diamond"></span>Répartition par RD</div>
+  <div class="table-wrap" id="rdTableWrap"></div>
+
+  <div class="section-label"><span class="diamond"></span>Suivi des habitations — à traiter en priorité</div>
+  <div class="table-wrap" id="habitationsTableWrap"></div>
+</main>
+
+<script>
+(function () {
+  function fmtNum(n, digits = 0) {
+    if (n === null || n === undefined) return '—';
+    return Number(n).toLocaleString('fr-FR', { maximumFractionDigits: digits, minimumFractionDigits: digits });
+  }
+  function fmtPct(n) {
+    if (n === null || n === undefined) return '—';
+    return (Number(n) * 100).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' %';
+  }
+  function fmtDate(d) {
+    if (!d) return '—';
+    return new Date(d).toLocaleDateString('fr-FR');
+  }
+  const RE_HEX_COLOR = /^#[0-9A-Fa-f]{6}$/;
+  function applyClientColor(hex) {
+    if (!hex || !RE_HEX_COLOR.test(hex)) return;
+    document.documentElement.style.setProperty('--red', hex);
+  }
+  const STATUT_LABELS = {
+    porte_ouverte: 'Porte ouverte',
+    non_conforme: 'Non conforme',
+    repasse: 'Repasse',
+    absent: 'Absent',
+  };
+
+  const qs = new URLSearchParams(window.location.search);
+  const idMission = qs.get('mission_id') || '';
+
+  const stateEl = document.getElementById('state');
+  const contentEl = document.getElementById('content');
+
+  if (!idMission) {
+    stateEl.textContent = "Lien invalide : le paramètre mission_id est manquant dans l'URL.";
+    stateEl.classList.add('error');
+    return;
+  }
+
+  async function load() {
+    try {
+      const res = await fetch('/api/re-mobilisation?mission_id=' + encodeURIComponent(idMission), { cache: 'no-store' });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.message || data.error || 'Erreur inconnue');
+      render(data);
+    } catch (err) {
+      stateEl.textContent = 'Connexion impossible : ' + err.message;
+      stateEl.classList.add('error');
+    }
+  }
+
+  function render(data) {
+    stateEl.classList.add('hidden');
+    contentEl.classList.remove('hidden');
+
+    const info = data.info || {};
+    applyClientColor(info.couleur);
+    const missionLabel = info.code_mission || info.code_mission_client || 'Mission';
+    document.getElementById('missionSub').innerHTML =
+      (info.client_nom ? info.client_nom.replace(/</g, '&lt;') + ' — ' : '') + '<b>' + missionLabel + '</b>' +
+      (info.date_debut ? ' · ' + fmtDate(info.date_debut) + ' → ' + fmtDate(info.date_fin) : '');
+
+    const lg = data.logementsGlobal || {};
+    const tr = data.tauxRencontre || {};
+    const tauxRencontreVal = (tr.nb_logements_visites - tr.non_conforme) > 0
+      ? tr.porte_ouverte / (tr.nb_logements_visites - tr.non_conforme) : null;
+    const tauxTraitementVal = lg.nb_logements_trouves > 0
+      ? tr.nb_logements_visites / lg.nb_logements_trouves : null;
+
+    const kpis = [
+      { v: fmtNum(lg.nb_logements_theorique), l: 'Logements théorique' },
+      { v: fmtNum(lg.nb_logements_trouves), l: 'Logements trouvés' },
+      { v: fmtNum(tr.nb_logements_visites), l: 'Logements visités' },
+      { v: tauxTraitementVal != null ? fmtPct(tauxTraitementVal) : '—', l: 'Taux de traitement' },
+      { v: tauxRencontreVal != null ? fmtPct(tauxRencontreVal) : '—', l: 'Taux de rencontre' },
+    ];
+    document.getElementById('kpiRow').innerHTML = kpis.map((k) => `
+      <div class="kpi"><div class="val">${k.v}</div><div class="lbl">${k.l}</div></div>
+    `).join('');
+
+    const statuts = data.statut || [];
+    const totalStatuts = statuts.reduce((s, r) => s + (Number(r.nb) || 0), 0);
+    document.getElementById('statutGrid').innerHTML = ['porte_ouverte', 'non_conforme', 'repasse', 'absent'].map((key) => {
+      const row = statuts.find((r) => r.statut === key);
+      const n = row ? Number(row.nb) : 0;
+      const pct = totalStatuts > 0 ? n / totalStatuts : null;
+      return `
+      <div class="statut-card ${key}">
+        <div class="n">${fmtNum(n)}</div>
+        <div class="l">${STATUT_LABELS[key]}</div>
+        <div class="pct">${pct != null ? fmtPct(pct) : '—'}</div>
+      </div>`;
+    }).join('');
+
+    const parRd = data.parRd || [];
+    const rdMap = new Map();
+    for (const row of parRd) {
+      if (!rdMap.has(row.prenom)) rdMap.set(row.prenom, { prenom: row.prenom, porte_ouverte: 0, non_conforme: 0, repasse: 0, absent: 0 });
+      const entry = rdMap.get(row.prenom);
+      if (entry.hasOwnProperty(row.statut)) entry[row.statut] = Number(row.nb) || 0;
+    }
+    const rdRows = [...rdMap.values()].map((r) => ({
+      ...r,
+      total: r.porte_ouverte + r.non_conforme + r.repasse + r.absent,
+    })).sort((a, b) => b.total - a.total);
+
+    const rdTableWrap = document.getElementById('rdTableWrap');
+    if (!rdRows.length) {
+      rdTableWrap.innerHTML = '<div class="empty">Aucun passage enregistré pour cette mission</div>';
+    } else {
+      rdTableWrap.innerHTML = `
+        <table>
+          <thead><tr>
+            <th>RD</th><th class="num">Porte ouverte</th><th class="num">Non conforme</th>
+            <th class="num">Repasse</th><th class="num">Absent</th><th class="num">Total</th>
+          </tr></thead>
+          <tbody>
+            ${rdRows.map((r) => `
+              <tr>
+                <td>${r.prenom}</td>
+                <td class="num">${fmtNum(r.porte_ouverte)}</td>
+                <td class="num">${fmtNum(r.non_conforme)}</td>
+                <td class="num">${fmtNum(r.repasse)}</td>
+                <td class="num">${fmtNum(r.absent)}</td>
+                <td class="num">${fmtNum(r.total)}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>`;
+    }
+
+    const habitations = data.habitations || [];
+    const habitationsTableWrap = document.getElementById('habitationsTableWrap');
+    if (!habitations.length) {
+      habitationsTableWrap.innerHTML = '<div class="empty">Aucune habitation enregistrée pour cette mission</div>';
+    } else {
+      habitationsTableWrap.innerHTML = `
+        <table>
+          <thead><tr>
+            <th>Adresse</th><th class="num">Visités / trouvés</th>
+            <th class="num">Taux traitement</th><th class="num">Taux rencontre</th>
+          </tr></thead>
+          <tbody>
+            ${habitations.map((h) => `
+              <tr>
+                <td>${h.adresse || '—'}${h.ville ? ' · ' + h.ville : ''}</td>
+                <td class="num">${fmtNum(h.nb_visites)} / ${fmtNum(h.logements_count)}</td>
+                <td class="num">${h.taux_traitement != null ? fmtPct(h.taux_traitement) : '—'}</td>
+                <td class="num">${h.taux_rencontre != null ? fmtPct(h.taux_rencontre) : '—'}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>`;
+    }
+  }
+
+  load();
+})();
+</script>
+
+</body>
+</html>

@@ -29,6 +29,7 @@ import {
 import { buildChallengeQueries } from './lib/sql-challenge.js';
 import { buildSalarieQueries } from './lib/sql-salarie.js';
 import { buildEmplacementQueries } from './lib/sql-emplacement.js';
+import { buildMobilisationQueries, rdInfoQuery } from './lib/sql-mobilisation.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -43,6 +44,8 @@ export default {
       if (url.pathname === '/api/challenge') return await handleChallenge(env);
       if (url.pathname === '/api/salarie') return await handleSalarie(url, env);
       if (url.pathname === '/api/emplacement') return await handleEmplacement(url, env);
+      if (url.pathname === '/api/re-mobilisation') return await handleReMobilisation(url, env);
+      if (url.pathname === '/api/rd-mobilisation') return await handleRdMobilisation(url, env);
       if (url.pathname === '/api/rm-missions') return await handleRmMissions(env);
       if (url.pathname === '/api/logo') return await handleLogo(url, env);
     } catch (err) {
@@ -374,6 +377,79 @@ async function handleEmplacement(url, env) {
       info: info[0] || null,
       missions,
       nb_recruteurs_distincts: (recruteurs[0] && recruteurs[0].nb_recruteurs) || 0,
+    });
+  } catch (e) {
+    return jsonResponse({ error: String(e.message || e) }, 502);
+  }
+}
+
+// ---------------------------------------------------------------
+// /api/re-mobilisation, /api/rd-mobilisation
+// ---------------------------------------------------------------
+async function handleReMobilisation(url, env) {
+  const id_mission = url.searchParams.get('mission_id') || '';
+  if (!RE_UUID.test(id_mission)) {
+    return jsonResponse({ error: 'mission_id manquant ou invalide' }, 400);
+  }
+
+  const configError = requireConfig(env);
+  if (configError) return jsonResponse({ error: configError }, 500);
+
+  const queries = buildMobilisationQueries(id_mission, null);
+
+  try {
+    const [info, logementsGlobal, statut, tauxRencontre, habitations, parRd] = await Promise.all([
+      runQuery(env, queries.info),
+      runQuery(env, queries.logementsGlobal),
+      runQuery(env, queries.statut),
+      runQuery(env, queries.tauxRencontre),
+      runQuery(env, queries.habitations),
+      runQuery(env, queries.parRd),
+    ]);
+    return jsonResponse({
+      info: info[0] || null,
+      logementsGlobal: logementsGlobal[0] || null,
+      statut,
+      tauxRencontre: tauxRencontre[0] || null,
+      habitations,
+      parRd,
+    });
+  } catch (e) {
+    return jsonResponse({ error: String(e.message || e) }, 502);
+  }
+}
+
+async function handleRdMobilisation(url, env) {
+  const id_mission = url.searchParams.get('mission_id') || '';
+  const id_utilisateur = url.searchParams.get('user_id') || '';
+  if (!RE_UUID.test(id_mission)) {
+    return jsonResponse({ error: 'mission_id manquant ou invalide' }, 400);
+  }
+  if (!RE_UUID.test(id_utilisateur)) {
+    return jsonResponse({ error: 'user_id manquant ou invalide' }, 400);
+  }
+
+  const configError = requireConfig(env);
+  if (configError) return jsonResponse({ error: configError }, 500);
+
+  const queries = buildMobilisationQueries(id_mission, id_utilisateur);
+
+  try {
+    const [info, rd, logementsGlobal, statut, tauxRencontre, habitations] = await Promise.all([
+      runQuery(env, queries.info),
+      runQuery(env, rdInfoQuery(id_utilisateur)),
+      runQuery(env, queries.logementsGlobal),
+      runQuery(env, queries.statut),
+      runQuery(env, queries.tauxRencontre),
+      runQuery(env, queries.habitations),
+    ]);
+    return jsonResponse({
+      info: info[0] || null,
+      rd: rd[0] || null,
+      logementsGlobal: logementsGlobal[0] || null,
+      statut,
+      tauxRencontre: tauxRencontre[0] || null,
+      habitations,
     });
   } catch (e) {
     return jsonResponse({ error: String(e.message || e) }, 502);
