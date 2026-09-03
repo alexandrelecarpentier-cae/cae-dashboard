@@ -56,14 +56,17 @@ heures as (
   from lots_u group by 1
 ),
 dons_u as (
+  -- don_moyen se calcule sur tous les dons valides de la mission, qu'on
+  -- connaisse ou non la date de naissance du donateur.
   -- nb_dons_avec_naissance = dons dont on connaît la date de naissance du
   -- donateur (donc dont l'âge est calculable). Si aucun don de la mission
-  -- n'a cette donnée, don_moyen/pct_plus_25/score_qualite restent null :
-  -- pas de calcul faute de donnée fiable (cf. demande utilisateur).
+  -- n'a cette donnée, pct_plus_25/score_qualite restent null : pas de
+  -- calcul faute de donnée fiable (cf. demande utilisateur) — mais
+  -- don_moyen reste calculé.
   select l.mission_id,
     count(distinct d.id) as bs_reel,
     count(distinct d.id) filter (where don.date_de_naissance is not null) as nb_dons_avec_naissance,
-    avg(d.montant) filter (where don.date_de_naissance is not null) as don_moyen,
+    avg(d.montant) as don_moyen,
     count(distinct d.id) filter (where (d.created_at::date - don.date_de_naissance) / 365.0 >= 25) as nb_dons_plus_25
   from lots_u l
   join dons d on d.lot_id = l.id and d.statut in ${STATUTS_VALIDES}
@@ -78,7 +81,7 @@ select h.mission_id,
   case when coalesce(h.heures_rue,0) > 0 then coalesce(d.bs_reel,0)::float / h.heures_rue else null end as taux_reel,
   case when coalesce(h.heures_remuneration,0) > 0 then coalesce(h.heures_rue,0)::float / h.heures_remuneration else null end as taux_h,
   case when h.nb_lots > 0 then coalesce(h.heures_remuneration,0)::float / (h.nb_lots * 7) else null end as taux_absence,
-  case when coalesce(d.nb_dons_avec_naissance,0) > 0 then d.don_moyen else null end as don_moyen,
+  d.don_moyen,
   case when coalesce(d.nb_dons_avec_naissance,0) > 0 then coalesce(d.nb_dons_plus_25,0)::float / d.nb_dons_avec_naissance else null end as pct_plus_25,
   case when coalesce(d.nb_dons_avec_naissance,0) > 0 and d.don_moyen is not null
     then d.don_moyen * (coalesce(d.nb_dons_plus_25,0)::float / d.nb_dons_avec_naissance)
@@ -106,7 +109,7 @@ dons_par_mission as (
   select l.mission_id,
     count(distinct d.id) as bs_reel,
     count(distinct d.id) filter (where don.date_de_naissance is not null) as nb_dons_avec_naissance,
-    avg(d.montant) filter (where don.date_de_naissance is not null) as don_moyen,
+    avg(d.montant) as don_moyen,
     count(distinct d.id) filter (where (d.created_at::date - don.date_de_naissance) / 365.0 >= 25) as nb_dons_plus_25
   from lots_u l
   join dons d on d.lot_id = l.id and d.statut in ${STATUTS_VALIDES}
@@ -114,15 +117,15 @@ dons_par_mission as (
   group by 1
 ),
 dons_u as (
-  -- bs_reel_total reste sur toutes les missions (indicateur de volume).
-  -- don_moyen/pct_plus_25/score_qualite globaux n'agrègent que les
-  -- missions où au moins un don a une date de naissance connue — les
-  -- missions sans aucune donnée donateur sont exclues de ce calcul.
+  -- bs_reel_total et don_moyen_total portent sur toutes les missions
+  -- (indicateurs de volume/montant, indépendants de la donnée d'âge).
+  -- pct_plus_25_total/score_qualite_total n'agrègent que les missions où
+  -- au moins un don a une date de naissance connue — les missions sans
+  -- aucune donnée donateur sont exclues de CE calcul uniquement.
   select
     sum(bs_reel) as bs_reel,
+    sum(don_moyen * bs_reel) filter (where bs_reel > 0) / nullif(sum(bs_reel) filter (where bs_reel > 0), 0) as don_moyen,
     sum(nb_dons_avec_naissance) filter (where nb_dons_avec_naissance > 0) as nb_dons_avec_naissance,
-    sum(don_moyen * nb_dons_avec_naissance) filter (where nb_dons_avec_naissance > 0)
-      / nullif(sum(nb_dons_avec_naissance) filter (where nb_dons_avec_naissance > 0), 0) as don_moyen,
     sum(nb_dons_plus_25) filter (where nb_dons_avec_naissance > 0) as nb_dons_plus_25
   from dons_par_mission
 )
