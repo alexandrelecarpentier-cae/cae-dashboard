@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dashboard Client — CAE</title>
+<style>
+  :root{
+    --bg:#FFFFFF; --surface:#FFFFFF; --surface-2:#F5F5F6; --line:#E4E4E8;
+    --red:#E2173B; --text:#0F0F11; --muted:#75757C;
+    --sharp:2px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;}
+  @media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important; transition-duration:.001ms !important;}}
+
+  header{
+    position:sticky; top:0; z-index:20;
+    background:rgba(255,255,255,.92); backdrop-filter:blur(8px);
+    padding:calc(env(safe-area-inset-top) + 14px) 16px 12px;
+    border-bottom:1px solid var(--line);
+  }
+  .head-row{display:flex; justify-content:space-between; align-items:flex-start; gap:10px;}
+  h1{margin:0 0 10px; font-size:21px; font-weight:800; letter-spacing:-.01em; line-height:1.15; text-transform:uppercase;}
+  h1 em{color:var(--red); font-style:normal;}
+
+  .meta-row{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px;}
+  .sync{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:11.5px; color:var(--muted); display:flex; align-items:center; gap:6px;}
+  .sync b{color:var(--text); font-weight:600;}
+  .live-diamond{width:7px; height:7px; background:var(--red); transform:rotate(45deg); flex:0 0 auto;
+    animation:pulse 2.2s infinite;}
+  .live-diamond.off{background:#C7C7CC; animation:none;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(226,23,59,.45);}70%{box-shadow:0 0 0 7px rgba(226,23,59,0);}100%{box-shadow:0 0 0 0 rgba(226,23,59,0);}}
+
+  #refreshBar{height:2px; width:100%; background:var(--line); overflow:hidden; margin-top:8px;}
+  #refreshFill{height:100%; width:0%; background:var(--red); transition:width 1s linear;}
+
+  select.selfilter{
+    width:100%; margin-top:12px; background:var(--surface-2); color:var(--text); border:1px solid var(--line);
+    border-radius:var(--sharp); padding:11px 12px; font-size:14px; font-weight:600;
+  }
+  select.selfilter.rm-active{border-color:var(--red); color:var(--red); background:#FFF3F5;}
+
+  .filters-toggle{
+    margin-top:10px; background:none; border:1px solid var(--line); border-radius:var(--sharp);
+    padding:8px 12px; font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase;
+    letter-spacing:.04em; cursor:pointer; display:flex; align-items:center; gap:6px; justify-content:space-between; width:100%;
+  }
+  .filters-toggle .n{color:var(--red);}
+  .filters-panel{display:none; margin-top:10px; padding:12px; background:var(--surface-2); border:1px solid var(--line); border-radius:var(--sharp);}
+  .filters-panel.open{display:block;}
+  .filters-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+  @media (max-width:520px){ .filters-grid{grid-template-columns:1fr;} }
+  .filters-grid label{grid-column:1/-1; font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); font-weight:700; margin-top:6px;}
+  .filters-grid label:first-child{margin-top:0;}
+  .filters-grid select, .filters-grid input[type="date"]{
+    background:#fff; color:var(--text); border:1px solid var(--line); border-radius:var(--sharp);
+    padding:8px 10px; font-size:13px; width:100%;
+  }
+  .filters-grid .day-tags{grid-column:1/-1; display:flex; flex-wrap:wrap; gap:6px;}
+  .day-tag{
+    background:#fff; color:var(--text); border:1px solid var(--line);
+    border-radius:var(--sharp); padding:6px 10px; font-size:12.5px; font-weight:600;
+    cursor:pointer; user-select:none; line-height:1.2;
+  }
+  .day-tag.active{border-color:var(--red); color:#fff; background:var(--red);}
+  .filters-actions{display:flex; gap:8px; margin-top:12px;}
+  .btn-reset{flex:1; background:#fff; border:1px solid var(--line); border-radius:var(--sharp);
+    padding:9px 10px; font-size:12.5px; font-weight:700; color:var(--muted); cursor:pointer; text-transform:uppercase; letter-spacing:.03em;}
+  .btn-apply{flex:1; background:var(--red); border:1px solid var(--red); border-radius:var(--sharp);
+    padding:9px 10px; font-size:12.5px; font-weight:700; color:#fff; cursor:pointer; text-transform:uppercase; letter-spacing:.03em;}
+
+  .error-banner{
+    margin-top:12px; padding:10px 12px; border:1px solid var(--line); border-left:3px solid var(--red);
+    background:#FFF6F7; font-size:12px; color:#7A1225; display:none; line-height:1.5;
+  }
+  .error-banner.show{display:block;}
+  .error-banner b{color:var(--red);}
+
+  .kpi-scroll{display:flex; gap:10px; overflow-x:auto; padding:14px 16px 4px; scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch;}
+  .kpi-scroll::-webkit-scrollbar{display:none;}
+  .kpi{scroll-snap-align:start; flex:0 0 auto; min-width:128px; background:var(--surface-2);
+    border:1px solid var(--line); border-left:2px solid var(--red); border-radius:var(--sharp); padding:12px 14px;}
+  .kpi .val{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:22px; font-weight:700; line-height:1;}
+  .kpi .lbl{font-size:10.5px; color:var(--muted); margin-top:6px; text-transform:uppercase; letter-spacing:.05em;}
+
+  main{padding:4px 16px 40px; max-width:1100px; margin:0 auto;}
+
+  .section-label{display:flex; align-items:center; gap:6px; font-size:10px; text-transform:uppercase;
+    letter-spacing:.08em; color:var(--muted); font-weight:700; margin:18px 2px 8px;}
+  .section-label .diamond{width:6px; height:6px; background:var(--red); transform:rotate(45deg); flex:0 0 auto;}
+
+  .card{background:#fff; border:1px solid var(--line); border-radius:var(--sharp); padding:16px; margin-bottom:12px;
+    position:relative; overflow:hidden; box-shadow:0 1px 2px rgba(15,15,17,.03);}
+  .card::before{content:""; position:absolute; top:0; left:0; width:3px; height:100%; background:var(--red);}
+  .card-inner{padding-left:6px;}
+  .grid-2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  @media (max-width:720px){ .grid-2{grid-template-columns:1fr;} }
+
+  .chart-box{position:relative; height:230px;}
+  .chart-empty{display:flex; align-items:center; justify-content:center; height:230px; color:var(--muted); font-size:13px;}
+
+  table{width:100%; border-collapse:collapse; font-size:12.5px;}
+  thead th{text-align:left; color:var(--muted); font-weight:700; font-size:10px;
+    text-transform:uppercase; letter-spacing:.05em; border-bottom:1px solid var(--line); padding:8px 8px;
+    position:sticky; top:0; background:#fff;}
+  tbody td{padding:8px 8px; border-bottom:1px solid var(--line); font-family:ui-monospace,SFMono-Regular,Consolas,monospace;}
+  tbody tr:hover{background:var(--surface-2);}
+  .table-scroll{max-height:360px; overflow-y:auto;}
+
+  #state{padding:60px 16px; text-align:center; color:var(--muted); font-size:14px;}
+  #state.error{color:var(--red);}
+  .hidden{display:none;}
+
+  .toast{position:fixed; left:50%; bottom:24px; transform:translate(-50%,0); background:#1A1A1D;
+    border-left:2px solid var(--red); color:#fff; padding:10px 16px;
+    border-radius:var(--sharp); font-size:13px; z-index:50; opacity:0; transition:opacity .25s; pointer-events:none;}
+  .toast.show{opacity:1;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="head-row">
+    <h1 id="pageTitle">Dashboard <em>Client</em></h1>
+  </div>
+  <div class="meta-row">
+    <div class="sync"><span class="live-diamond off" id="liveDiamond"></span>Synchro <b id="syncTime">—</b></div>
+    <div class="sync" id="countdown">5:00</div>
+  </div>
+  <div id="refreshBar"><div id="refreshFill"></div></div>
+
+  <button class="filters-toggle" id="filtersToggle" type="button">
+    <span>Filtres</span><span class="n" id="filtersCount"></span>
+  </button>
+  <div class="filters-panel" id="filtersPanel">
+    <div class="filters-grid">
+      <label>Missions</label>
+      <div class="day-tags" id="missionTags"></div>
+
+      <label>Date</label>
+      <input type="date" id="f-date-min" aria-label="Date de début">
+      <input type="date" id="f-date-max" aria-label="Date de fin">
+
+      <label>Jour de la semaine</label>
+      <select id="f-jour">
+        <option value="">Tous les jours</option>
+        <option value="1">Lundi</option>
+        <option value="2">Mardi</option>
+        <option value="3">Mercredi</option>
+        <option value="4">Jeudi</option>
+        <option value="5">Vendredi</option>
+        <option value="6">Samedi</option>
+        <option value="7">Dimanche</option>
+      </select>
+
+      <label>Emplacement</label>
+      <select id="f-emplacement"><option value="">Tous les emplacements</option></select>
+
+      <label>Statut mission</label>
+      <div class="day-tags" id="statutTags">
+        <span class="day-tag active" data-statut="">Toutes</span>
+        <span class="day-tag" data-statut="en_cours">En cours</span>
+        <span class="day-tag" data-statut="terminee">Passées</span>
+      </div>
+    </div>
+    <div class="filters-actions">
+      <button class="btn-reset" id="filtersReset" type="button">Réinitialiser</button>
+      <button class="btn-apply" id="filtersApply" type="button">Appliquer</button>
+    </div>
+  </div>
+
+  <div class="error-banner" id="errorBanner">
+    <b>Connexion impossible.</b> <span id="errorDetail"></span> La page réessaiera automatiquement.
+  </div>
+</header>
+
+<div id="state">Chargement des données depuis Metabase…</div>
+
+<main id="content" class="hidden">
+  <div class="kpi-scroll" id="kpiRow"></div>
+
+  <div class="section-label"><span class="diamond"></span>Bulletins par semaine</div>
+  <div class="card"><div class="card-inner">
+    <div class="chart-box" id="box-chart-semaine"><canvas id="chart-semaine"></canvas></div>
+  </div></div>
+
+  <div class="section-label"><span class="diamond"></span>Profil des donateurs</div>
+  <div class="grid-2">
+    <div class="card"><div class="card-inner">
+      <div class="chart-box" id="box-chart-genre"><canvas id="chart-genre"></canvas></div>
+    </div></div>
+    <div class="card"><div class="card-inner">
+      <div class="chart-box" id="box-chart-age"><canvas id="chart-age"></canvas></div>
+    </div></div>
+  </div>
+
+  <div class="section-label"><span class="diamond"></span>Bulletins transmis</div>
+  <div class="card"><div class="card-inner">
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th><th>RUM</th><th>Montant</th>
+            <th>Donateur</th><th>Ville</th><th>Mission</th>
+          </tr>
+        </thead>
+        <tbody id="tbl-transmis"></tbody>
+      </table>
+    </div>
+  </div></div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  // ---------------------------------------------------------------
+  // Cette page ne contient AUCUNE clé d'accès. Les données viennent de
+  // /api/dashboard et /api/missions, deux fonctions serveur (Cloudflare
+  // Pages Functions) qui interrogent Metabase à notre place avec la clé
+  // API stockée côté serveur. Voir /functions/api/*.js
+  // ---------------------------------------------------------------
+  const qs = new URLSearchParams(window.location.search);
+  const idClient = qs.get('id_client') || '';
+
+  const stateEl = document.getElementById('state');
+  const contentEl = document.getElementById('content');
+
+  if (!idClient) {
+    stateEl.textContent = "Lien invalide : le paramètre id_client est manquant dans l'URL.";
+    stateEl.classList.add('error');
+    return;
+  }
+
+  // Le filtre "missions" et tous les filtres avancés vivent uniquement dans
+  // l'état JS de la page — jamais dans l'URL — comme demandé.
+  const selectedMissionIds = new Set(); // vide = toutes les missions (passées/en cours)
+  let filters = { date_min: '', date_max: '', jour_semaine: '', emplacement: '', statut_mission: '' };
+
+  const charts = {}; // instances Chart.js en cours, pour les détruire avant de les recréer
+  const DEFAULT_ACCENT = '#E2173B';
+  let accentColor = DEFAULT_ACCENT;
+  const RE_HEX_COLOR = /^#[0-9A-Fa-f]{6}$/;
+
+  function applyClientColor(hex) {
+    if (!hex || !RE_HEX_COLOR.test(hex)) return; // valeur absente ou invalide → on garde le rouge par défaut
+    accentColor = hex;
+    document.documentElement.style.setProperty('--red', hex);
+  }
+
+  // ---------------------------------------------------------------
+  // Chargement résilient de Chart.js : cdnjs d'abord, jsdelivr en repli.
+  // (le sandbox où cette page a été générée bloque les deux CDN par
+  // proxy, donc la version cdnjs n'a pas pu être vérifiée en direct —
+  // ce repli couvre à la fois une éventuelle erreur de casse d'URL et
+  // une indisponibilité du premier CDN.)
+  // ---------------------------------------------------------------
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = src; s.onload = resolve; s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+  async function ensureChartJs() {
+    if (window.Chart) return true;
+    const urls = [
+      'https://cdnjs.cloudflare.com/ajax/libs/chart.js/4.4.4/chart.umd.min.js',
+      'https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js',
+    ];
+    for (const url of urls) {
+      try { await loadScript(url); if (window.Chart) return true; } catch (e) { /* essaie le suivant */ }
+    }
+    return false;
+  }
+
+  function fmtNum(n, digits = 0) {
+    if (n === null || n === undefined) return '—';
+    return Number(n).toLocaleString('fr-FR', { maximumFractionDigits: digits, minimumFractionDigits: digits });
+  }
+  function fmtPct(n) {
+    if (n === null || n === undefined) return '—';
+    return (Number(n) * 100).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' %';
+  }
+  function fmtDate(d) {
+    if (!d) return '—';
+    return new Date(d).toLocaleDateString('fr-FR');
+  }
+  function showToastMsg(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2400);
+  }
+
+  // ---------------------------------------------------------------
+  // Liste des missions du client (passées/en cours uniquement) → tags
+  // multi-sélectionnables, dans le menu de filtres.
+  // ---------------------------------------------------------------
+  const missionTagsEl = document.getElementById('missionTags');
+
+  async function loadMissions() {
+    try {
+      const res = await fetch('/api/client-missions?id_client=' + encodeURIComponent(idClient), { cache: 'no-store' });
+      const rows = await res.json();
+      if (!res.ok || rows.error) throw new Error(rows.error || 'Erreur missions');
+      missionTagsEl.innerHTML = rows.map((m) => {
+        const label = [m.code_mission_client, m.code_mission].filter(Boolean).join(' / ') || 'Mission';
+        return `<span class="day-tag" data-id="${m.id}">${label}</span>`;
+      }).join('');
+      missionTagsEl.querySelectorAll('.day-tag').forEach((tag) => {
+        tag.addEventListener('click', () => {
+          const id = tag.dataset.id;
+          if (selectedMissionIds.has(id)) selectedMissionIds.delete(id);
+          else selectedMissionIds.add(id);
+          tag.classList.toggle('active', selectedMissionIds.has(id));
+          loadFacets();
+        });
+      });
+    } catch (e) {
+      console.warn('Chargement des missions impossible :', e.message);
+      // Non bloquant : le dashboard agrégé (toutes missions) reste consultable.
+    }
+  }
+
+  // ---------------------------------------------------------------
+  // Filtres avancés (missions, date, jour, emplacement, statut mission)
+  // ---------------------------------------------------------------
+  const filtersToggle = document.getElementById('filtersToggle');
+  const filtersPanel = document.getElementById('filtersPanel');
+  filtersToggle.addEventListener('click', () => filtersPanel.classList.toggle('open'));
+
+  let selectedStatutMission = '';
+  const statutTagsEl = document.getElementById('statutTags');
+  statutTagsEl.querySelectorAll('.day-tag').forEach((tag) => {
+    tag.addEventListener('click', () => {
+      selectedStatutMission = tag.dataset.statut;
+      statutTagsEl.querySelectorAll('.day-tag').forEach((t) => t.classList.toggle('active', t === tag));
+    });
+  });
+
+  function missionQueryParams() {
+    return selectedMissionIds.size ? { mission_ids: [...selectedMissionIds].join(',') } : {};
+  }
+
+  async function loadFacets() {
+    try {
+      const p = new URLSearchParams({ id_client: idClient, ...missionQueryParams() });
+      const res = await fetch('/api/facets?' + p.toString(), { cache: 'no-store' });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || 'Erreur facettes');
+      const emplSel = document.getElementById('f-emplacement');
+      const currentEmpl = filters.emplacement;
+      emplSel.innerHTML = '<option value="">Tous les emplacements</option>' +
+        (data.emplacements || []).map((v) => `<option value="${v}" ${v === currentEmpl ? 'selected' : ''}>${v}</option>`).join('');
+    } catch (e) {
+      console.warn('Chargement du filtre emplacement impossible :', e.message);
+    }
+  }
+
+  function updateFiltersCount() {
+    const n = Object.values(filters).filter(Boolean).length + (selectedMissionIds.size ? 1 : 0);
+    document.getElementById('filtersCount').textContent = n ? n + ' actif' + (n > 1 ? 's' : '') : '';
+    filtersToggle.querySelector('span').textContent = 'Filtres';
+  }
+
+  document.getElementById('filtersApply').addEventListener('click', () => {
+    filters = {
+      date_min: document.getElementById('f-date-min').value,
+      date_max: document.getElementById('f-date-max').value,
+      jour_semaine: document.getElementById('f-jour').value,
+      emplacement: document.getElementById('f-emplacement').value,
+      statut_mission: selectedStatutMission,
+    };
+    updateFiltersCount();
+    refreshData(true);
+  });
+
+  document.getElementById('filtersReset').addEventListener('click', () => {
+    ['f-date-min', 'f-date-max', 'f-jour', 'f-emplacement'].forEach((id) => {
+      document.getElementById(id).value = '';
+    });
+    selectedStatutMission = '';
+    statutTagsEl.querySelectorAll('.day-tag').forEach((t) => t.classList.toggle('active', t.dataset.statut === ''));
+    selectedMissionIds.clear();
+    missionTagsEl.querySelectorAll('.day-tag').forEach((t) => t.classList.remove('active'));
+    filters = { date_min: '', date_max: '', jour_semaine: '', emplacement: '', statut_mission: '' };
+    loadFacets();
+    updateFiltersCount();
+    refreshData(true);
+  });
+
+  // ---------------------------------------------------------------
+  // Données du dashboard
+  // ---------------------------------------------------------------
+  function buildQuery() {
+    const p = new URLSearchParams({ id_client: idClient, ...missionQueryParams() });
+    Object.entries(filters).forEach(([k, v]) => { if (v) p.set(k, v); });
+    return p.toString();
+  }
+
+  let liveMode = false;
+
+  async function refreshData(showToast) {
+    try {
+      const res = await fetch('/api/client?' + buildQuery(), { cache: 'no-store' });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || 'Erreur inconnue');
+      render(data);
+      liveMode = true;
+      document.getElementById('errorBanner').classList.remove('show');
+      if (showToast) showToastMsg('Données actualisées');
+    } catch (err) {
+      liveMode = false;
+      document.getElementById('errorDetail').textContent = err.message;
+      document.getElementById('errorBanner').classList.add('show');
+      if (showToast) showToastMsg("Échec de l'actualisation");
+      console.warn('Fetch /api/client failed:', err);
+    }
+    renderSyncLabel();
+  }
+
+  function renderSyncLabel() {
+    document.getElementById('syncTime').textContent =
+      new Date().toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    document.getElementById('liveDiamond').classList.toggle('off', !liveMode);
+  }
+
+  function render(data) {
+    stateEl.classList.add('hidden');
+    contentEl.classList.remove('hidden');
+
+    const info = data.info || {};
+    const clientName = info.client_nom || info.raison_sociale;
+    if (clientName) document.getElementById('pageTitle').innerHTML = clientName.replace(/</g, '&lt;');
+    applyClientColor(info.couleur);
+
+    const k = data.kpis || {};
+    const kpis = [
+      { v: k.taux_reel != null ? fmtNum(k.taux_reel, 3) : '—', l: 'Taux réel' },
+      { v: fmtNum(k.nb_dons), l: 'Bulletins' },
+      { v: k.don_moyen != null ? fmtNum(k.don_moyen, 2) + '€' : '—', l: 'Don moyen' },
+      { v: k.age_moyen != null ? fmtNum(k.age_moyen, 1) : '—', l: 'Âge moyen' },
+      { v: k.heures_rue != null ? fmtNum(k.heures_rue, 1) : '—', l: 'Heures rue' },
+      { v: k.heures_rem != null ? fmtNum(k.heures_rem, 1) : '—', l: 'Heures rém.' },
+    ];
+    document.getElementById('kpiRow').innerHTML = kpis.map((kp) => `
+      <div class="kpi"><div class="val">${kp.v}</div><div class="lbl">${kp.l}</div></div>`).join('');
+
+    renderChartSemaine(data.bulletins_semaine || []);
+    renderChartGenre(data.genre || []);
+    renderChartAge(data.tranche_age || []);
+    renderTable(data.bulletins_transmis || []);
+  }
+
+  function destroyChart(key) {
+    if (charts[key]) { charts[key].destroy(); charts[key] = null; }
+  }
+
+  function chartOpts(stacked) {
+    return {
+      maintainAspectRatio: false,
+      scales: {
+        x: { stacked: !!stacked, ticks: { color: '#75757C', font: { family: 'ui-monospace, monospace', size: 11 } }, grid: { color: '#E4E4E8' } },
+        y: { stacked: !!stacked, ticks: { color: '#75757C', font: { family: 'ui-monospace, monospace', size: 11 } }, grid: { color: '#E4E4E8' } },
+      },
+      plugins: { legend: { labels: { color: '#0F0F11', font: { size: 11, weight: '600' } } } },
+    };
+  }
+
+  function renderChartSemaine(rows) {
+    destroyChart('semaine');
+    const box = document.getElementById('box-chart-semaine');
+    if (typeof Chart === 'undefined') { box.innerHTML = '<div class="chart-empty">Graphique indisponible (Chart.js non chargé)</div>'; return; }
+    if (!rows.length) { box.innerHTML = '<div class="chart-empty">Aucune donnée sur la période</div>'; return; }
+    if (!box.querySelector('canvas')) box.innerHTML = '<canvas id="chart-semaine"></canvas>';
+    const weeks = [...new Set(rows.map((r) => r.semaine))].sort();
+    const statuts = [...new Set(rows.map((r) => r.statut))];
+    const palette = { transmis: accentColor, en_attente: '#0F0F11', nouveau: '#75757C' };
+    charts.semaine = new Chart(document.getElementById('chart-semaine'), {
+      type: 'bar',
+      data: {
+        labels: weeks.map((w) => fmtDate(w)),
+        datasets: statuts.map((s) => ({
+          label: s,
+          backgroundColor: palette[s] || '#B0B0B6',
+          data: weeks.map((w) => (rows.find((r) => r.semaine === w && r.statut === s) || {}).nb || 0),
+        })),
+      },
+      options: chartOpts(true),
+    });
+  }
+
+  function renderChartGenre(rows) {
+    destroyChart('genre');
+    const box = document.getElementById('box-chart-genre');
+    if (typeof Chart === 'undefined') { box.innerHTML = '<div class="chart-empty">Graphique indisponible (Chart.js non chargé)</div>'; return; }
+    if (!rows.length) { box.innerHTML = '<div class="chart-empty">Aucune donnée</div>'; return; }
+    if (!box.querySelector('canvas')) box.innerHTML = '<canvas id="chart-genre"></canvas>';
+    const genreLabels = { monsieur: 'Homme', madame: 'Femme' };
+    charts.genre = new Chart(document.getElementById('chart-genre'), {
+      type: 'doughnut',
+      data: {
+        labels: rows.map((r) => genreLabels[r.civilite] || r.civilite),
+        datasets: [{ data: rows.map((r) => r.nb), backgroundColor: [accentColor, '#0F0F11', '#B0B0B6'] }],
+      },
+      options: {
+        maintainAspectRatio: false,
+        plugins: {
+          title: { display: true, text: 'Répartition par genre', color: '#0F0F11', font: { size: 12, weight: '700' } },
+          legend: { position: 'bottom', labels: { color: '#0F0F11', font: { size: 11, weight: '600' } } },
+        },
+      },
+    });
+  }
+
+  function renderChartAge(rows) {
+    destroyChart('age');
+    const box = document.getElementById('box-chart-age');
+    if (typeof Chart === 'undefined') { box.innerHTML = '<div class="chart-empty">Graphique indisponible (Chart.js non chargé)</div>'; return; }
+    if (!rows.length) { box.innerHTML = '<div class="chart-empty">Aucune donnée</div>'; return; }
+    if (!box.querySelector('canvas')) box.innerHTML = '<canvas id="chart-age"></canvas>';
+    const order = ['18-20', '21-25', '26-35', '36-50', '50 et +'];
+    const sorted = rows.slice().sort((a, b) => order.indexOf(a.tranche) - order.indexOf(b.tranche));
+    const opts = chartOpts(false);
+    opts.plugins.title = { display: true, text: 'Répartition par tranche d\'âge', color: '#0F0F11', font: { size: 12, weight: '700' } };
+    opts.plugins.legend = { display: true, position: 'bottom', labels: { color: '#0F0F11', font: { size: 11, weight: '600' } } };
+    opts.scales.x.title = { display: true, text: "Tranche d'âge", color: '#75757C', font: { size: 10.5, weight: '600' } };
+    opts.scales.y.title = { display: true, text: 'Nombre de bulletins', color: '#75757C', font: { size: 10.5, weight: '600' } };
+    charts.age = new Chart(document.getElementById('chart-age'), {
+      type: 'bar',
+      data: {
+        labels: sorted.map((r) => r.tranche),
+        datasets: [{ label: 'Bulletins par tranche d\'âge', data: sorted.map((r) => r.nb), backgroundColor: accentColor }],
+      },
+      options: opts,
+    });
+  }
+
+  function renderTable(rows) {
+    document.getElementById('tbl-transmis').innerHTML = rows.map((r) => `
+      <tr>
+        <td>${fmtDate(r.date_transmission)}</td>
+        <td>${r.rum || ''}</td>
+        <td>${r.montant != null ? fmtNum(r.montant, 2) + '€' : ''}</td>
+        <td>${[r.prenom, r.nom].filter(Boolean).join(' ')}</td>
+        <td>${r.ville_emplacement || ''}</td>
+        <td>${r.code_mission_client || r.code_mission || ''}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);">Aucun bulletin transmis</td></tr>';
+  }
+
+  // ---------------------------------------------------------------
+  // AUTO-REFRESH toutes les 5 min
+  // ---------------------------------------------------------------
+  const REFRESH_MS = 5 * 60 * 1000;
+  let remaining = REFRESH_MS;
+  function tickCountdown() {
+    remaining -= 1000;
+    if (remaining <= 0) { remaining = REFRESH_MS; refreshData(false); return; }
+    const s = Math.floor(remaining / 1000);
+    const mm = Math.floor(s / 60), ss = s % 60;
+    document.getElementById('countdown').textContent = `${mm}:${ss.toString().padStart(2, '0')}`;
+    document.getElementById('refreshFill').style.width = (100 - (remaining / REFRESH_MS) * 100) + '%';
+  }
+  setInterval(tickCountdown, 1000);
+
+  // INIT
+  ensureChartJs().then((ok) => {
+    if (!ok) console.warn('Chart.js indisponible (2 CDN testés) — les graphiques resteront vides, le reste du dashboard fonctionne normalement.');
+    loadMissions();
+    loadFacets();
+    refreshData(false);
+  });
+})();
+</script>
+
+</body>
+</html>

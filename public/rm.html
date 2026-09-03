@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Missions en cours — Dashboard RM</title>
+<style>
+  :root{
+    --bg:#FFFFFF; --surface:#FFFFFF; --surface-2:#F5F5F6; --line:#E4E4E8;
+    --red:#E2173B; --text:#0F0F11; --muted:#75757C;
+    --sharp:2px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;}
+  @media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important; transition-duration:.001ms !important;}}
+
+  header{
+    position:sticky; top:0; z-index:20;
+    background:rgba(255,255,255,.92); backdrop-filter:blur(8px);
+    padding:calc(env(safe-area-inset-top) + 14px) 16px 12px;
+    border-bottom:1px solid var(--line);
+  }
+  .head-row{display:flex; justify-content:space-between; align-items:flex-start; gap:10px;}
+  h1{margin:0 0 10px; font-size:21px; font-weight:800; letter-spacing:-.01em; line-height:1.15; text-transform:uppercase;}
+  h1 em{color:var(--red); font-style:normal;}
+  .refresh-btn{
+    background:var(--surface-2); border:1px solid var(--line); border-radius:var(--sharp);
+    width:38px; height:38px; display:flex; align-items:center; justify-content:center;
+    color:var(--muted); font-size:16px; cursor:pointer; flex:0 0 auto;
+  }
+  .refresh-btn:active{background:var(--line);}
+  .refresh-btn.spinning{animation:spin 0.7s linear;}
+  @keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+
+  .tab-bar{display:flex; gap:8px; margin-bottom:12px;}
+  .tab-link{flex:1; text-align:center; padding:8px 10px; border-radius:var(--sharp); border:1px solid var(--line);
+    background:#fff; color:var(--muted); font-size:12.5px; font-weight:700; text-decoration:none;
+    text-transform:uppercase; letter-spacing:.03em;}
+  .tab-link.active{background:var(--red); border-color:var(--red); color:#fff;}
+
+  .meta-row{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px;}
+  .sync{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:11.5px; color:var(--muted); display:flex; align-items:center; gap:6px;}
+  .sync b{color:var(--text); font-weight:600;}
+  .live-diamond{width:7px; height:7px; background:var(--red); transform:rotate(45deg); flex:0 0 auto;
+    animation:pulse 2.2s infinite;}
+  .live-diamond.off{background:#C7C7CC; animation:none;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(226,23,59,.45);}70%{box-shadow:0 0 0 7px rgba(226,23,59,0);}100%{box-shadow:0 0 0 0 rgba(226,23,59,0);}}
+
+  #refreshBar{height:2px; width:100%; background:var(--line); overflow:hidden; margin-top:8px;}
+  #refreshFill{height:100%; width:0%; background:var(--red); transition:width 1s linear;}
+
+  .search{width:100%; padding:11px 14px; border-radius:var(--sharp); border:1px solid var(--line);
+    background:var(--surface-2); color:var(--text); font-size:15px; outline:none;}
+  .search::placeholder{color:var(--muted);}
+  .search:focus{border-color:var(--red); background:#fff;}
+
+  .error-banner{
+    margin-top:12px; padding:10px 12px; border:1px solid var(--line); border-left:3px solid var(--red);
+    background:#FFF6F7; font-size:12px; color:#7A1225; display:none; line-height:1.5;
+  }
+  .error-banner.show{display:block;}
+  .error-banner b{color:var(--red);}
+
+  .kpi-scroll{display:flex; gap:10px; overflow-x:auto; padding:14px 16px 4px; scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch;}
+  .kpi-scroll::-webkit-scrollbar{display:none;}
+  .kpi{scroll-snap-align:start; flex:0 0 auto; min-width:124px; background:var(--surface-2);
+    border:1px solid var(--line); border-left:2px solid var(--red); border-radius:var(--sharp); padding:12px 14px;}
+  .kpi .val{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:22px; font-weight:700; line-height:1;}
+  .kpi .lbl{font-size:10.5px; color:var(--muted); margin-top:6px; text-transform:uppercase; letter-spacing:.05em;}
+
+  .filters-block{padding:10px 16px 4px;}
+  .filter-row{display:flex; gap:8px; margin-bottom:8px;}
+  select.selfilter{
+    flex:1; background:var(--surface-2); color:var(--text); border:1px solid var(--line);
+    border-radius:var(--sharp); padding:9px 10px; font-size:13px; font-weight:600;
+  }
+  select.selfilter.rm-active{border-color:var(--red); color:var(--red); background:#FFF3F5;}
+
+  .chips{display:flex; gap:8px; overflow-x:auto; padding:6px 16px 14px; -webkit-overflow-scrolling:touch;}
+  .chips::-webkit-scrollbar{display:none;}
+  .chip{flex:0 0 auto; padding:7px 13px; border-radius:var(--sharp); border:1px solid var(--line);
+    background:#fff; color:var(--muted); font-size:12.5px; font-weight:600; white-space:nowrap; cursor:pointer;
+    text-transform:uppercase; letter-spacing:.03em;}
+  .chip.active{background:var(--red); border-color:var(--red); color:#fff;}
+
+  main{padding:4px 16px 40px;}
+  .count-row{color:var(--muted); font-size:12px; margin:10px 2px 12px; font-family:ui-monospace,monospace;
+    display:flex; justify-content:space-between; text-transform:uppercase; letter-spacing:.03em;}
+  .card{background:#fff; border:1px solid var(--line); border-radius:var(--sharp); padding:14px 14px 12px; margin-bottom:12px;
+    position:relative; overflow:hidden; box-shadow:0 1px 2px rgba(15,15,17,.03); cursor:pointer; transition:box-shadow .15s ease;}
+  .card:hover{box-shadow:0 2px 10px rgba(15,15,17,.08);}
+  .card:active{background:#FAFAFA;}
+  .card::before{content:""; position:absolute; top:0; left:0; width:3px; height:100%; background:var(--red);}
+  .card-top{display:flex; justify-content:space-between; align-items:flex-start; gap:10px; padding-left:6px;}
+  .client-avatar{width:34px; height:34px; border-radius:50%; flex:0 0 auto; display:flex; align-items:center;
+    justify-content:center; color:#fff; font-weight:800; font-size:12px; font-family:ui-monospace,monospace;
+    letter-spacing:.02em;}
+  .client-avatar.client-logo{object-fit:cover; background:var(--surface-2); border:1px solid var(--line);}
+  .code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:12.5px; color:var(--red); font-weight:700; letter-spacing:.02em;}
+  .client{font-size:15.5px; font-weight:700; margin-top:2px;}
+  .sub{font-size:12px; color:var(--muted); margin-top:3px;}
+  .fmt-badge{font-size:10px; text-transform:uppercase; letter-spacing:.06em; font-weight:700;
+    padding:4px 8px; border-radius:var(--sharp); white-space:nowrap; border:1px solid var(--line); color:var(--muted);}
+
+  .section-label{display:flex; align-items:center; gap:6px; font-size:10px; text-transform:uppercase;
+    letter-spacing:.08em; color:var(--muted); font-weight:700; margin:14px 0 8px; padding-left:6px;}
+  .section-label .diamond{width:6px; height:6px; background:var(--red); transform:rotate(45deg); flex:0 0 auto;}
+  .section-label.global .diamond{background:#1A1A1D;}
+
+  .today-strip{margin-left:6px; background:#FFF6F7; border:1px solid #F6C9D1; border-radius:var(--sharp);
+    padding:10px 12px; display:grid; grid-template-columns:repeat(4,1fr); gap:6px;}
+  .today-strip .n{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:15px; font-weight:800; color:var(--red);}
+  .today-strip .l{font-size:9px; color:#A24457; text-transform:uppercase; letter-spacing:.03em; margin-top:1px;}
+
+  .gauge-wrap{margin-top:12px; padding-left:6px;}
+  .gauge-label{display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin-bottom:4px;}
+  .gauge-label b{color:var(--text); font-family:ui-monospace,monospace; font-size:12.5px;}
+  .gauge{height:6px; background:var(--surface-2); overflow:hidden; border:1px solid var(--line);}
+  .gauge > i{display:block; height:100%; background:#1A1A1D;}
+  .stat-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:10px; padding-left:6px;}
+  .stat .n{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:14.5px; font-weight:700;}
+  .stat .l{font-size:9.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-top:1px;}
+  .stat-good .n, .stat-inline.stat-good{color:#2E9E5B;}
+  .stat-bad .n, .stat-inline.stat-bad{color:var(--red);}
+
+  .perf-modal{position:fixed; inset:0; z-index:70; background:#fff; display:none; flex-direction:column;}
+  .perf-modal.show{display:flex;}
+  .perf-modal-bar{flex:0 0 auto; display:flex; justify-content:flex-end; align-items:center;
+    padding:calc(env(safe-area-inset-top) + 10px) 14px 10px; border-bottom:1px solid var(--line);
+    font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:12.5px; font-weight:700; color:var(--red);}
+  .perf-modal-bar button{background:var(--surface-2); border:1px solid var(--line); border-radius:var(--sharp);
+    width:32px; height:32px; font-size:14px; color:var(--muted); cursor:pointer;}
+  .perf-modal iframe{flex:1 1 auto; width:100%; border:0;}
+
+  .empty{text-align:center; padding:50px 20px; color:var(--muted);}
+  .empty .big{font-size:34px; margin-bottom:8px;}
+  .toast{position:fixed; left:50%; bottom:24px; transform:translate(-50%,0); background:#1A1A1D;
+    border-left:2px solid var(--red); color:#fff; padding:10px 16px;
+    border-radius:var(--sharp); font-size:13px; z-index:50; opacity:0; transition:opacity .25s; pointer-events:none;}
+  .toast.show{opacity:1;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="head-row">
+    <h1>Missions <em>en cours</em></h1>
+  </div>
+  <div class="tab-bar">
+    <a class="tab-link active" href="rm.html">Missions</a>
+    <a class="tab-link" href="challenge.html">Challenge</a>
+    <a class="tab-link" href="salarie.html">Salarié</a>
+    <a class="tab-link" href="emplacement.html">Emplacement</a>
+  </div>
+  <div class="meta-row">
+    <div class="sync"><span class="live-diamond off" id="liveDiamond"></span>Synchro <b id="syncTime">—</b></div>
+    <div class="sync mono" id="countdown">5:00</div>
+  </div>
+  <div id="refreshBar"><div id="refreshFill"></div></div>
+  <div style="margin-top:12px;">
+    <input class="search" id="searchInput" placeholder="Chercher une mission, un client, une ville…" />
+  </div>
+  <div class="error-banner" id="errorBanner">
+    <b>Connexion impossible.</b> <span id="errorDetail"></span> La page réessaiera automatiquement.
+  </div>
+</header>
+
+<div class="kpi-scroll" id="kpiRow"></div>
+
+<div class="filters-block">
+  <div class="filter-row">
+    <select class="selfilter" id="rmSelect"></select>
+    <select class="selfilter" id="sortSelect">
+      <option value="date_fin">Fin la plus proche</option>
+      <option value="bs_reel_jour">BS aujourd'hui (desc)</option>
+      <option value="bs_reel">BS global (desc)</option>
+      <option value="bs_annules">BS annulés (desc)</option>
+    </select>
+  </div>
+</div>
+<div class="chips" id="formatChips"></div>
+
+<main>
+  <div class="count-row"><span id="countRow"></span><span id="rmActiveTag"></span></div>
+  <div id="list"></div>
+</main>
+
+<div class="perf-modal" id="perfModal">
+  <div class="perf-modal-bar">
+    <button id="perfModalClose" aria-label="Fermer">✕</button>
+  </div>
+  <iframe id="perfModalFrame" title="Performance de la mission"></iframe>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ---------------------------------------------------------------
+// Cette page ne contient AUCUNE clé d'accès. Les données viennent de
+// /api/missions, une fonction serveur (Cloudflare Pages Function) qui
+// interroge Metabase à notre place avec la clé API stockée côté serveur.
+// Voir /functions/api/missions.js
+// ---------------------------------------------------------------
+const API_ENDPOINT = "/api/rm-missions";
+
+// La question Metabase 514 renvoie UNE LIGNE PAR MISSION ET PAR JOUR
+// (regroupée par jour), avec des noms de colonnes "affichage" Metabase.
+// On reconstruit ici, côté client :
+//  - les totaux "Global mission" en sommant/recalculant sur toutes les lignes
+//    de la mission
+//  - les stats "Aujourd'hui" à partir de la seule ligne dont "Date: Jour"
+//    correspond à la date du jour (0 si aucune ligne, ex. jour non travaillé)
+function todayISO(){
+  const d = new Date();
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+
+function rowsToMissions(objRows){
+  const groups = {};
+  for(const row of objRows){
+    const code = row["Missions → Code Mission"];
+    if(!code) continue;
+    (groups[code] = groups[code] || []).push(row);
+  }
+
+  const today = todayISO();
+  const missions = [];
+
+  for(const code in groups){
+    const rows = groups[code];
+    const first = rows[0];
+
+    const m = {
+      code: code,
+      client: first["Clients → Nom"],
+      date_debut: String(first["Missions → Date Debut: Jour"]||"").slice(0,10),
+      date_fin: String(first["Missions → Date Fin: Jour"]||"").slice(0,10),
+      format: (first["Missions → Format"]||"").toLowerCase(),
+      ville: first["Missions → Ville Principale"],
+      rm: first["Utilisateur Informations Personnelles - Responsable Mission → Prenom"],
+      re: first["Utilisateur Informations Personnelles - Responsable Equipe → Prenom"]
+    };
+
+    let bsRue=0, bsReel=0, bsIncomplets=0, bsAnnules=0;
+    let heuresRueEst=0;               // reconstruite via BS réel / Taux réel de chaque jour
+    let donPoids=0, donPondere=0;     // moyenne pondérée par le volume de BS du jour
+    let pct25Poids=0, pct25Pondere=0;
+    let maxUsers=0;
+    let jour = null;
+
+    for(const r of rows){
+      const rBsRue       = Number(r["Somme de BS Rue"])||0;
+      const rBsReel      = Number(r["Somme de BS réel"])||0;
+      const rIncomplets  = Number(r["Somme de BS incomplets"])||0;
+      const rAnnules     = Number(r["Somme de BS annulés"])||0;
+      const rTaux        = Number(r["Taux réel"])||0;
+      const rDon         = Number(r["Moyenne de Don moyen"])||0;
+      const rPct25       = Number(r["% < 25"])||0;
+      const rUsers       = Number(r["Valeurs distinctes de Utilisateur ID"])||0;
+      const rDate        = String(r["Date: Jour"]||"").slice(0,10);
+
+      bsRue += rBsRue;
+      bsReel += rBsReel;
+      bsIncomplets += rIncomplets;
+      bsAnnules += rAnnules;
+      if(rTaux>0) heuresRueEst += rBsReel/rTaux;
+      if(rBsReel>0){
+        donPondere += rDon*rBsReel; donPoids += rBsReel;
+        pct25Pondere += rPct25*rBsReel; pct25Poids += rBsReel;
+      }
+      if(rUsers>maxUsers) maxUsers = rUsers;
+
+      if(rDate === today){
+        jour = {
+          bs_reel: rBsReel, bs_rue: rBsRue, bs_incomplets: rIncomplets, bs_annules: rAnnules,
+          nb_utilisateurs: rUsers, don_moyen: rBsReel>0 ? rDon : null
+        };
+      }
+    }
+
+    m.bs_rue = bsRue;
+    m.bs_reel = bsReel;
+    m.bs_incomplets = bsIncomplets;
+    m.bs_annules = bsAnnules;
+    m.heures_rue = heuresRueEst;
+    m.taux_reel = heuresRueEst>0 ? bsReel/heuresRueEst : 0;
+    m.transfo = bsRue>0 ? bsReel/bsRue : 0;
+    m.don_moyen = donPoids>0 ? donPondere/donPoids : 0;
+    m.pct25 = pct25Poids>0 ? pct25Pondere/pct25Poids : 0;
+    m.nb_utilisateurs = maxUsers; // pic quotidien (une vraie déduplication globale n'est pas reconstructible depuis un agrégat par jour)
+
+    m.bs_reel_jour = jour ? jour.bs_reel : 0;
+    m.bs_rue_jour = jour ? jour.bs_rue : 0;
+    m.bs_incomplets_jour = jour ? jour.bs_incomplets : 0;
+    m.bs_annules_jour = jour ? jour.bs_annules : 0;
+    m.nb_utilisateurs_jour = jour ? jour.nb_utilisateurs : 0;
+    m.don_moyen_jour = jour ? jour.don_moyen : null;
+
+    missions.push(m);
+  }
+
+  return missions;
+}
+
+// ---------------------------------------------------------------
+// STORAGE (persistance locale : filtre RM, format, tri, recherche)
+// ---------------------------------------------------------------
+const LS = {
+  get(k, fallback){ try{ const v = localStorage.getItem("rmdash_"+k); return v===null ? fallback : JSON.parse(v);}catch(e){return fallback;} },
+  set(k, v){ try{ localStorage.setItem("rmdash_"+k, JSON.stringify(v)); }catch(e){} }
+};
+
+let MISSIONS = [];
+let lastSync = null;
+let liveMode = false;
+
+let state = {
+  q: LS.get("q",""),
+  format: LS.get("format","all"),
+  rm: LS.get("rm","all"),
+  sort: LS.get("sort","date_fin")
+};
+
+async function refreshData(showToast){
+  try{
+    const res = await fetch(API_ENDPOINT, {cache:"no-store"});
+    const json = await res.json();
+    if(!res.ok || json.error){
+      const detail = json.status ? ` — HTTP ${json.status}${json.body ? " : "+json.body.slice(0,200) : ""}` : "";
+      throw new Error((json.message || json.error || ("HTTP "+res.status)) + detail);
+    }
+    if(!Array.isArray(json)) throw new Error("Format de réponse inattendu");
+    MISSIONS = rowsToMissions(json);
+    lastSync = new Date().toISOString();
+    liveMode = true;
+    document.getElementById("errorBanner").classList.remove("show");
+    if(showToast) showToastMsg("Données actualisées");
+  }catch(e){
+    liveMode = false;
+    document.getElementById("errorDetail").textContent = e.message || String(e);
+    document.getElementById("errorBanner").classList.add("show");
+    if(showToast) showToastMsg("Échec de l'actualisation");
+    console.warn("Fetch /api/rm-missions failed:", e);
+  }
+  renderAll();
+}
+
+// ---------------------------------------------------------------
+// RENDER
+// ---------------------------------------------------------------
+function fmtDate(iso){ const d=new Date(iso+"T00:00:00"); return d.toLocaleDateString("fr-FR",{day:"2-digit",month:"short"}); }
+function fmtNum(n,dec=0){ return Number(n||0).toLocaleString("fr-FR",{maximumFractionDigits:dec, minimumFractionDigits:dec}); }
+function fmtPct(n){ return (n*100).toFixed(1).replace(".",",")+"%"; }
+function daysLeft(iso){
+  const end = new Date(iso+"T00:00:00"); const t = new Date(todayISO()+"T00:00:00");
+  return Math.round((end-t)/86400000);
+}
+
+function filteredMissions(){
+  const q = state.q.trim().toLowerCase();
+  return MISSIONS.filter(m=>{
+    const matchQ = !q || [m.code,m.client,m.ville,m.rm,m.re].join(" ").toLowerCase().includes(q);
+    const matchF = state.format==="all" || m.format===state.format;
+    const matchRM = state.rm==="all" || m.rm===state.rm;
+    return matchQ && matchF && matchRM;
+  });
+}
+
+function renderKPIs(){
+  const items = filteredMissions();
+  const totalReelJour = items.reduce((s,m)=>s+m.bs_reel_jour,0);
+  const totalReel = items.reduce((s,m)=>s+m.bs_reel,0);
+  const totalRue  = items.reduce((s,m)=>s+m.bs_rue,0);
+  const totalAnnul = items.reduce((s,m)=>s+m.bs_annules,0);
+  const avgTransfo = totalRue ? totalReel/totalRue : 0;
+  const kpis = [
+    {v:items.length, l:"Missions en cours"},
+    {v:fmtNum(totalReelJour), l:"BS collectés aujourd'hui"},
+    {v:fmtNum(totalReel), l:"BS réel global"},
+    {v:fmtPct(avgTransfo), l:"Taux de transfo global"},
+    {v:fmtNum(totalAnnul), l:"BS annulés (global)"},
+  ];
+  document.getElementById("kpiRow").innerHTML = kpis.map(k=>`
+    <div class="kpi"><div class="val">${k.v}</div><div class="lbl">${k.l}</div></div>`).join("");
+}
+
+function renderRMSelect(){
+  const rms = [...new Set(MISSIONS.map(m=>m.rm).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  const sel = document.getElementById("rmSelect");
+  const current = state.rm;
+  sel.innerHTML = `<option value="all">Tous les RM</option>` + rms.map(rm=>
+    `<option value="${rm}" ${rm===current?"selected":""}>${rm}</option>`).join("");
+  if(!rms.includes(current) && current!=="all"){ state.rm="all"; sel.value="all"; LS.set("rm","all"); }
+  sel.classList.toggle("rm-active", state.rm!=="all");
+  document.getElementById("rmActiveTag").textContent = state.rm!=="all" ? `RM: ${state.rm}` : "";
+}
+
+function renderChips(){
+  const formats = ["all", ...new Set(MISSIONS.map(m=>m.format))];
+  const labels = {all:"Tous formats", street:"Street", hybride:"Hybride", site_prive:"Site privé", sitesprives:"Sites privés"};
+  document.getElementById("formatChips").innerHTML = formats.map(f=>`
+    <button class="chip ${state.format===f?'active':''}" data-format="${f}">${labels[f]||f}</button>`).join("");
+  document.querySelectorAll(".chip").forEach(el=>{
+    el.addEventListener("click", ()=>{ state.format=el.dataset.format; LS.set("format",state.format); renderChips(); renderList(); renderKPIs(); });
+  });
+}
+
+function computeBadges(items){
+  // Colore un indicateur en vert s'il fait partie des 20% meilleures missions
+  // sur ce critère, en rouge s'il fait partie des 20% les moins bonnes.
+  // "Meilleur" dépend du sens de l'indicateur (plus haut ou plus bas = mieux).
+  const metrics = [
+    {k:"bs_reel", better:"high"},
+    {k:"transfo", better:"high"},
+    {k:"don_moyen", better:"high"},
+    {k:"taux_reel", better:"high"},
+    {k:"bs_incomplets", better:"low"},
+    {k:"bs_annules", better:"low"}
+  ];
+  const badges = {};
+  items.forEach(m=>{ badges[m.code] = {}; });
+  const n = items.length;
+  if(n < 5) return badges; // échantillon trop petit pour qu'un classement 20/80 ait du sens
+  const cut = Math.max(1, Math.round(n*0.2));
+
+  metrics.forEach(({k,better})=>{
+    const sorted = [...items].sort((a,b)=>(Number(a[k])||0)-(Number(b[k])||0));
+    const lowSet = new Set(sorted.slice(0,cut).map(m=>m.code));
+    const highSet = new Set(sorted.slice(n-cut).map(m=>m.code));
+    items.forEach(m=>{
+      const inHigh = highSet.has(m.code), inLow = lowSet.has(m.code);
+      let cls = null;
+      if(better==="high") cls = inHigh ? "good" : (inLow ? "bad" : null);
+      else cls = inLow ? "good" : (inHigh ? "bad" : null);
+      badges[m.code][k] = cls;
+    });
+  });
+  return badges;
+}
+
+function initials(name){
+  if(!name) return "?";
+  const words = name.replace(/[()[\]]/g,"").split(/\s+/).filter(Boolean);
+  if(words.length===1) return words[0].slice(0,2).toUpperCase();
+  return (words[0][0]+words[1][0]).toUpperCase();
+}
+function avatarColor(name){
+  let hash = 0;
+  for(let i=0;i<(name||"").length;i++){ hash = (hash*31 + name.charCodeAt(i)) % 360; }
+  return `hsl(${hash}, 52%, 40%)`;
+}
+
+function renderList(){
+  let items = filteredMissions();
+  items.sort((a,b)=>{
+    if(state.sort==="date_fin") return a.date_fin.localeCompare(b.date_fin);
+    if(state.sort==="bs_reel_jour") return b.bs_reel_jour - a.bs_reel_jour;
+    if(state.sort==="bs_reel") return b.bs_reel - a.bs_reel;
+    if(state.sort==="bs_annules") return b.bs_annules - a.bs_annules;
+    return 0;
+  });
+  document.getElementById("countRow").textContent = `${items.length} mission${items.length>1?'s':''} en cours`;
+  const listEl = document.getElementById("list");
+  if(items.length===0){
+    listEl.innerHTML = `<div class="empty"><div class="big">◆</div>Aucune mission en cours ne correspond.<br>Essayez un autre terme ou filtre.</div>`;
+    return;
+  }
+  const maxTaux = Math.max(...MISSIONS.map(m=>m.taux_reel), 0.01);
+  const badges = computeBadges(items);
+  const cls = (code,key) => {
+    const b = badges[code] && badges[code][key];
+    return b ? " stat-"+b : "";
+  };
+
+  listEl.innerHTML = items.map(m=>{
+    const gaugePct = Math.min(100, (m.taux_reel/maxTaux)*100);
+    const dleft = daysLeft(m.date_fin);
+    const b = badges[m.code] || {};
+    const avatarHtml = `<img class="client-avatar client-logo" src="/api/logo?client=${encodeURIComponent(m.client||'')}" alt="${m.client||''}"
+           onerror="this.outerHTML='<div class=&quot;client-avatar&quot; style=&quot;background:${avatarColor(m.client)}&quot;>${initials(m.client)}</div>'">`;
+    return `
+    <div class="card" data-code="${m.code}">
+      <div class="card-top">
+        <div style="display:flex; gap:10px; align-items:flex-start;">
+          ${avatarHtml}
+          <div>
+            <div class="code">${m.code}</div>
+            <div class="client">${m.client}</div>
+            <div class="sub">${m.ville||"—"} · ${fmtDate(m.date_debut)} → ${fmtDate(m.date_fin)} · J${dleft>=0?"-"+dleft:"+"+Math.abs(dleft)}</div>
+            <div class="sub">RM ${m.rm||"—"}${m.re?(" · Équipe "+m.re):""}</div>
+          </div>
+        </div>
+        <span class="fmt-badge">${(m.format||"").replace("_"," ")}</span>
+      </div>
+
+      <div class="section-label"><span class="diamond"></span>Aujourd'hui</div>
+      <div class="today-strip">
+        <div><div class="n">${fmtNum(m.bs_reel_jour)}</div><div class="l">BS réel</div></div>
+        <div><div class="n">${fmtNum(m.nb_utilisateurs_jour)}</div><div class="l">Recruteurs</div></div>
+        <div><div class="n">${m.don_moyen_jour?Number(m.don_moyen_jour).toFixed(2)+"€":"—"}</div><div class="l">Don moyen</div></div>
+        <div><div class="n">${fmtNum(m.bs_annules_jour)}</div><div class="l">Annulés</div></div>
+      </div>
+
+      <div class="section-label global"><span class="diamond"></span>Global mission</div>
+      <div class="gauge-wrap">
+        <div class="gauge-label"><span>Taux réel (BS/h rue)</span><b class="stat-inline${cls(m.code,'taux_reel')}">${Number(m.taux_reel).toFixed(2)}</b></div>
+        <div class="gauge"><i style="width:${gaugePct}%"></i></div>
+      </div>
+      <div class="stat-grid">
+        <div class="stat${cls(m.code,'bs_reel')}"><div class="n">${fmtNum(m.bs_reel)}</div><div class="l">BS réel</div></div>
+        <div class="stat${cls(m.code,'transfo')}"><div class="n">${fmtPct(m.transfo)}</div><div class="l">Transfo</div></div>
+        <div class="stat${cls(m.code,'don_moyen')}"><div class="n">${Number(m.don_moyen||0).toFixed(2)}€</div><div class="l">Don moyen</div></div>
+        <div class="stat"><div class="n">${fmtNum(m.nb_utilisateurs)}</div><div class="l">Recruteurs</div></div>
+        <div class="stat${cls(m.code,'bs_incomplets')}"><div class="n">${fmtNum(m.bs_incomplets)}</div><div class="l">Incomplets</div></div>
+        <div class="stat${cls(m.code,'bs_annules')}"><div class="n">${fmtNum(m.bs_annules)}</div><div class="l">Annulés</div></div>
+        <div class="stat"><div class="n">${fmtNum(m.heures_rue,0)}</div><div class="l">Heures rue</div></div>
+        <div class="stat"><div class="n">${fmtPct(m.pct25)}</div><div class="l">Donateurs &lt;25</div></div>
+      </div>
+    </div>`;
+  }).join("");
+  listEl.querySelectorAll(".card").forEach(el=>{
+    el.addEventListener("click", ()=> openPerfModal(el.dataset.code));
+  });
+}
+
+function renderSyncLabel(){
+  if(lastSync){
+    const d = new Date(lastSync);
+    document.getElementById("syncTime").textContent = d.toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+  }
+  document.getElementById("liveDiamond").classList.toggle("off", !liveMode);
+}
+
+function renderAll(){
+  renderKPIs(); renderRMSelect(); renderChips(); renderList(); renderSyncLabel();
+}
+
+// ---------------------------------------------------------------
+// UI EVENTS
+// ---------------------------------------------------------------
+document.getElementById("searchInput").value = state.q;
+document.getElementById("searchInput").addEventListener("input", e=>{
+  state.q = e.target.value; LS.set("q", state.q); renderList(); renderKPIs();
+});
+document.getElementById("sortSelect").value = state.sort;
+document.getElementById("sortSelect").addEventListener("change", e=>{
+  state.sort = e.target.value; LS.set("sort", state.sort); renderList();
+});
+document.getElementById("rmSelect").addEventListener("change", e=>{
+  state.rm = e.target.value; LS.set("rm", state.rm);
+  document.getElementById("rmSelect").classList.toggle("rm-active", state.rm!=="all");
+  document.getElementById("rmActiveTag").textContent = state.rm!=="all" ? `RM: ${state.rm}` : "";
+  renderList(); renderKPIs();
+});
+
+function showToastMsg(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  setTimeout(()=>t.classList.remove("show"), 2400);
+}
+
+// ---------------------------------------------------------------
+// AUTO-REFRESH toutes les 5 min (appel au proxy /api/missions)
+// ---------------------------------------------------------------
+const REFRESH_MS = 5*60*1000;
+let remaining = REFRESH_MS;
+function tickCountdown(){
+  remaining -= 1000;
+  if(remaining <= 0){ remaining = REFRESH_MS; refreshData(false); return; }
+  const s = Math.floor(remaining/1000);
+  const mm = Math.floor(s/60), ss = s%60;
+  document.getElementById("countdown").textContent = `${mm}:${ss.toString().padStart(2,"0")}`;
+  document.getElementById("refreshFill").style.width = (100 - (remaining/REFRESH_MS)*100) + "%";
+}
+setInterval(tickCountdown, 1000);
+
+// ---------------------------------------------------------------
+// Modale plein écran — vue "Performance détaillée" par mission
+// ---------------------------------------------------------------
+const perfModal = document.getElementById("perfModal");
+const perfModalFrame = document.getElementById("perfModalFrame");
+function openPerfModal(code){
+  perfModalFrame.src = `mission.html?code_mission=${encodeURIComponent(code)}`;
+  perfModal.classList.add("show");
+  document.body.style.overflow = "hidden";
+}
+function closePerfModal(){
+  perfModal.classList.remove("show");
+  perfModalFrame.src = "about:blank";
+  document.body.style.overflow = "";
+}
+document.getElementById("perfModalClose").addEventListener("click", closePerfModal);
+
+// INIT
+refreshData(false);
+</script>
+</body>
+</html>

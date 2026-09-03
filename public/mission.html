@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Performance mission — CAE</title>
+<style>
+  :root{
+    --bg:#FFFFFF; --surface:#FFFFFF; --surface-2:#F5F5F6; --line:#E4E4E8;
+    --red:#E2173B; --text:#0F0F11; --muted:#75757C;
+    --sharp:2px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;}
+  @media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important; transition-duration:.001ms !important;}}
+
+  header{
+    position:sticky; top:0; z-index:20;
+    background:rgba(255,255,255,.92); backdrop-filter:blur(8px);
+    padding:calc(env(safe-area-inset-top) + 14px) 16px 12px;
+    border-bottom:1px solid var(--line);
+  }
+  h1{margin:0 0 4px; font-size:20px; font-weight:800; letter-spacing:-.01em; line-height:1.2; text-transform:uppercase;}
+  h1 em{color:var(--red); font-style:normal;}
+  .sub{font-size:12.5px; color:var(--muted); margin-bottom:10px;}
+  .sub b{color:var(--text); font-weight:600;}
+
+  .meta-row{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:8px;}
+  .sync{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:11.5px; color:var(--muted); display:flex; align-items:center; gap:6px;}
+  .sync b{color:var(--text); font-weight:600;}
+  .live-diamond{width:7px; height:7px; background:var(--red); transform:rotate(45deg); flex:0 0 auto;
+    animation:pulse 2.2s infinite;}
+  .live-diamond.off{background:#C7C7CC; animation:none;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(226,23,59,.45);}70%{box-shadow:0 0 0 7px rgba(226,23,59,0);}100%{box-shadow:0 0 0 0 rgba(226,23,59,0);}}
+  #refreshBar{height:2px; width:100%; background:var(--line); overflow:hidden;}
+  #refreshFill{height:100%; width:0%; background:var(--red); transition:width 1s linear;}
+
+  .day-filter{margin-top:10px;}
+  .day-filter-label{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; font-weight:700; margin-bottom:6px;}
+  .day-tags{display:flex; flex-wrap:wrap; gap:6px;}
+  .day-tag{
+    background:var(--surface-2); color:var(--text); border:1px solid var(--line);
+    border-radius:var(--sharp); padding:6px 10px; font-size:12.5px; font-weight:600;
+    cursor:pointer; user-select:none; line-height:1.2;
+  }
+  .day-tag.active{border-color:var(--red); color:#fff; background:var(--red);}
+  .day-tag.reset{font-weight:700;}
+
+  .error-banner{
+    margin-top:12px; padding:10px 12px; border:1px solid var(--line); border-left:3px solid var(--red);
+    background:#FFF6F7; font-size:12px; color:#7A1225; display:none; line-height:1.5;
+  }
+  .error-banner.show{display:block;}
+  .error-banner b{color:var(--red);}
+
+  .kpi-scroll{display:grid; grid-template-columns:repeat(2,1fr); gap:10px; padding:14px 16px 4px;}
+  @media (min-width:480px){ .kpi-scroll{grid-template-columns:repeat(3,1fr);} }
+  @media (min-width:720px){ .kpi-scroll{grid-template-columns:repeat(4,1fr);} }
+  .kpi{background:var(--surface-2);
+    border:1px solid var(--line); border-left:2px solid var(--red); border-radius:var(--sharp); padding:12px 14px;}
+  .kpi .val{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:21px; font-weight:700; line-height:1;}
+  .kpi .lbl{font-size:10px; color:var(--muted); margin-top:6px; text-transform:uppercase; letter-spacing:.05em;}
+
+  main{padding:4px 16px 40px; max-width:1100px; margin:0 auto;}
+  .section-label{display:flex; align-items:center; gap:6px; font-size:10px; text-transform:uppercase;
+    letter-spacing:.08em; color:var(--muted); font-weight:700; margin:18px 2px 8px;}
+  .section-label .diamond{width:6px; height:6px; background:var(--red); transform:rotate(45deg); flex:0 0 auto;}
+
+  .card{background:#fff; border:1px solid var(--line); border-radius:var(--sharp); padding:14px 14px 12px; margin-bottom:10px;
+    position:relative; overflow:hidden; box-shadow:0 1px 2px rgba(15,15,17,.03);}
+  .card::before{content:""; position:absolute; top:0; left:0; width:3px; height:100%; background:var(--red);}
+  .card-inner{padding-left:6px;}
+
+  .recruteur-name{font-size:15px; font-weight:700; margin-bottom:10px; display:flex; align-items:baseline; justify-content:space-between; gap:8px;}
+  .recruteur-name .rank{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:11px; color:var(--muted); font-weight:600;}
+  .re-badge{font-size:9px; text-transform:uppercase; letter-spacing:.04em; font-weight:800;
+    background:var(--red); color:#fff; padding:2px 7px; border-radius:var(--sharp); margin-right:6px;}
+  .stat-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px 8px;}
+  @media (min-width:480px){ .stat-grid{grid-template-columns:repeat(4,1fr);} }
+  .stat .n{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:14px; font-weight:700; white-space:nowrap;}
+  .stat .l{font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; margin-top:2px;}
+  .stat-good .n{color:#2E9E5B;}
+  .stat-bad .n{color:var(--red);}
+  .card.is-re{background:#FFF9F5; border-color:#F3C9B0;}
+  .card.is-re::before{width:4px;}
+
+  #state{padding:60px 16px; text-align:center; color:var(--muted); font-size:14px;}
+  #state.error{color:var(--red);}
+  .hidden{display:none;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1 id="pageTitle">Performance <em>mission</em></h1>
+  <div class="sub" id="missionSub">Chargement…</div>
+  <div class="meta-row">
+    <div class="sync"><span class="live-diamond off" id="liveDiamond"></span>Synchro <b id="syncTime">—</b></div>
+    <div class="sync" id="countdown">5:00</div>
+  </div>
+  <div id="refreshBar"><div id="refreshFill"></div></div>
+  <div class="day-filter">
+    <div class="day-filter-label">Filtrer par jour</div>
+    <div class="day-tags" id="dayTags"></div>
+  </div>
+  <div class="error-banner" id="errorBanner">
+    <b>Connexion impossible.</b> <span id="errorDetail"></span> La page réessaiera automatiquement.
+  </div>
+</header>
+
+<div id="state">Chargement des données depuis Metabase…</div>
+
+<main id="content" class="hidden">
+  <div class="kpi-scroll" id="kpiRow"></div>
+
+  <div class="section-label"><span class="diamond"></span>Recruteurs sur cette mission</div>
+  <div id="recruteursList"></div>
+</main>
+
+<script>
+(function () {
+  // ---------------------------------------------------------------
+  // Page interne (équipe CAE) — pas de branding client. Reproduit les
+  // questions Metabase 441 "Suivi mission RE" et 442 "Suivi par RD v3"
+  // (dashboard 15), filtrées sur une seule mission via /api/mission-performance.
+  // Accès par id_mission (UUID non devinable), comme le dashboard client.
+  // ---------------------------------------------------------------
+  const qs = new URLSearchParams(window.location.search);
+  const idMission = qs.get('id_mission') || '';
+
+  const stateEl = document.getElementById('state');
+  const contentEl = document.getElementById('content');
+
+  if (!idMission) {
+    stateEl.textContent = "Lien invalide : le paramètre id_mission est manquant dans l'URL.";
+    stateEl.classList.add('error');
+    return;
+  }
+
+  const RE_HEX_COLOR = /^#[0-9A-Fa-f]{6}$/;
+  function applyClientColor(hex) {
+    if (!hex || !RE_HEX_COLOR.test(hex)) return;
+    document.documentElement.style.setProperty('--red', hex);
+  }
+
+  function fmtNum(n, digits = 0) {
+    if (n === null || n === undefined) return '—';
+    return Number(n).toLocaleString('fr-FR', { maximumFractionDigits: digits, minimumFractionDigits: digits });
+  }
+  function fmtPct(n) {
+    if (n === null || n === undefined) return '—';
+    return (Number(n) * 100).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' %';
+  }
+  function fmtDate(d) {
+    if (!d) return '—';
+    return new Date(d).toLocaleDateString('fr-FR');
+  }
+
+  let liveMode = false;
+  const selectedDates = new Set(); // vide = tous les jours (passés) de la mission
+
+  const dayTagsEl = document.getElementById('dayTags');
+  function renderDayTags(days) {
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const pastDays = days.map((d) => String(d).slice(0, 10)).filter((iso) => iso <= todayIso);
+    const tagsHtml = pastDays.map((iso) => {
+      const label = new Date(iso + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' });
+      return `<span class="day-tag" data-date="${iso}">${label.charAt(0).toUpperCase() + label.slice(1)}</span>`;
+    }).join('');
+    dayTagsEl.innerHTML = `<span class="day-tag reset active" data-date="">Tous</span>${tagsHtml}`;
+    dayTagsEl.querySelectorAll('.day-tag').forEach((tag) => {
+      tag.addEventListener('click', () => {
+        const d = tag.dataset.date;
+        if (d === '') {
+          selectedDates.clear();
+        } else {
+          if (selectedDates.has(d)) selectedDates.delete(d);
+          else selectedDates.add(d);
+        }
+        dayTagsEl.querySelectorAll('.day-tag').forEach((t) => {
+          const td = t.dataset.date;
+          t.classList.toggle('active', td === '' ? selectedDates.size === 0 : selectedDates.has(td));
+        });
+        refreshData();
+      });
+    });
+  }
+  async function loadDays() {
+    try {
+      const res = await fetch('/api/mission-days?id_mission=' + encodeURIComponent(idMission), { cache: 'no-store' });
+      const days = await res.json();
+      if (!res.ok || days.error) throw new Error(days.error || 'Erreur jours');
+      renderDayTags(days);
+    } catch (e) {
+      console.warn('Chargement des jours impossible :', e.message);
+    }
+  }
+
+  async function refreshData() {
+    try {
+      const p = new URLSearchParams({ id_mission: idMission });
+      if (selectedDates.size) p.set('dates', [...selectedDates].join(','));
+      const res = await fetch('/api/mission-performance?' + p.toString(), { cache: 'no-store' });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || 'Erreur inconnue');
+      render(data);
+      liveMode = true;
+      document.getElementById('errorBanner').classList.remove('show');
+    } catch (err) {
+      liveMode = false;
+      document.getElementById('errorDetail').textContent = err.message;
+      document.getElementById('errorBanner').classList.add('show');
+      console.warn('Fetch /api/mission-performance failed:', err);
+    }
+    document.getElementById('syncTime').textContent =
+      new Date().toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    document.getElementById('liveDiamond').classList.toggle('off', !liveMode);
+  }
+
+  function render(data) {
+    stateEl.classList.add('hidden');
+    contentEl.classList.remove('hidden');
+
+    const info = data.info || {};
+    applyClientColor(info.couleur);
+
+    const missionLabel = info.code_mission || info.code_mission_client || codeMission;
+    document.getElementById('pageTitle').innerHTML =
+      (info.client_nom ? info.client_nom.replace(/</g, '&lt;') + ' — ' : '') + '<em>' + missionLabel + '</em>';
+
+    const rm = [info.rm_prenom, info.rm_nom].filter(Boolean).join(' ');
+    const re = [info.re_prenom, info.re_nom].filter(Boolean).join(' ');
+    const bits = [];
+    if (info.statut_mission) bits.push(info.statut_mission);
+    if (info.date_debut || info.date_fin) bits.push(fmtDate(info.date_debut) + ' → ' + fmtDate(info.date_fin));
+    if (rm) bits.push('RM ' + rm);
+    if (re && re !== rm) bits.push('RE ' + re);
+    document.getElementById('missionSub').textContent = bits.join(' · ') || '—';
+
+    const kpis = [
+      { v: info.taux_reel != null ? fmtNum(info.taux_reel, 3) : '—', l: 'Taux réel' },
+      { v: fmtNum(info.bs_reel), l: 'BS réel' },
+      { v: fmtNum(info.bs_rue), l: 'BS Rue' },
+      { v: info.taux_transfo != null ? fmtPct(info.taux_transfo) : '—', l: 'Transfo' },
+      { v: info.heures_rue != null ? fmtNum(info.heures_rue, 1) : '—', l: 'Heures rue' },
+      { v: info.heures_rem != null ? fmtNum(info.heures_rem, 1) : '—', l: 'Heures rém.' },
+      { v: info.don_moyen != null ? fmtNum(info.don_moyen, 2) + '€' : '—', l: 'Don moyen' },
+      { v: info.age_median != null ? fmtNum(info.age_median, 1) : '—', l: 'Âge médian' },
+      { v: fmtNum(info.bs_incomplets), l: 'Incomplets' },
+      { v: fmtNum(info.bs_annules), l: 'Annulés' },
+      { v: info.pct_moins_25 != null ? fmtPct(info.pct_moins_25) : '—', l: 'Donateurs <25' },
+    ];
+    document.getElementById('kpiRow').innerHTML = kpis.map((k) => `
+      <div class="kpi"><div class="val">${k.v}</div><div class="lbl">${k.l}</div></div>`).join('');
+
+    const rows = data.recruteurs || [];
+    const listEl = document.getElementById('recruteursList');
+    if (!rows.length) {
+      listEl.innerHTML = '<div class="card"><div class="card-inner" style="text-align:center;color:var(--muted);padding:20px 0;">Aucun recruteur sur cette mission</div></div>';
+      return;
+    }
+    const badges = computeBadges(rows);
+    const cls = (uid, key) => {
+      const b = badges[uid] && badges[uid][key];
+      return b ? ' stat-' + b : '';
+    };
+    const reId = info.responsable_equipe_id || null;
+
+    listEl.innerHTML = rows.map((r, i) => {
+      const stats = [
+        { n: fmtNum(r.bs_reel), l: 'BS réel', k: 'bs_reel' },
+        { n: fmtNum(r.bs_rue), l: 'BS Rue', k: 'bs_rue' },
+        { n: r.taux_reel != null ? fmtNum(r.taux_reel, 3) : '—', l: 'Taux réel', k: 'taux_reel' },
+        { n: r.taux_transfo != null ? fmtPct(r.taux_transfo) : '—', l: 'Transfo', k: 'taux_transfo' },
+        { n: fmtNum(r.heures_rue, 1), l: 'H. rue', k: 'heures_rue' },
+        { n: fmtNum(r.heures_rem, 1), l: 'H. rém.', k: 'heures_rem' },
+        { n: r.don_moyen != null ? fmtNum(r.don_moyen, 2) + '€' : '—', l: 'Don moyen', k: 'don_moyen' },
+        { n: r.age_median != null ? fmtNum(r.age_median, 1) : '—', l: 'Âge médian', k: 'age_median' },
+        { n: fmtNum(r.bs_incomplets), l: 'Incomplets', k: 'bs_incomplets' },
+        { n: fmtNum(r.bs_annules), l: 'Annulés', k: 'bs_annules' },
+        { n: r.pct_moins_25 != null ? fmtPct(r.pct_moins_25) : '—', l: 'Donateurs <25', k: 'pct_moins_25' },
+      ];
+      const isRe = reId && r.utilisateur_id === reId;
+      return `
+      <div class="card${isRe ? ' is-re' : ''}"><div class="card-inner">
+        <div class="recruteur-name">
+          <span>${isRe ? '<span class="re-badge">RE</span>' : ''}${[r.prenom, r.nom].filter(Boolean).join(' ') || 'Recruteur inconnu'}</span>
+          <span class="rank">#${i + 1}</span>
+        </div>
+        <div class="stat-grid">
+          ${stats.map((s) => `<div class="stat${s.k ? cls(r.utilisateur_id, s.k) : ''}"><div class="n">${s.n}</div><div class="l">${s.l}</div></div>`).join('')}
+        </div>
+      </div></div>`;
+    }).join('');
+  }
+
+  // Colore un indicateur en vert s'il fait partie des 20% meilleures valeurs
+  // parmi les recruteurs de la mission sur ce critère, en rouge s'il fait
+  // partie des 20% les moins bonnes. "Meilleur" dépend du sens de
+  // l'indicateur (plus haut ou plus bas = mieux). Échantillon trop petit
+  // (<5 recruteurs) : pas de badge, un 20/80 n'aurait pas de sens.
+  function computeBadges(items) {
+    const metrics = [
+      { k: 'bs_reel', better: 'high' },
+      { k: 'bs_rue', better: 'high' },
+      { k: 'taux_reel', better: 'high' },
+      { k: 'taux_transfo', better: 'high' },
+      { k: 'heures_rue', better: 'high' },
+      { k: 'heures_rem', better: 'high' },
+      { k: 'don_moyen', better: 'high' },
+      { k: 'age_median', better: 'low' },
+      { k: 'bs_incomplets', better: 'low' },
+      { k: 'bs_annules', better: 'low' },
+      { k: 'pct_moins_25', better: 'high' },
+    ];
+    const badges = {};
+    items.forEach((r) => { badges[r.utilisateur_id] = {}; });
+    const n = items.length;
+    if (n < 5) return badges;
+    const cut = Math.max(1, Math.round(n * 0.2));
+
+    metrics.forEach(({ k, better }) => {
+      const withValue = items.filter((r) => r[k] != null);
+      const sorted = withValue.slice().sort((a, b) => (Number(a[k]) || 0) - (Number(b[k]) || 0));
+      const lowSet = new Set(sorted.slice(0, cut).map((r) => r.utilisateur_id));
+      const highSet = new Set(sorted.slice(sorted.length - cut).map((r) => r.utilisateur_id));
+      items.forEach((r) => {
+        const inHigh = highSet.has(r.utilisateur_id), inLow = lowSet.has(r.utilisateur_id);
+        let cls = null;
+        if (better === 'high') cls = inHigh ? 'good' : (inLow ? 'bad' : null);
+        else cls = inLow ? 'good' : (inHigh ? 'bad' : null);
+        badges[r.utilisateur_id][k] = cls;
+      });
+    });
+    return badges;
+  }
+
+  // ---------------------------------------------------------------
+  // AUTO-REFRESH toutes les 5 min
+  // ---------------------------------------------------------------
+  const REFRESH_MS = 5 * 60 * 1000;
+  let remaining = REFRESH_MS;
+  function tickCountdown() {
+    remaining -= 1000;
+    if (remaining <= 0) { remaining = REFRESH_MS; refreshData(); return; }
+    const s = Math.floor(remaining / 1000);
+    const mm = Math.floor(s / 60), ss = s % 60;
+    document.getElementById('countdown').textContent = `${mm}:${ss.toString().padStart(2, '0')}`;
+    document.getElementById('refreshFill').style.width = (100 - (remaining / REFRESH_MS) * 100) + '%';
+  }
+  setInterval(tickCountdown, 1000);
+
+  loadDays();
+  refreshData();
+})();
+</script>
+
+</body>
+</html>

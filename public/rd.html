@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Performance individuelle — CAE</title>
+<style>
+  :root{
+    --bg:#FFFFFF; --surface:#FFFFFF; --surface-2:#F5F5F6; --line:#E4E4E8;
+    --red:#E2173B; --text:#0F0F11; --muted:#75757C;
+    --sharp:2px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;}
+  @media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important; transition-duration:.001ms !important;}}
+
+  header{
+    position:sticky; top:0; z-index:20;
+    background:rgba(255,255,255,.92); backdrop-filter:blur(8px);
+    padding:calc(env(safe-area-inset-top) + 14px) 16px 12px;
+    border-bottom:1px solid var(--line);
+  }
+  h1{margin:0 0 4px; font-size:20px; font-weight:800; letter-spacing:-.01em; line-height:1.2; text-transform:uppercase;
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  h1 em{color:var(--red); font-style:normal;}
+  .re-badge{font-size:9px; text-transform:uppercase; letter-spacing:.04em; font-weight:800;
+    background:var(--red); color:#fff; padding:2px 7px; border-radius:var(--sharp);}
+  .sub{font-size:12.5px; color:var(--muted); margin-bottom:10px;}
+  .sub b{color:var(--text); font-weight:600;}
+
+  .meta-row{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:8px;}
+  .sync{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:11.5px; color:var(--muted); display:flex; align-items:center; gap:6px;}
+  .sync b{color:var(--text); font-weight:600;}
+  .live-diamond{width:7px; height:7px; background:var(--red); transform:rotate(45deg); flex:0 0 auto;
+    animation:pulse 2.2s infinite;}
+  .live-diamond.off{background:#C7C7CC; animation:none;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(226,23,59,.45);}70%{box-shadow:0 0 0 7px rgba(226,23,59,0);}100%{box-shadow:0 0 0 0 rgba(226,23,59,0);}}
+  #refreshBar{height:2px; width:100%; background:var(--line); overflow:hidden;}
+  #refreshFill{height:100%; width:0%; background:var(--red); transition:width 1s linear;}
+
+  .day-filter{margin-top:10px;}
+  .day-filter-label{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; font-weight:700; margin-bottom:6px;}
+  .day-tags{display:flex; flex-wrap:wrap; gap:6px;}
+  .day-tag{
+    background:var(--surface-2); color:var(--text); border:1px solid var(--line);
+    border-radius:var(--sharp); padding:6px 10px; font-size:12.5px; font-weight:600;
+    cursor:pointer; user-select:none; line-height:1.2;
+  }
+  .day-tag.active{border-color:var(--red); color:#fff; background:var(--red);}
+  .day-tag.reset{font-weight:700;}
+
+  .error-banner{
+    margin-top:12px; padding:10px 12px; border:1px solid var(--line); border-left:3px solid var(--red);
+    background:#FFF6F7; font-size:12px; color:#7A1225; display:none; line-height:1.5;
+  }
+  .error-banner.show{display:block;}
+  .error-banner b{color:var(--red);}
+
+  .kpi-scroll{display:grid; grid-template-columns:repeat(2,1fr); gap:10px; padding:14px 16px 4px;}
+  @media (min-width:480px){ .kpi-scroll{grid-template-columns:repeat(3,1fr);} }
+  @media (min-width:720px){ .kpi-scroll{grid-template-columns:repeat(4,1fr);} }
+  .kpi{background:var(--surface-2);
+    border:1px solid var(--line); border-left:2px solid var(--red); border-radius:var(--sharp); padding:12px 14px;}
+  .kpi .val{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:21px; font-weight:700; line-height:1;}
+  .kpi .lbl{font-size:10px; color:var(--muted); margin-top:6px; text-transform:uppercase; letter-spacing:.05em;}
+
+  main{padding:4px 16px 40px; max-width:1100px; margin:0 auto;}
+  .section-label{display:flex; align-items:center; gap:6px; font-size:10px; text-transform:uppercase;
+    letter-spacing:.08em; color:var(--muted); font-weight:700; margin:18px 2px 8px;}
+  .section-label .diamond{width:6px; height:6px; background:var(--red); transform:rotate(45deg); flex:0 0 auto;}
+
+  .card{background:#fff; border:1px solid var(--line); border-radius:var(--sharp); padding:14px 14px 12px; margin-bottom:10px;
+    position:relative; overflow:hidden; box-shadow:0 1px 2px rgba(15,15,17,.03);}
+  .card::before{content:""; position:absolute; top:0; left:0; width:3px; height:100%; background:var(--red);}
+  .card-inner{padding-left:6px;}
+  .chart-box{position:relative; height:260px;}
+  .chart-empty{display:flex; align-items:center; justify-content:center; height:260px; color:var(--muted); font-size:13px;}
+
+  #state{padding:60px 16px; text-align:center; color:var(--muted); font-size:14px;}
+  #state.error{color:var(--red);}
+  .hidden{display:none;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1 id="pageTitle">Performance <em>individuelle</em></h1>
+  <div class="sub" id="missionSub">Chargement…</div>
+  <div class="meta-row">
+    <div class="sync"><span class="live-diamond off" id="liveDiamond"></span>Synchro <b id="syncTime">—</b></div>
+    <div class="sync" id="countdown">5:00</div>
+  </div>
+  <div id="refreshBar"><div id="refreshFill"></div></div>
+  <div class="day-filter">
+    <div class="day-filter-label">Filtrer par jour</div>
+    <div class="day-tags" id="dayTags"></div>
+  </div>
+  <div class="error-banner" id="errorBanner">
+    <b>Connexion impossible.</b> <span id="errorDetail"></span> La page réessaiera automatiquement.
+  </div>
+</header>
+
+<div id="state">Chargement des données depuis Metabase…</div>
+
+<main id="content" class="hidden">
+  <div class="kpi-scroll" id="kpiRow"></div>
+
+  <div class="section-label"><span class="diamond"></span>Évolution jour par jour</div>
+  <div class="card"><div class="card-inner">
+    <div class="chart-box"><canvas id="chart-daily"></canvas></div>
+  </div></div>
+</main>
+
+<script>
+(function () {
+  // ---------------------------------------------------------------
+  // Page interne (équipe CAE) — performance d'UN recruteur sur UNE
+  // mission. Copie de mission-performance.html : les indicateurs qui
+  // y étaient affichés par carte de recruteur deviennent ici les KPIs
+  // principaux, et on ajoute un suivi jour par jour (BS réel + taux
+  // réel superposés). Accès par id_mission + id_utilisateur (UUID non
+  // devinables), passés dans l'URL.
+  // ---------------------------------------------------------------
+  const qs = new URLSearchParams(window.location.search);
+  const idMission = qs.get('id_mission') || '';
+  const idUtilisateur = qs.get('id_utilisateur') || '';
+
+  const stateEl = document.getElementById('state');
+  const contentEl = document.getElementById('content');
+
+  if (!idMission || !idUtilisateur) {
+    stateEl.textContent = "Lien invalide : les paramètres id_mission et id_utilisateur sont requis dans l'URL.";
+    stateEl.classList.add('error');
+    return;
+  }
+
+  const RE_HEX_COLOR = /^#[0-9A-Fa-f]{6}$/;
+  const DEFAULT_ACCENT = '#E2173B';
+  let accentColor = DEFAULT_ACCENT;
+  function applyClientColor(hex) {
+    if (!hex || !RE_HEX_COLOR.test(hex)) return;
+    accentColor = hex;
+    document.documentElement.style.setProperty('--red', hex);
+  }
+
+  function fmtNum(n, digits = 0) {
+    if (n === null || n === undefined) return '—';
+    return Number(n).toLocaleString('fr-FR', { maximumFractionDigits: digits, minimumFractionDigits: digits });
+  }
+  function fmtPct(n) {
+    if (n === null || n === undefined) return '—';
+    return (Number(n) * 100).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' %';
+  }
+  function fmtDate(d) {
+    if (!d) return '—';
+    return new Date(d).toLocaleDateString('fr-FR');
+  }
+
+  // ---------------------------------------------------------------
+  // Chargement résilient de Chart.js : cdnjs d'abord, jsdelivr en repli.
+  // ---------------------------------------------------------------
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = src; s.onload = resolve; s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+  async function ensureChartJs() {
+    if (window.Chart) return true;
+    const urls = [
+      'https://cdnjs.cloudflare.com/ajax/libs/chart.js/4.4.4/chart.umd.min.js',
+      'https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js',
+    ];
+    for (const url of urls) {
+      try { await loadScript(url); if (window.Chart) return true; } catch (e) { /* essaie le suivant */ }
+    }
+    return false;
+  }
+
+  let liveMode = false;
+  let dailyChart = null;
+  const selectedDates = new Set(); // vide = tout l'historique (passé) de la mission
+
+  const dayTagsEl = document.getElementById('dayTags');
+  function renderDayTags(days) {
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const pastDays = days.map((d) => String(d).slice(0, 10)).filter((iso) => iso <= todayIso);
+    const tagsHtml = pastDays.map((iso) => {
+      const label = new Date(iso + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: 'short' });
+      return `<span class="day-tag" data-date="${iso}">${label.charAt(0).toUpperCase() + label.slice(1)}</span>`;
+    }).join('');
+    dayTagsEl.innerHTML = `<span class="day-tag reset active" data-date="">Tous</span>${tagsHtml}`;
+    dayTagsEl.querySelectorAll('.day-tag').forEach((tag) => {
+      tag.addEventListener('click', () => {
+        const d = tag.dataset.date;
+        if (d === '') {
+          selectedDates.clear();
+        } else {
+          if (selectedDates.has(d)) selectedDates.delete(d);
+          else selectedDates.add(d);
+        }
+        dayTagsEl.querySelectorAll('.day-tag').forEach((t) => {
+          const td = t.dataset.date;
+          t.classList.toggle('active', td === '' ? selectedDates.size === 0 : selectedDates.has(td));
+        });
+        refreshData();
+      });
+    });
+  }
+  async function loadDays() {
+    try {
+      const res = await fetch('/api/mission-days?id_mission=' + encodeURIComponent(idMission), { cache: 'no-store' });
+      const days = await res.json();
+      if (!res.ok || days.error) throw new Error(days.error || 'Erreur jours');
+      renderDayTags(days);
+    } catch (e) {
+      console.warn('Chargement des jours impossible :', e.message);
+    }
+  }
+
+  async function refreshData() {
+    try {
+      const p = new URLSearchParams({ id_mission: idMission, id_utilisateur: idUtilisateur });
+      if (selectedDates.size) p.set('dates', [...selectedDates].join(','));
+      const res = await fetch('/api/recruteur-performance?' + p.toString(), { cache: 'no-store' });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || 'Erreur inconnue');
+      render(data);
+      liveMode = true;
+      document.getElementById('errorBanner').classList.remove('show');
+    } catch (err) {
+      liveMode = false;
+      document.getElementById('errorDetail').textContent = err.message;
+      document.getElementById('errorBanner').classList.add('show');
+      console.warn('Fetch /api/recruteur-performance failed:', err);
+    }
+    document.getElementById('syncTime').textContent =
+      new Date().toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    document.getElementById('liveDiamond').classList.toggle('off', !liveMode);
+  }
+
+  function render(data) {
+    stateEl.classList.add('hidden');
+    contentEl.classList.remove('hidden');
+
+    const info = data.info || {};
+    applyClientColor(info.couleur);
+
+    const nom = [info.prenom, info.nom].filter(Boolean).join(' ') || 'Recruteur';
+    const isRe = info.responsable_equipe_id && info.responsable_equipe_id === idUtilisateur;
+    document.getElementById('pageTitle').innerHTML =
+      (isRe ? '<span class="re-badge">RE</span>' : '') + '<em>' + nom.replace(/</g, '&lt;') + '</em>';
+
+    const missionLabel = info.code_mission || info.code_mission_client || '';
+    const bits = [];
+    if (info.client_nom) bits.push(info.client_nom);
+    if (missionLabel) bits.push(missionLabel);
+    if (info.statut_mission) bits.push(info.statut_mission);
+    if (info.date_debut || info.date_fin) bits.push(fmtDate(info.date_debut) + ' → ' + fmtDate(info.date_fin));
+    document.getElementById('missionSub').textContent = bits.join(' · ') || '—';
+
+    const k = data.kpis || {};
+    const kpis = [
+      { v: k.taux_reel != null ? fmtNum(k.taux_reel, 3) : '—', l: 'Taux réel' },
+      { v: fmtNum(k.bs_reel), l: 'BS réel' },
+      { v: fmtNum(k.bs_rue), l: 'BS Rue' },
+      { v: k.taux_transfo != null ? fmtPct(k.taux_transfo) : '—', l: 'Transfo' },
+      { v: k.heures_rue != null ? fmtNum(k.heures_rue, 1) : '—', l: 'Heures rue' },
+      { v: k.heures_rem != null ? fmtNum(k.heures_rem, 1) : '—', l: 'Heures rém.' },
+      { v: k.don_moyen != null ? fmtNum(k.don_moyen, 2) + '€' : '—', l: 'Don moyen' },
+      { v: k.age_median != null ? fmtNum(k.age_median, 1) : '—', l: 'Âge médian' },
+      { v: fmtNum(k.bs_incomplets), l: 'Incomplets' },
+      { v: fmtNum(k.bs_annules), l: 'Annulés' },
+      { v: k.pct_moins_25 != null ? fmtPct(k.pct_moins_25) : '—', l: 'Donateurs <25' },
+    ];
+    document.getElementById('kpiRow').innerHTML = kpis.map((kp) => `
+      <div class="kpi"><div class="val">${kp.v}</div><div class="lbl">${kp.l}</div></div>`).join('');
+
+    renderDailyChart(data.daily || []);
+  }
+
+  function renderDailyChart(rows) {
+    if (dailyChart) { dailyChart.destroy(); dailyChart = null; }
+    const box = document.getElementById('chart-daily').parentElement;
+    if (typeof Chart === 'undefined') { box.innerHTML = '<div class="chart-empty">Graphique indisponible (Chart.js non chargé)</div>'; return; }
+    if (!rows.length) { box.innerHTML = '<div class="chart-empty">Aucune donnée sur cette mission</div>'; return; }
+    if (!box.querySelector('canvas')) box.innerHTML = '<canvas id="chart-daily"></canvas>';
+
+    dailyChart = new Chart(document.getElementById('chart-daily'), {
+      data: {
+        labels: rows.map((r) => fmtDate(r.date)),
+        datasets: [
+          {
+            type: 'bar',
+            label: 'BS réel',
+            data: rows.map((r) => r.bs_reel),
+            backgroundColor: accentColor,
+            yAxisID: 'yCount',
+            order: 2,
+          },
+          {
+            type: 'line',
+            label: 'Taux réel',
+            data: rows.map((r) => r.taux_reel),
+            borderColor: '#0F0F11',
+            backgroundColor: '#0F0F11',
+            pointRadius: 3,
+            pointBackgroundColor: '#0F0F11',
+            tension: 0.25,
+            yAxisID: 'yRate',
+            order: 1,
+            spanGaps: true,
+          },
+        ],
+      },
+      options: {
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+          x: { ticks: { color: '#75757C', font: { family: 'ui-monospace, monospace', size: 11 } }, grid: { color: '#E4E4E8' } },
+          yCount: {
+            position: 'left',
+            beginAtZero: true,
+            ticks: {
+              color: '#75757C', font: { family: 'ui-monospace, monospace', size: 11 },
+              precision: 0, callback: (v) => Number.isInteger(v) ? fmtNum(v, 0) : null,
+            },
+            grid: { color: '#E4E4E8' },
+            title: { display: true, text: 'BS réel', color: '#75757C', font: { size: 10.5, weight: '600' } },
+          },
+          yRate: {
+            position: 'right',
+            beginAtZero: true,
+            ticks: {
+              color: '#75757C', font: { family: 'ui-monospace, monospace', size: 11 },
+              callback: (v) => fmtNum(v, 3),
+            },
+            grid: { drawOnChartArea: false },
+            title: { display: true, text: 'Taux réel', color: '#75757C', font: { size: 10.5, weight: '600' } },
+          },
+        },
+        plugins: {
+          legend: { labels: { color: '#0F0F11', font: { size: 11, weight: '600' } } },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const v = ctx.parsed.y;
+                if (v === null || v === undefined) return ctx.dataset.label + ' : —';
+                return ctx.dataset.label + ' : ' + (ctx.dataset.yAxisID === 'yRate' ? fmtNum(v, 3) : fmtNum(v, 0));
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  // ---------------------------------------------------------------
+  // AUTO-REFRESH toutes les 5 min
+  // ---------------------------------------------------------------
+  const REFRESH_MS = 5 * 60 * 1000;
+  let remaining = REFRESH_MS;
+  function tickCountdown() {
+    remaining -= 1000;
+    if (remaining <= 0) { remaining = REFRESH_MS; refreshData(); return; }
+    const s = Math.floor(remaining / 1000);
+    const mm = Math.floor(s / 60), ss = s % 60;
+    document.getElementById('countdown').textContent = `${mm}:${ss.toString().padStart(2, '0')}`;
+    document.getElementById('refreshFill').style.width = (100 - (remaining / REFRESH_MS) * 100) + '%';
+  }
+  setInterval(tickCountdown, 1000);
+
+  // INIT
+  loadDays();
+  ensureChartJs().then((ok) => {
+    if (!ok) console.warn('Chart.js indisponible (2 CDN testés) — le graphique restera vide, le reste de la page fonctionne normalement.');
+    refreshData();
+  });
+})();
+</script>
+
+</body>
+</html>

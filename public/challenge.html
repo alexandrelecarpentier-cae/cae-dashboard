@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Challenge — CAE</title>
+<style>
+  :root{
+    --bg:#FFFFFF; --surface:#FFFFFF; --surface-2:#F5F5F6; --line:#E4E4E8;
+    --red:#E2173B; --text:#0F0F11; --muted:#75757C;
+    --sharp:2px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;}
+  @media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important; transition-duration:.001ms !important;}}
+
+  header{
+    position:sticky; top:0; z-index:20;
+    background:rgba(255,255,255,.92); backdrop-filter:blur(8px);
+    padding:calc(env(safe-area-inset-top) + 14px) 16px 12px;
+    border-bottom:1px solid var(--line);
+  }
+  h1{margin:0 0 4px; font-size:20px; font-weight:800; letter-spacing:-.01em; line-height:1.2; text-transform:uppercase;}
+  h1 em{color:var(--red); font-style:normal;}
+  .sub{font-size:12.5px; color:var(--muted); margin-bottom:10px;}
+
+  .meta-row{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:8px;}
+  .sync{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:11.5px; color:var(--muted); display:flex; align-items:center; gap:6px;}
+  .sync b{color:var(--text); font-weight:600;}
+  .live-diamond{width:7px; height:7px; background:var(--red); transform:rotate(45deg); flex:0 0 auto;
+    animation:pulse 2.2s infinite;}
+  .live-diamond.off{background:#C7C7CC; animation:none;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(226,23,59,.45);}70%{box-shadow:0 0 0 7px rgba(226,23,59,0);}100%{box-shadow:0 0 0 0 rgba(226,23,59,0);}}
+  #refreshBar{height:2px; width:100%; background:var(--line); overflow:hidden;}
+  #refreshFill{height:100%; width:0%; background:var(--red); transition:width 1s linear;}
+
+  .error-banner{
+    margin-top:12px; padding:10px 12px; border:1px solid var(--line); border-left:3px solid var(--red);
+    background:#FFF6F7; font-size:12px; color:#7A1225; display:none; line-height:1.5;
+  }
+  .error-banner.show{display:block;}
+  .error-banner b{color:var(--red);}
+
+  main{padding:4px 16px 40px; max-width:900px; margin:0 auto;}
+  .section-label{display:flex; align-items:center; gap:6px; font-size:10px; text-transform:uppercase;
+    letter-spacing:.08em; color:var(--muted); font-weight:700; margin:22px 2px 8px;}
+  .section-label .diamond{width:6px; height:6px; background:var(--red); transform:rotate(45deg); flex:0 0 auto;}
+
+  .leaderboard{background:#fff; border:1px solid var(--line); border-radius:var(--sharp); overflow:hidden;}
+  .row{display:flex; align-items:center; gap:12px; padding:12px 14px; border-bottom:1px solid var(--line);}
+  .row:last-child{border-bottom:none;}
+  .row.rank-1{background:#FFF9F0;}
+  .row.rank-2{background:#FAFAFA;}
+  .row.rank-3{background:#FFFDF8;}
+  .rank-num{
+    font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-weight:800; font-size:14px;
+    width:26px; height:26px; flex:0 0 auto; border-radius:var(--sharp); display:flex; align-items:center; justify-content:center;
+    background:var(--surface-2); color:var(--muted);
+  }
+  .row.rank-1 .rank-num{background:#F0B429; color:#fff;}
+  .row.rank-2 .rank-num{background:#B0B0B8; color:#fff;}
+  .row.rank-3 .rank-num{background:#C97A3D; color:#fff;}
+  .row-body{flex:1 1 auto; min-width:0;}
+  .row-name{font-size:14.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .row-sub{font-size:11.5px; color:var(--muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .row-val{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:17px; font-weight:800; flex:0 0 auto; text-align:right;}
+  .row-val .u{font-size:10px; color:var(--muted); font-weight:600; text-transform:uppercase; margin-top:2px; display:block;}
+
+  .empty{padding:24px 16px; text-align:center; color:var(--muted); font-size:13px;}
+
+  .person-row{display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid var(--line);}
+  .person-row:last-child{border-bottom:none;}
+  .person-emoji{font-size:18px; flex:0 0 auto; width:24px; text-align:center;}
+  .person-body{flex:1 1 auto; min-width:0;}
+  .person-name{font-size:14px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .person-sub{font-size:11.5px; color:var(--muted); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+
+
+  #state{padding:60px 16px; text-align:center; color:var(--muted); font-size:14px;}
+  #state.error{color:var(--red);}
+  .hidden{display:none;}
+
+  .tab-bar{display:flex; gap:8px; margin-bottom:12px;}
+  .tab-link{flex:1; text-align:center; padding:8px 10px; border-radius:var(--sharp); border:1px solid var(--line);
+    background:#fff; color:var(--muted); font-size:12.5px; font-weight:700; text-decoration:none;
+    text-transform:uppercase; letter-spacing:.03em;}
+  .tab-link.active{background:var(--red); border-color:var(--red); color:#fff;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="tab-bar">
+    <a class="tab-link" href="rm.html">Missions</a>
+    <a class="tab-link active" href="challenge.html">Challenge</a>
+    <a class="tab-link" href="salarie.html">Salarié</a>
+    <a class="tab-link" href="emplacement.html">Emplacement</a>
+  </div>
+  <h1>Challenge <em>recruteurs</em></h1>
+  <div class="sub">Toutes missions en cours, tous clients confondus</div>
+  <div class="meta-row">
+    <div class="sync"><span class="live-diamond off" id="liveDiamond"></span>Synchro <b id="syncTime">—</b></div>
+    <div class="sync" id="countdown">5:00</div>
+  </div>
+  <div id="refreshBar"><div id="refreshFill"></div></div>
+  <div class="error-banner" id="errorBanner">
+    <b>Connexion impossible.</b> <span id="errorDetail"></span> La page réessaiera automatiquement.
+  </div>
+</header>
+
+<main id="content">
+  <div class="section-label"><span class="diamond"></span>Top 5 recruteurs — dernière heure</div>
+  <div class="leaderboard" id="hourlyTop"></div>
+
+  <div class="section-label"><span class="diamond"></span>Top 5 recruteurs — aujourd'hui</div>
+  <div class="leaderboard" id="dailyTop"></div>
+
+  <div class="section-label"><span class="diamond"></span>Top 5 recruteurs — cette semaine</div>
+  <div class="leaderboard" id="weeklyTop"></div>
+
+  <div class="section-label"><span class="diamond"></span>Meilleures équipes — cette semaine (taux réel)</div>
+  <div class="leaderboard" id="weeklyTeams"></div>
+
+  <div class="section-label"><span class="diamond"></span>Mission — plus forte moyenne d'âge donateur</div>
+  <div class="leaderboard" id="ageMoyenTop"></div>
+
+  <div class="section-label"><span class="diamond"></span>🎂 C'est leur anniversaire</div>
+  <div class="leaderboard" id="birthdayBox"></div>
+
+  <div class="section-label"><span class="diamond"></span>🎉 C'est leur fête<span id="feteDuJour" style="margin-left:6px; font-weight:400; text-transform:none; letter-spacing:0;"></span></div>
+  <div class="leaderboard" id="feteBox"></div>
+</main>
+
+<script>
+(function () {
+  // ---------------------------------------------------------------
+  // Page interne (équipe CAE) — classements cross-client sur toutes les
+  // missions en_cours. Pas de scope id_client/id_mission dans l'URL :
+  // c'est une vue globale, pas de donnée client confidentielle affichée
+  // (juste des noms de recruteurs/clients et des compteurs). Voir
+  // /functions/api/challenge.js et /functions/lib/sql-challenge.js.
+  // ---------------------------------------------------------------
+  function fmtNum(n, digits = 0) {
+    if (n === null || n === undefined) return '—';
+    return Number(n).toLocaleString('fr-FR', { maximumFractionDigits: digits, minimumFractionDigits: digits });
+  }
+
+  let liveMode = false;
+
+  async function refreshData() {
+    try {
+      const res = await fetch('/api/challenge', { cache: 'no-store' });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || 'Erreur inconnue');
+      render(data);
+      liveMode = true;
+      document.getElementById('errorBanner').classList.remove('show');
+    } catch (err) {
+      liveMode = false;
+      document.getElementById('errorDetail').textContent = err.message;
+      document.getElementById('errorBanner').classList.add('show');
+      console.warn('Fetch /api/challenge failed:', err);
+    }
+    document.getElementById('syncTime').textContent =
+      new Date().toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    document.getElementById('liveDiamond').classList.toggle('off', !liveMode);
+  }
+
+  function renderRecruteurBoard(elId, rows) {
+    const el = document.getElementById(elId);
+    if (!rows || !rows.length) {
+      el.innerHTML = '<div class="empty">Aucune donnée sur cette période</div>';
+      return;
+    }
+    el.innerHTML = rows.map((r, i) => {
+      const rank = i + 1;
+      const initial = (r.nom || '').trim().charAt(0).toUpperCase();
+      const name = [r.prenom, initial ? initial + '.' : ''].filter(Boolean).join(' ') || 'Recruteur inconnu';
+      return `
+      <div class="row rank-${rank}">
+        <div class="rank-num">${rank}</div>
+        <div class="row-body">
+          <div class="row-name">${name}</div>
+          <div class="row-sub">${r.client_nom || '—'}</div>
+        </div>
+        <div class="row-val">${fmtNum(r.bs_reel)}<span class="u">BS réel</span></div>
+      </div>`;
+    }).join('');
+  }
+
+  function renderAgeMoyenBoard(rows) {
+    const el = document.getElementById('ageMoyenTop');
+    if (!rows || !rows.length) {
+      el.innerHTML = '<div class="empty">Aucune donnée sur cette période</div>';
+      return;
+    }
+    el.innerHTML = rows.map((r, i) => {
+      const rank = i + 1;
+      const missionLabel = r.code_mission || r.code_mission_client || 'Mission';
+      return `
+      <div class="row rank-${rank}">
+        <div class="rank-num">${rank}</div>
+        <div class="row-body">
+          <div class="row-name">${missionLabel}</div>
+          <div class="row-sub">${r.client_nom || '—'}</div>
+        </div>
+        <div class="row-val">${fmtNum(r.age_moyen, 1)}<span class="u">ans (moy.)</span></div>
+      </div>`;
+    }).join('');
+  }
+
+  // ---------------------------------------------------------------
+  // "C'est leur anniversaire" — recruteurs actifs sur le terrain aujourd'hui
+  // (activeRecruteurs, fourni par /api/challenge) dont le jour+mois de
+  // naissance correspond à la date du jour.
+  // ---------------------------------------------------------------
+  // Extraction du mois/jour par découpage de chaîne (pas via Date/getUTC*) :
+  // Metabase renvoie les dates avec un offset ("2001-10-29T00:00:00+01:00"),
+  // et convertir ça en UTC peut faire glisser le jour d'une unité selon le
+  // sens de l'offset. On reste sur les 10 premiers caractères "YYYY-MM-DD".
+  function monthDay(dateStr) {
+    const m = String(dateStr || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+    return m ? `${m[2]}-${m[3]}` : null;
+  }
+
+  function renderBirthdayBox(rows) {
+    const el = document.getElementById('birthdayBox');
+    const today = new Date();
+    const todayMD = `${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const matches = (rows || []).filter(r => monthDay(r.date_de_naissance) === todayMD);
+    if (!matches.length) {
+      el.innerHTML = '<div class="empty">Personne sur le terrain aujourd\'hui</div>';
+      return;
+    }
+    el.innerHTML = matches.map(r => {
+      const name = [r.prenom, r.nom].filter(Boolean).join(' ') || 'Recruteur inconnu';
+      const missionLabel = r.code_mission || r.code_mission_client || 'Mission';
+      const sub = [r.client_nom, missionLabel].filter(Boolean).join(' · ');
+      return `
+      <div class="person-row">
+        <div class="person-emoji">🎂</div>
+        <div class="person-body">
+          <div class="person-name">${name}</div>
+          <div class="person-sub">${sub || '—'}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // ---------------------------------------------------------------
+  // "C'est leur fête" — calendrier traditionnel des prénoms (365 jours).
+  // Les entrées qui ne sont pas des prénoms (jours fériés, fêtes
+  // religieuses génériques : "Jour de l'An", "Toussaint", "Noël"...) sont
+  // exclues. Pour les prénoms composés d'une qualification ("Rose de
+  // Lima", "Vincent de Paul"), seul le premier prénom sert à la
+  // comparaison avec le prénom du recruteur.
+  // ---------------------------------------------------------------
+  const FETE_CALENDAR = {
+    january: [["Jour de l'An",""],["Basile","Saint"],["Geneviève","Sainte"],["Odilon","Saint"],["Edouard","Saint"],["Mélaine","Saint"],["Raymond","Saint"],["Lucien","Saint"],["Alix","Sainte"],["Guillaume","Saint"],["Pauline","Saint"],["Tatiana","Sainte"],["Yvette","Sainte"],["Nina","Sainte"],["Rémi","Saint"],["Marcel","Saint"],["Roseline","Sainte"],["Prisca","Sainte"],["Marius","Saint"],["Sébastien","Saint"],["Agnès","Sainte"],["Vincent","Saint"],["Barnard","Saint"],["François de Sales","Saint"],["Conversion de Paul",""],["Paule","Sainte"],["Angèle","Sainte"],["Thomas d'Aquin","Saint"],["Gildas","Saint"],["Martine","Sainte"],["Marcelle","Sainte"]],
+    february: [["Ella","Sainte"],["Fête de la Présention",""],["Blaise","Saint"],["Véronique","Sainte"],["Agathe","Sainte"],["Gaston","Saint"],["Eugènie","Sainte"],["Jacqueline","Sainte"],["Apolline","Sainte"],["Arnaud","Saint"],["Notre Dame de Lourdes","Sainte"],["Félix","Saint"],["Béatrice","Sainte"],["Valentin","Saint"],["Claude","Saint"],["Julienne","Sainte"],["Alexis","Saint"],["Bernadette","Sainte"],["Gabin","Saint"],["Aimée","Sainte"],["Mercredi des Cendres",""],["Isabelle","Sainte"],["Lazare","Saint"],["Modeste","Sainte"],["Roméo","Saint"],["Nestor","Saint"],["Honorine","Sainte"],["Romain","Saint"],["Auguste","Saint"]],
+    march: [["Aubin","Saint"],["Charles le Bon","Saint"],["Guénolé","Saint"],["Casimir","Saint"],["Olive","Saint"],["Colette","Sainte"],["Félicité","Sainte"],["Jean de Dieu","Saint"],["Françoise","Sainte"],["Vivien","Saint"],["Rosine","Sainte"],["Justine","Sainte"],["Rodrigue","Saint"],["Mathilde","Sainte"],["Louise","Sainte"],["Bénédicte","Sainte"],["Patrice","Saint"],["Cyrille","Saint"],["Joseph","Saint"],["Herbert","Saint"],["Clémence","Sainte"],["Léa","Sainte"],["Victorien","Saint"],["Karine","Sainte"],["Anne","Sainte"],["Larissa","Sainte"],["Habib","Saint"],["Gontran","Saint"],["Gwladys","Sainte"],["Amédée","Saint"],["Benjamin","Saint"]],
+    april: [["Hugues","Saint"],["Sandrine","Sainte"],["Richard","Saint"],["Isidore","Saint"],["Irène","Sainte"],["Marcellin","Saint"],["Jean-Baptiste de la Salle","Saint"],["Julie","Sainte"],["Gautier","Saint"],["Fulbert","Saint"],["Stanislas","Saint"],["Jules","Saint"],["Ida","Sainte"],["Maxime","Saint"],["Paterne","Saint"],["Benoît-Joseph","Saint"],["Anicet","Saint"],["Parfait","Saint"],["Emma","Sainte"],["Odette","Sainte"],["Anselme","Saint"],["Alexandre","Saint"],["Georges","Saint"],["Fidèle","Saint"],["Marc","Saint"],["Alida","Sainte"],["Zita","Sainte"],["Valérie","Sainte"],["Catherine de Sienne","Sainte"],["Robert","Saint"]],
+    may: [["Fête du travail",""],["Boris","Saint"],["Philippe","Saint"],["Sylvain","Saint"],["Judith","Saint"],["Prudence","Saint"],["Gisèle","Sainte"],["Armistice de 1945",""],["Pacôme","Saint"],["Solange","Sainte"],["Estelle","Sainte"],["Achille","Saint"],["Rolande","Sainte"],["Matthias","Saint"],["Denise","Sainte"],["Honoré","Saint"],["Pascal","Saint"],["Eric","Saint"],["Yves","Saint"],["Bernardin","Saint"],["Constantin","Saint"],["Emile","Saint"],["Didier","Saint"],["Donatien","Saint"],["Sophie","Sainte"],["Bérenger","Saint"],["Augustin","Saint"],["Germain","Saint"],["Aymar","Saint"],["Ferdinand","Saint"],["Ferdinand","Saint"]],
+    june: [["Justin","Saint"],["Blandine","Sainte"],["Kévin","Saint"],["Clotilde","Sainte"],["Igor","Saint"],["Norbert","Saint"],["Gilbert","Saint"],["Médard","Saint"],["Diane","Sainte"],["Landry","Saint"],["Barnabé","Saint"],["Guy","Saint"],["Antoine de Padoue","Saint"],["Elisée","Sainte"],["Germaine","Sainte"],["Jean-François Régis","Saint"],["Hervé","Saint"],["Léonce","Saint"],["Romuald","Saint"],["Silvère","Saint"],["Solstice d'été",""],["Alban","Saint"],["Audrey","Sainte"],["Jean-Baptiste","Saint"],["Prosper","Saint"],["Anthelme","Saint"],["Fernand","Saint"],["Irénée","Saint"],["Pierre","Saint"],["Martial","Saint"]],
+    july: [["Thierry","Saint"],["Martinien","Saint"],["Thomas","Saint"],["Florent","Saint"],["Antoine","Saint"],["Mariette","Sainte"],["Raoul","Saint"],["Thibault","Saint"],["Amandine","Sainte"],["Ulrich","Saint"],["Benoît","Saint"],["Olivier","Saint"],["Henri","Saint"],["Fête Nationale",""],["Donald",""],["Fête de Notre Dame du Mont Carmel",""],["Charlotte","Sainte"],["Frédéric","Saint"],["Arsène","Saint"],["Marina","Sainte"],["Victor","Saint"],["Marie-Madeleine","Sainte"],["Brigitte","Sainte"],["Christine","Sainte"],["Jacques","Saint"],["Anne","Sainte"],["Nathalie","Sainte"],["Samson","Saint"],["Marthe","Sainte"],["Juliette","Sainte"],["Ignace de Loyola","Saint"]],
+    august: [["Alphonse","Saint"],["Julien Eymard","Saint"],["Lydie","Sainte"],["Jean-Marie Vianney","Saint"],["Abel","Saint"],["Fête de la Transfiguration",""],["Gaétan","Saint"],["Dominique","Saint"],["Amour","Saint"],["Laurent","Saint"],["Claire","Sainte"],["Clarisse","Sainte"],["Hippolyte","Saint"],["Evrard","Saint"],["Fête de l'Assomption",""],["Armel","Sainte"],["Hyacinthe","Saint"],["Hélène","Sainte"],["Jean-Eudes","Saint"],["Bernard","Saint"],["Christophe","Saint"],["Fabrice","Saint"],["Rose de Lima","Sainte"],["Barthélémy","Saint"],["Louis","Saint"],["Natacha","Sainte"],["Monique","Sainte"],["Augustin","Saint"],["Sabine","Sainte"],["Fiacre","Saint"],["Aristide","Saint"]],
+    september: [["Gilles","Saint"],["Ingrid","Sainte"],["Grégoire","Saint"],["Rosalie","Sainte"],["Raïssa","Sainte"],["Bertrand","Saint"],["Reine","Sainte"],["Fête de la Nativité",""],["Alain","Saint"],["Inès","Sainte"],["Adelphe","Saint"],["Apollinaire","Saint"],["Aimé","Saint"],["Fête de la Croix Glorieuse",""],["Roland","Saint"],["Edith","Sainte"],["Renaud","Saint"],["Nadège","Sainte"],["Emilie","Sainte"],["Davy","Saint"],["Matthieu","Saint"],["Maurice","Saint"],["Equinoxe d'Automne",""],["Thècle","Sainte"],["Hermann","Saint"],["Côme","Saint"],["Vincent de Paul","Saint"],["Venceslas","Saint"],["Michel","Saint"],["Jérôme","Saint"]],
+    october: [["Thérèse de l'Enfant Jésus","Sainte"],["Léger","Saint"],["Gérard","Saint"],["François d'Assise","Saint"],["Fleur","Sainte"],["Bruno","Saint"],["Serge","Saint"],["Pélagie","Sainte"],["Denis","Saint"],["Ghislain","Saint"],["Firmin","Saint"],["Wilfried","Saint"],["Géraud","Saint"],["Juste","Saint"],["Thérèse d'Avila","Saint"],["Edwige","Sainte"],["Baudoin","Saint"],["Luc","Saint"],["René","Saint"],["Adeline","Sainte"],["Céline","Sainte"],["Elodie","Sainte"],["Jean de Capistran","Saint"],["Florentin","Saint"],["Crépin","Saint"],["Dimitri","Saint"],["Emeline","Sainte"],["Jude","Saint"],["Narcisse","Saint"],["Bienvenue","Sainte"],["Quentin","Saint"]],
+    november: [["Toussaint",""],["Fête des défunts",""],["Hubert","Saint"],["Charles","Saint"],["Sylvie","Sainte"],["Bertille","Sainte"],["Carine","Sainte"],["Geoffroy","Saint"],["Théodore","Saint"],["Léon","Saint"],["Armistice de 1918",""],["Christian","Saint"],["Brice","Saint"],["Sidoine","Saint"],["Albert","Saint"],["Marguerite","Sainte"],["Elisabeth","Sainte"],["Aude","Sainte"],["Tanguy","Saint"],["Edmond","Saint"],["Présence de Marie",""],["Cécile","Sainte"],["Clément","Saint"],["Flora","Sainte"],["Catherine","Sainte"],["Delphine","Sainte"],["Sévrin","Saint"],["Jacques de la Marche","Saint"],["Saturnin","Saint"],["André","Saint"]],
+    december: [["Florence","Sainte"],["Viviane","Sainte"],["François-Xavier","Saint"],["Barbara","Sainte"],["Gérald","Saint"],["Nicolas","Saint"],["Ambroise","Sainte"],["Fête de l'Immaculée Conception",""],["Pierre Fourier","Saint"],["Romaric","Saint"],["Daniel","Saint"],["Jeanne-Françoise de Chantal","Sainte"],["Lucie","Sainte"],["Odile","Sainte"],["Ninon","Sainte"],["Alice","Sainte"],["Gaël","Saint"],["Gatien","Saint"],["Urbain","Saint"],["Théophile","Saint"],["Solstice d'Hiver",""],["Françoise-Xavière","Sainte"],["Armand","Saint"],["Adèle","Sainte"],["Noël",""],["Etienne","Saint"],["Jean","Saint"],["Innocents","Saints"],["David","Saint"],["Roger","Saint"],["Sylvestre","Saint"]]
+  };
+  const FETE_MONTHS = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+  const FETE_EXCLUDE = new Set([
+    "Jour de l'An","Conversion de Paul","Fête de la Présention","Mercredi des Cendres",
+    "Notre Dame de Lourdes","Fête du travail","Armistice de 1945","Solstice d'été",
+    "Fête Nationale","Fête de Notre Dame du Mont Carmel","Fête de la Transfiguration",
+    "Fête de l'Assomption","Fête de la Nativité","Fête de la Croix Glorieuse",
+    "Equinoxe d'Automne","Toussaint","Fête des défunts","Armistice de 1918",
+    "Présence de Marie","Fête de l'Immaculée Conception","Solstice d'Hiver","Noël","Innocents"
+  ]);
+
+  function normalizeName(s) {
+    return (s || '').toString().normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+  }
+
+  function feteMatchName(fullName) {
+    // Isole le prénom principal d'une entrée composée type "Rose de Lima",
+    // "Vincent de Paul", "Jean de Dieu" ; laisse intacts les vrais prénoms
+    // composés type "Jean-Baptiste" ou "Marie-Madeleine".
+    const m = fullName.match(/^(.+?)\s+(?:de|d'|du)\s+/i);
+    return m ? m[1] : fullName;
+  }
+
+  function getTodayFete() {
+    const today = new Date();
+    const monthKey = FETE_MONTHS[today.getMonth()];
+    const entry = (FETE_CALENDAR[monthKey] || [])[today.getDate() - 1];
+    if (!entry) return null;
+    const [name] = entry;
+    if (!name || FETE_EXCLUDE.has(name)) return null;
+    return { display: name, matchKey: normalizeName(feteMatchName(name)) };
+  }
+
+  function renderFeteBox(rows) {
+    const el = document.getElementById('feteBox');
+    const fete = getTodayFete();
+    const label = document.getElementById('feteDuJour');
+    if (!fete) {
+      label.textContent = '';
+      el.innerHTML = '<div class="empty">Pas de prénom associé au calendrier aujourd\'hui</div>';
+      return;
+    }
+    label.textContent = `— ${fete.display}`;
+    const matches = (rows || []).filter(r => normalizeName(r.prenom) === fete.matchKey);
+    if (!matches.length) {
+      el.innerHTML = `<div class="empty">Personne prénommé(e) ${fete.display} sur le terrain aujourd'hui</div>`;
+      return;
+    }
+    el.innerHTML = matches.map(r => {
+      const name = [r.prenom, r.nom].filter(Boolean).join(' ') || 'Recruteur inconnu';
+      const missionLabel = r.code_mission || r.code_mission_client || 'Mission';
+      const sub = [r.client_nom, missionLabel].filter(Boolean).join(' · ');
+      return `
+      <div class="person-row">
+        <div class="person-emoji">🎉</div>
+        <div class="person-body">
+          <div class="person-name">${name}</div>
+          <div class="person-sub">${sub || '—'}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function renderTeamsBoard(rows) {
+    const el = document.getElementById('weeklyTeams');
+    if (!rows || !rows.length) {
+      el.innerHTML = '<div class="empty">Aucune donnée sur cette période</div>';
+      return;
+    }
+    el.innerHTML = rows.map((r, i) => {
+      const rank = i + 1;
+      const missionLabel = r.code_mission || r.code_mission_client || 'Mission';
+      const re = [r.re_prenom, r.re_nom].filter(Boolean).join(' ');
+      const sub = [r.client_nom, re ? 'RE ' + re : null].filter(Boolean).join(' · ');
+      return `
+      <div class="row rank-${rank}">
+        <div class="rank-num">${rank}</div>
+        <div class="row-body">
+          <div class="row-name">${missionLabel}</div>
+          <div class="row-sub">${sub || '—'}</div>
+        </div>
+        <div class="row-val">${r.taux_reel != null ? fmtNum(r.taux_reel, 3) : '—'}<span class="u">Taux réel</span></div>
+      </div>`;
+    }).join('');
+  }
+
+  function render(data) {
+    renderRecruteurBoard('hourlyTop', data.hourlyTop || []);
+    renderRecruteurBoard('dailyTop', data.dailyTop || []);
+    renderRecruteurBoard('weeklyTop', data.weeklyTop || []);
+    renderTeamsBoard(data.weeklyTeams || []);
+    renderAgeMoyenBoard(data.ageMoyenTop || []);
+    renderBirthdayBox(data.activeRecruteurs || []);
+    renderFeteBox(data.activeRecruteurs || []);
+  }
+
+  // ---------------------------------------------------------------
+  // AUTO-REFRESH toutes les 5 min
+  // ---------------------------------------------------------------
+  const REFRESH_MS = 5 * 60 * 1000;
+  let remaining = REFRESH_MS;
+  function tickCountdown() {
+    remaining -= 1000;
+    if (remaining <= 0) { remaining = REFRESH_MS; refreshData(); return; }
+    const s = Math.floor(remaining / 1000);
+    const mm = Math.floor(s / 60), ss = s % 60;
+    document.getElementById('countdown').textContent = `${mm}:${ss.toString().padStart(2, '0')}`;
+    document.getElementById('refreshFill').style.width = (100 - (remaining / REFRESH_MS) * 100) + '%';
+  }
+  setInterval(tickCountdown, 1000);
+
+  refreshData();
+})();
+</script>
+
+</body>
+</html>
