@@ -330,11 +330,12 @@ async function handleSalarie(url, env) {
   const queries = buildSalarieQueries(id_utilisateur);
 
   try {
-    const [identite, missions, performance, resume] = await Promise.all([
+    const [identite, missions, performance, resume, statutGlobal] = await Promise.all([
       runQuery(env, queries.identite),
       runQuery(env, queries.missions),
       runQuery(env, queries.performance),
       runQuery(env, queries.resume),
+      runQuery(env, queries.statutGlobal),
     ]);
 
     const perfByMission = new Map(performance.map((p) => [p.mission_id, p]));
@@ -351,6 +352,7 @@ async function handleSalarie(url, env) {
       identite: identite[0] || null,
       missions: missionsAvecPerf,
       resume: resume[0] || null,
+      statutGlobal: statutGlobal[0] || null,
     });
   } catch (e) {
     return jsonResponse({ error: String(e.message || e) }, 502);

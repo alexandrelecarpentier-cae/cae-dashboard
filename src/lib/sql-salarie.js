@@ -90,12 +90,14 @@ from heures h
 left join dons_u d on d.mission_id = h.mission_id;`;
 }
 
-// Résumé global (toutes missions confondues) : mêmes indicateurs que
-// buildPerformanceParMissionQuery mais agrégés sur l'ensemble de la carrière.
+// Résumé global (toutes missions confondues) : ancienneté (première/dernière
+// mission), cumul d'heures et taux globaux. Le score qualité global n'est
+// PAS ici — il vit dans buildStatutGlobalQuery, limité aux 270 dernières
+// heures de rue (cf. demande utilisateur), donc calculé séparément.
 function buildResumeQuery(id_utilisateur) {
   return `with u as (select '${id_utilisateur}'::uuid as id),
 lots_u as (
-  select l.id, l.mission_id, l.nombre_horaires_rue, l.nombre_horaires_remuneration, l.presence_recruteur
+  select l.id, l.nombre_horaires_rue, l.nombre_horaires_remuneration, l.presence_recruteur
   from lots l join u on l.utilisateur_id = u.id
 ),
 heures as (
@@ -105,43 +107,60 @@ heures as (
     count(*) as nb_lots_total
   from lots_u
 ),
-dons_par_mission as (
-  select l.mission_id,
-    count(distinct d.id) as bs_reel,
-    count(distinct d.id) filter (where don.date_de_naissance is not null) as nb_dons_avec_naissance,
-    avg(d.montant) as don_moyen,
-    count(distinct d.id) filter (where (d.created_at::date - don.date_de_naissance) / 365.0 >= 25) as nb_dons_plus_25
-  from lots_u l
-  join dons d on d.lot_id = l.id and d.statut in ${STATUTS_VALIDES}
-  left join donateurs don on don.id = d.donateur_id
-  group by 1
-),
 dons_u as (
-  -- bs_reel_total et don_moyen_total portent sur toutes les missions
-  -- (indicateurs de volume/montant, indépendants de la donnée d'âge).
-  -- pct_plus_25_total/score_qualite_total n'agrègent que les missions où
-  -- au moins un don a une date de naissance connue — les missions sans
-  -- aucune donnée donateur sont exclues de CE calcul uniquement.
-  select
-    sum(bs_reel) as bs_reel,
-    sum(don_moyen * bs_reel) filter (where bs_reel > 0) / nullif(sum(bs_reel) filter (where bs_reel > 0), 0) as don_moyen,
-    sum(nb_dons_avec_naissance) filter (where nb_dons_avec_naissance > 0) as nb_dons_avec_naissance,
-    sum(nb_dons_plus_25) filter (where nb_dons_avec_naissance > 0) as nb_dons_plus_25
-  from dons_par_mission
+  select count(distinct d.id) as bs_reel
+  from lots_u l join dons d on d.lot_id = l.id and d.statut in ${STATUTS_VALIDES}
 )
 select
   (select min(date_debut) from contrats c join u on c.utilisateur_id = u.id) as premiere_mission_le,
+  (select max(date_debut) from contrats c join u on c.utilisateur_id = u.id) as derniere_mission_le,
   (select count(distinct mission_id) from contrats c join u on c.utilisateur_id = u.id) as nb_missions,
   h.heures_rue_total, h.heures_remuneration_total, h.nb_lots_total,
   case when coalesce(h.heures_remuneration_total,0) > 0 then coalesce(h.heures_rue_total,0)::float / h.heures_remuneration_total else null end as taux_h_total,
   case when h.nb_lots_total > 0 then coalesce(h.heures_remuneration_total,0)::float / (h.nb_lots_total * 7) else null end as taux_absence_total,
-  d.bs_reel as bs_reel_total,
-  d.don_moyen as don_moyen_total,
-  case when coalesce(d.nb_dons_avec_naissance,0) > 0 then coalesce(d.nb_dons_plus_25,0)::float / d.nb_dons_avec_naissance else null end as pct_plus_25_total,
-  case when d.don_moyen is not null and coalesce(d.nb_dons_avec_naissance,0) > 0
-    then d.don_moyen * (coalesce(d.nb_dons_plus_25,0)::float / d.nb_dons_avec_naissance)
-    else null end as score_qualite_total
+  d.bs_reel as bs_reel_total
 from heures h cross join dons_u d;`;
+}
+
+// Statut global (score qualité) calculé sur les lots des 270 dernières
+// heures de rue uniquement (les plus récentes en premier, cumul jusqu'à
+// 270h) — pas sur toute la carrière, pour refléter la fiabilité récente
+// plutôt qu'un historique potentiellement ancien/sans donnée donateur.
+function buildStatutGlobalQuery(id_utilisateur) {
+  return `with u as (select '${id_utilisateur}'::uuid as id),
+lots_u as (
+  select l.id, l.date, l.nombre_horaires_rue
+  from lots l join u on l.utilisateur_id = u.id
+  where coalesce(l.presence_recruteur, true)
+),
+lots_cumul as (
+  select id, nombre_horaires_rue,
+    sum(nombre_horaires_rue) over (order by date desc nulls last, id) as cumul_rue
+  from lots_u
+),
+lots_270 as (
+  select id, nombre_horaires_rue from lots_cumul
+  where cumul_rue - nombre_horaires_rue < 270
+),
+dons_270 as (
+  select
+    count(distinct d.id) as bs_reel,
+    count(distinct d.id) filter (where don.date_de_naissance is not null) as nb_dons_avec_naissance,
+    avg(d.montant) as don_moyen,
+    count(distinct d.id) filter (where (d.created_at::date - don.date_de_naissance) / 365.0 >= 25) as nb_dons_plus_25
+  from lots_270 l
+  join dons d on d.lot_id = l.id and d.statut in ${STATUTS_VALIDES}
+  left join donateurs don on don.id = d.donateur_id
+)
+select
+  (select coalesce(sum(nombre_horaires_rue),0) from lots_270) as heures_rue_270,
+  d.bs_reel as bs_reel_270,
+  d.don_moyen as don_moyen_270,
+  case when coalesce(d.nb_dons_avec_naissance,0) > 0 then coalesce(d.nb_dons_plus_25,0)::float / d.nb_dons_avec_naissance else null end as pct_plus_25_270,
+  case when coalesce(d.nb_dons_avec_naissance,0) > 0 and d.don_moyen is not null
+    then d.don_moyen * (coalesce(d.nb_dons_plus_25,0)::float / d.nb_dons_avec_naissance)
+    else null end as score_qualite_270
+from dons_270 d;`;
 }
 
 function buildSalarieQueries(id_utilisateur) {
@@ -150,6 +169,7 @@ function buildSalarieQueries(id_utilisateur) {
     missions: buildMissionsQuery(id_utilisateur),
     performance: buildPerformanceParMissionQuery(id_utilisateur),
     resume: buildResumeQuery(id_utilisateur),
+    statutGlobal: buildStatutGlobalQuery(id_utilisateur),
   };
 }
 

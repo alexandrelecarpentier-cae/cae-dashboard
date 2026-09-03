@@ -16,21 +16,15 @@
     -webkit-font-smoothing:antialiased;}
   @media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important; transition-duration:.001ms !important;}}
 
-  header{position:sticky; top:0; z-index:20; background:rgba(255,255,255,.92); backdrop-filter:blur(8px);
-    padding:calc(env(safe-area-inset-top) + 14px) 16px 12px; border-bottom:1px solid var(--line);}
-  h1{margin:0 0 4px; font-size:20px; font-weight:800; letter-spacing:-.01em; line-height:1.2; text-transform:uppercase;}
-  h1 em{color:var(--red); font-style:normal;}
-  .sub{font-size:12.5px; color:var(--muted); margin-bottom:2px;}
-  .error-banner{margin-top:12px; padding:10px 12px; border:1px solid var(--line); border-left:3px solid var(--red);
+  .error-banner{margin:16px 16px 0; padding:10px 12px; border:1px solid var(--line); border-left:3px solid var(--red);
     background:#FFF6F7; font-size:12px; color:#7A1225; display:none; line-height:1.5;}
   .error-banner.show{display:block;}
   .error-banner b{color:var(--red);}
 
-  main{padding:4px 16px 40px; max-width:900px; margin:0 auto;}
+  main{padding:16px 16px 40px; max-width:900px; margin:0 auto;}
 
   /* Fiche */
-  .profile-card{background:#fff; border:1px solid var(--line); border-radius:var(--sharp); padding:18px;
-    margin-top:16px;}
+  .profile-card{background:#fff; border:1px solid var(--line); border-radius:var(--sharp); padding:18px;}
   .profile-name{font-size:22px; font-weight:800; text-transform:uppercase; letter-spacing:-.01em;}
   .profile-sub{font-size:13px; color:var(--muted); margin-top:4px;}
   .badge-row{display:flex; gap:6px; margin-top:10px; flex-wrap:wrap;}
@@ -40,8 +34,9 @@
   .badge.rm{background:#E2173B; color:#fff;}
 
   .kpi-grid{display:grid; grid-template-columns:repeat(2, 1fr); gap:10px; margin-top:16px;}
+  @media (min-width:560px){ .kpi-grid{grid-template-columns:repeat(4, 1fr);} }
   .kpi{border:1px solid var(--line); border-radius:var(--sharp); padding:12px; background:#fff;}
-  .kpi .val{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:20px; font-weight:800;}
+  .kpi .val{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:18px; font-weight:800;}
   .kpi .lbl{font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; margin-top:2px;}
 
   .section-label{display:flex; align-items:center; gap:6px; font-size:10px; text-transform:uppercase;
@@ -83,13 +78,9 @@
 </head>
 <body>
 
-<header>
-  <h1>Fiche <em>salarié</em></h1>
-  <div class="sub" id="subLabel"></div>
-  <div class="error-banner" id="errorBanner">
-    <b>Connexion impossible.</b> <span id="errorDetail"></span>
-  </div>
-</header>
+<div class="error-banner" id="errorBanner">
+  <b>Connexion impossible.</b> <span id="errorDetail"></span>
+</div>
 
 <main id="content">
   <div id="profileArea" style="display:none;"></div>
@@ -168,48 +159,52 @@
 
     const idt = data.identite || {};
     const name = [idt.prenom, idt.nom].filter(Boolean).join(' ') || 'Salarié inconnu';
-    document.getElementById('subLabel').textContent = idt.email || '';
 
-    const roles = new Set((data.missions || []).map(roleLabel));
-    const badges = [...roles].map((r) => {
-      const cls = r === 'RM' ? 'rm' : r === 'RE' ? 're' : '';
-      return `<span class="badge ${cls}">${r}</span>`;
-    }).join('');
+    // Uniquement le statut du dernier contrat (missions déjà triées par
+    // date_debut desc côté backend, donc missions[0] = le plus récent).
+    const missions = data.missions || [];
+    const dernierRole = missions.length ? roleLabel(missions[0]) : null;
+    const badgeHtml = dernierRole
+      ? (() => {
+          const cls = dernierRole === 'RM' ? 'rm' : dernierRole === 'RE' ? 're' : '';
+          return `<span class="badge ${cls}">${dernierRole}</span>`;
+        })()
+      : '';
 
     const resume = data.resume || {};
-    const tauxMoyen = resume.heures_rue_total > 0
-      ? (resume.bs_reel_total || 0) / resume.heures_rue_total
-      : null;
+    const statut = data.statutGlobal || {};
 
     area.innerHTML = `
       <div class="profile-card">
         <div class="profile-name">${name}</div>
         <div class="profile-sub">${idt.email || ''}${idt.civilite ? ' · ' + idt.civilite : ''}</div>
-        <div class="badge-row">${badges}</div>
+        <div class="badge-row">${badgeHtml}</div>
       </div>
 
       <div class="kpi-grid">
         <div class="kpi"><div class="val">${resume.nb_missions != null ? fmtNum(resume.nb_missions) : '—'}</div><div class="lbl">Missions</div></div>
         <div class="kpi"><div class="val">${fmtDate(resume.premiere_mission_le)}</div><div class="lbl">Première mission</div></div>
+        <div class="kpi"><div class="val">${fmtDate(resume.derniere_mission_le)}</div><div class="lbl">Dernière mission</div></div>
         <div class="kpi"><div class="val">${resume.bs_reel_total != null ? fmtNum(resume.bs_reel_total) : '—'}</div><div class="lbl">BS réel cumulé</div></div>
-        <div class="kpi"><div class="val">${tauxMoyen != null ? fmtNum(tauxMoyen, 3) : '—'}</div><div class="lbl">Taux réel moyen</div></div>
+        <div class="kpi"><div class="val">${resume.heures_rue_total != null ? fmtNum(resume.heures_rue_total, 1) : '—'}</div><div class="lbl">Heures de rue totales</div></div>
+        <div class="kpi"><div class="val">${resume.heures_remuneration_total != null ? fmtNum(resume.heures_remuneration_total, 1) : '—'}</div><div class="lbl">Heures rémunérées totales</div></div>
+        <div class="kpi"><div class="val">${resume.taux_h_total != null ? fmtNum(resume.taux_h_total, 3) : '—'}</div><div class="lbl">Taux heures rue / rémunérées</div></div>
+        <div class="kpi"><div class="val">${resume.taux_absence_total != null ? fmtPct(resume.taux_absence_total) : '—'}</div><div class="lbl">Taux d'absence</div></div>
       </div>
 
-      <div class="section-label"><span class="diamond"></span>Score qualité — global</div>
+      <div class="section-label"><span class="diamond"></span>Statut global — 270 dernières heures de rue</div>
       <div class="score-card">
         <div>
-          <div class="score-val">${resume.score_qualite_total != null ? fmtNum(resume.score_qualite_total, 2) : '—'}</div>
+          <div class="score-val">${statut.score_qualite_270 != null ? fmtNum(statut.score_qualite_270, 2) : '—'}</div>
           <div class="score-lbl">Don moyen × % donateurs +25 ans</div>
         </div>
-        <div>${scoreBadgeHtml(resume.score_qualite_total)}</div>
+        <div>${scoreBadgeHtml(statut.score_qualite_270)}</div>
       </div>
       <div class="metric-grid">
-        <div class="metric"><div class="v">${resume.taux_h_total != null ? fmtNum(resume.taux_h_total, 3) : '—'}</div><div class="l">Taux heures rue / rémunérées</div></div>
-        <div class="metric"><div class="v">${resume.taux_absence_total != null ? fmtPct(resume.taux_absence_total) : '—'}</div><div class="l">Taux d'absence</div></div>
-        <div class="metric"><div class="v">${resume.don_moyen_total != null ? fmtMoney(resume.don_moyen_total) : '—'}</div><div class="l">Don moyen</div></div>
-        <div class="metric"><div class="v">${resume.pct_plus_25_total != null ? fmtPct(resume.pct_plus_25_total) : '—'}</div><div class="l">Donateurs +25 ans</div></div>
-        <div class="metric"><div class="v">${resume.heures_rue_total != null ? fmtNum(resume.heures_rue_total, 1) : '—'}</div><div class="l">Heures de rue cumulées</div></div>
-        <div class="metric"><div class="v">${resume.heures_remuneration_total != null ? fmtNum(resume.heures_remuneration_total, 1) : '—'}</div><div class="l">Heures rémunérées cumulées</div></div>
+        <div class="metric"><div class="v">${statut.don_moyen_270 != null ? fmtMoney(statut.don_moyen_270) : '—'}</div><div class="l">Don moyen</div></div>
+        <div class="metric"><div class="v">${statut.pct_plus_25_270 != null ? fmtPct(statut.pct_plus_25_270) : '—'}</div><div class="l">Donateurs +25 ans</div></div>
+        <div class="metric"><div class="v">${statut.bs_reel_270 != null ? fmtNum(statut.bs_reel_270) : '—'}</div><div class="l">BS réel (270h)</div></div>
+        <div class="metric"><div class="v">${statut.heures_rue_270 != null ? fmtNum(statut.heures_rue_270, 1) : '—'}</div><div class="l">Heures de rue évaluées</div></div>
       </div>
 
       <div class="section-label"><span class="diamond"></span>Historique des missions</div>
@@ -217,7 +212,6 @@
     `;
 
     const listEl = document.getElementById('missionList');
-    const missions = data.missions || [];
     if (!missions.length) {
       listEl.innerHTML = '<div class="empty">Aucune mission enregistrée</div>';
       return;
