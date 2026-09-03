@@ -18,11 +18,6 @@
 
   header{position:sticky; top:0; z-index:20; background:rgba(255,255,255,.92); backdrop-filter:blur(8px);
     padding:calc(env(safe-area-inset-top) + 14px) 16px 12px; border-bottom:1px solid var(--line);}
-  .tab-bar{display:flex; gap:8px; margin-bottom:12px;}
-  .tab-link{flex:1; text-align:center; padding:8px 10px; border-radius:var(--sharp); border:1px solid var(--line);
-    background:#fff; color:var(--muted); font-size:12.5px; font-weight:700; text-decoration:none;
-    text-transform:uppercase; letter-spacing:.03em;}
-  .tab-link.active{background:var(--red); border-color:var(--red); color:#fff;}
   h1{margin:0 0 4px; font-size:20px; font-weight:800; letter-spacing:-.01em; line-height:1.2; text-transform:uppercase;}
   h1 em{color:var(--red); font-style:normal;}
   .sub{font-size:12.5px; color:var(--muted); margin-bottom:2px;}
@@ -82,11 +77,6 @@
 <body>
 
 <header>
-  <div class="tab-bar">
-    <a class="tab-link" href="rm.html">Missions</a>
-    <a class="tab-link active" href="salarie.html">Salarié</a>
-    <a class="tab-link" href="emplacement.html">Emplacement</a>
-  </div>
   <h1>Fiche <em>salarié</em></h1>
   <div class="sub" id="subLabel">Recherchez un RD, RE ou RM par nom</div>
   <div class="error-banner" id="errorBanner">

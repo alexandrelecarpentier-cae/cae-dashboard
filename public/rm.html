@@ -34,12 +34,6 @@
   .refresh-btn.spinning{animation:spin 0.7s linear;}
   @keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
 
-  .tab-bar{display:flex; gap:8px; margin-bottom:12px;}
-  .tab-link{flex:1; text-align:center; padding:8px 10px; border-radius:var(--sharp); border:1px solid var(--line);
-    background:#fff; color:var(--muted); font-size:12.5px; font-weight:700; text-decoration:none;
-    text-transform:uppercase; letter-spacing:.03em;}
-  .tab-link.active{background:var(--red); border-color:var(--red); color:#fff;}
-
   .meta-row{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px;}
   .sync{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:11.5px; color:var(--muted); display:flex; align-items:center; gap:6px;}
   .sync b{color:var(--text); font-weight:600;}
@@ -147,12 +141,6 @@
 <header>
   <div class="head-row">
     <h1>Missions <em>en cours</em></h1>
-  </div>
-  <div class="tab-bar">
-    <a class="tab-link active" href="rm.html">Missions</a>
-    <a class="tab-link" href="challenge.html">Challenge</a>
-    <a class="tab-link" href="salarie.html">Salarié</a>
-    <a class="tab-link" href="emplacement.html">Emplacement</a>
   </div>
   <div class="meta-row">
     <div class="sync"><span class="live-diamond off" id="liveDiamond"></span>Synchro <b id="syncTime">—</b></div>

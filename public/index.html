@@ -6,71 +6,16 @@
 <title>Dashboards CAE</title>
 <style>
   :root{
-    --bg:#FFFFFF; --surface-2:#F5F5F6; --line:#E4E4E8;
-    --red:#E2173B; --text:#0F0F11; --muted:#75757C; --sharp:2px;
+    --bg:#FFFFFF; --text:#0F0F11; --muted:#75757C;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
-  header{padding:calc(env(safe-area-inset-top) + 20px) 16px 12px; border-bottom:1px solid var(--line);}
-  h1{margin:0 0 4px; font-size:22px; font-weight:800; text-transform:uppercase; letter-spacing:-.01em;}
-  h1 em{color:var(--red); font-style:normal;}
-  .sub{font-size:13px; color:var(--muted);}
-  main{padding:16px; max-width:640px; margin:0 auto;}
-  .card{display:block; background:#fff; border:1px solid var(--line); border-radius:var(--sharp);
-    padding:16px; margin-bottom:10px; text-decoration:none; color:var(--text);}
-  .card:hover{background:var(--surface-2);}
-  .card-title{font-size:15px; font-weight:800; text-transform:uppercase; letter-spacing:.01em;}
-  .card-desc{font-size:12.5px; color:var(--muted); margin-top:4px; line-height:1.5;}
-  .card-note{font-size:11px; color:var(--red); margin-top:6px; font-weight:700;}
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    height:100%; display:flex; align-items:center; justify-content:center; text-align:center;}
+  .msg{color:var(--muted); font-size:13px; padding:16px;}
 </style>
 </head>
 <body>
-
-<header>
-  <h1>Dashboards <em>CAE</em></h1>
-  <div class="sub">Un seul projet, un dashboard par rôle</div>
-</header>
-
-<main>
-  <a class="card" href="rm.html">
-    <div class="card-title">RM — Vue globale</div>
-    <div class="card-desc">Toutes les missions en cours, tous clients confondus. Classements et challenges.</div>
-  </a>
-
-  <a class="card" href="salarie.html">
-    <div class="card-title">Salarié — Fiche individuelle</div>
-    <div class="card-desc">Recherche par nom : identité, contrats, historique multi-mission d'un RD, RE ou RM.</div>
-  </a>
-
-  <a class="card" href="emplacement.html">
-    <div class="card-title">Emplacement</div>
-    <div class="card-desc">Recherche par lieu : missions passées à cet endroit, comparaison entre emplacements.</div>
-  </a>
-
-  <a class="card" href="challenge.html">
-    <div class="card-title">Challenge recruteurs</div>
-    <div class="card-desc">Classements du jour, de la semaine, de la dernière heure. Toutes missions en cours.</div>
-  </a>
-
-  <a class="card" href="client.html">
-    <div class="card-title">Client</div>
-    <div class="card-desc">Vue d'une association sur ses missions. Nécessite un lien avec ?id_client=… (fourni par le RM).</div>
-    <div class="card-note">Accès direct par lien uniquement</div>
-  </a>
-
-  <a class="card" href="mission.html">
-    <div class="card-title">Mission</div>
-    <div class="card-desc">Détail d'une mission : avancement, staff, qualité. Nécessite ?code_mission=… (accessible depuis la vue RM).</div>
-    <div class="card-note">Accès direct par lien uniquement</div>
-  </a>
-
-  <a class="card" href="rd.html">
-    <div class="card-title">RD — Performance recruteur</div>
-    <div class="card-desc">Suivi jour par jour d'un recruteur sur une mission. Nécessite ?id_mission=…&id_utilisateur=….</div>
-    <div class="card-note">Accès direct par lien uniquement</div>
-  </a>
-</main>
-
+<div class="msg">Dashboard CAE</div>
 </body>
 </html>
