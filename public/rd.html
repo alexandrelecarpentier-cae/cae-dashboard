@@ -124,8 +124,6 @@
 <body>
 
 <header>
-  <h1 id="pageTitle">Performance <em>individuelle</em></h1>
-  <div class="sub" id="missionSub">Chargement…</div>
   <div class="meta-row">
     <div class="sync"><span class="live-diamond off" id="liveDiamond"></span>Synchro <b id="syncTime">—</b></div>
     <div class="sync" id="countdown">5:00</div>
@@ -160,11 +158,6 @@
   <div class="section-label"><span class="diamond"></span><span id="perfTitle">Performance équipe sur la mission</span></div>
   <div class="kpi-scroll" id="kpiPerf"></div>
 
-  <div class="section-label">
-    <span class="diamond"></span>Présence sur la mission
-  </div>
-  <div class="kpi-scroll" id="kpiPresence"></div>
-
   <div class="section-label info-wrap">
     <span class="diamond"></span>Qualité des dons
     <button class="info-btn" id="suspectsInfoBtn" type="button">i</button>
@@ -180,6 +173,11 @@
     </div>
   </div>
   <div class="kpi-scroll" id="kpiQualite"></div>
+
+  <div class="section-label">
+    <span class="diamond"></span>Présence sur la mission
+  </div>
+  <div class="kpi-scroll" id="kpiPresence"></div>
 
   <div class="section-label"><span class="diamond"></span>Profil des donateurs</div>
   <div class="pie-grid">
@@ -393,14 +391,6 @@
     applyClientColor(info.couleur);
     missionDebut = info.date_debut; missionFin = info.date_fin;
 
-    const bits = [];
-    if (info.client_nom) bits.push(info.client_nom);
-    const missionLabel = info.code_mission || info.code_mission_client || '';
-    if (missionLabel) bits.push(missionLabel);
-    if (info.statut_mission) bits.push(info.statut_mission);
-    if (info.date_debut || info.date_fin) bits.push(fmtDate(info.date_debut) + ' → ' + fmtDate(info.date_fin));
-    document.getElementById('missionSub').textContent = bits.join(' · ') || '—';
-
     if (!quickTagsEl.dataset.built) {
       buildQuickTags();
       quickTagsEl.dataset.built = '1';
@@ -408,9 +398,6 @@
 
     lastTable = data.table || [];
     const row = lastTable.find((r) => r.utilisateur_id === selectedRd) || {};
-
-    const nom = row.rd || 'Recruteur';
-    document.getElementById('pageTitle').innerHTML = '<em>' + nom.replace(/</g, '&lt;') + '</em>';
 
     renderKpis(row);
     renderAgePie(data.age || []);
