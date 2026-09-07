@@ -46,14 +46,14 @@
 
   .filters{margin-top:10px;}
   .filter-row{display:flex; flex-wrap:wrap; gap:12px; align-items:flex-start;}
-  .filter-field{display:flex; flex-direction:column; gap:6px; min-width:150px;}
-  .filter-field.grow{flex:1 1 220px;}
-  .filter-label{font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); font-weight:700;}
+  .filter-field{display:flex; flex-direction:column; gap:6px; flex:0 0 180px; width:180px;}
+  .filter-field.grow{flex:1 1 260px; width:auto;}
+  .filter-label{font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); font-weight:700; line-height:1;}
   .control{
     background:#fff; color:var(--text); border:1px solid var(--line); border-radius:var(--sharp);
-    padding:8px 10px; font-size:13px; width:100%; font-family:inherit;
+    padding:8px 10px; font-size:13px; width:100%; height:34px; box-sizing:border-box; font-family:inherit;
   }
-  .day-tags{display:flex; flex-wrap:wrap; gap:6px;}
+  .day-tags{display:flex; flex-wrap:wrap; align-items:center; gap:6px; min-height:34px;}
   .day-tag{
     background:#fff; color:var(--text); border:1px solid var(--line);
     border-radius:var(--sharp); padding:6px 10px; font-size:12.5px; font-weight:600;
@@ -74,7 +74,7 @@
   .mission-suggestions .empty{padding:10px; font-size:12px; color:var(--muted); text-align:center;}
   .btn-reset{
     background:#fff; border:1px solid var(--line); border-radius:var(--sharp);
-    padding:9px 12px; font-size:12px; font-weight:700; color:var(--muted); cursor:pointer;
+    padding:0 12px; height:34px; box-sizing:border-box; font-size:12px; font-weight:700; color:var(--muted); cursor:pointer;
     text-transform:uppercase; letter-spacing:.03em; align-self:flex-end;
   }
 
@@ -540,8 +540,8 @@
       { v: fmtNum(k.nb_dons), l: 'Bulletins' },
       { v: k.don_moyen != null ? fmtNum(k.don_moyen, 2) + '€' : '—', l: 'Don moyen' },
       { v: k.age_moyen != null ? fmtNum(k.age_moyen, 1) : '—', l: 'Âge moyen' },
-      { v: k.heures_rue != null ? fmtNum(k.heures_rue, 1) : '—', l: 'Heures rue' },
-      { v: k.heures_rem != null ? fmtNum(k.heures_rem, 1) : '—', l: 'Heures rém.' },
+      { v: k.heures_rue != null ? fmtNum(k.heures_rue, 0) : '—', l: 'Heures rue' },
+      { v: k.heures_rem != null ? fmtNum(k.heures_rem, 0) : '—', l: 'Heures rém.' },
     ];
     document.getElementById('kpiRow').innerHTML = kpis.map((kp) => `
       <div class="kpi"><div class="val">${kp.v}</div><div class="lbl">${kp.l}</div></div>`).join('');
