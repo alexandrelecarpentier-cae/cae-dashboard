@@ -52,16 +52,16 @@
     background:#fff; color:var(--text); border:1px solid var(--line); border-radius:var(--sharp);
     padding:8px 10px; font-size:13px; width:100%; height:34px; box-sizing:border-box; font-family:inherit;
   }
-  .day-tags{display:flex; flex-wrap:wrap; align-items:center; gap:6px; min-height:34px;}
+  .day-tags{display:flex; flex-wrap:nowrap; align-items:center; gap:6px; min-height:34px;}
   .day-tag{
     background:#fff; color:var(--text); border:1px solid var(--line);
     border-radius:var(--sharp); padding:6px 10px; font-size:12.5px; font-weight:600;
-    cursor:pointer; user-select:none; line-height:1.2;
+    cursor:pointer; user-select:none; line-height:1.2; white-space:nowrap;
   }
   .day-tag.active{border-color:var(--red); color:#fff; background:var(--red);}
   .mission-search-wrap{position:relative;}
   .mission-suggestions{
-    display:none; position:absolute; top:calc(100% + 4px); left:0; z-index:30; min-width:260px;
+    display:none; position:fixed; z-index:1000; min-width:260px;
     background:#fff; border:1px solid var(--line); border-radius:var(--sharp);
     box-shadow:0 6px 24px rgba(15,15,17,.12); max-height:260px; overflow-y:auto;
   }
@@ -146,7 +146,7 @@
           <div class="mission-suggestions" id="missionSuggestions"></div>
         </div>
       </div>
-      <div class="filter-field" style="width:260px;">
+      <div class="filter-field">
         <div class="filter-label">Période</div>
         <div class="day-tags" id="periodTags"></div>
       </div>
@@ -158,7 +158,7 @@
         <div class="filter-label">Au</div>
         <input class="control" type="date" id="f-date-max" aria-label="Date de fin">
       </div>
-      <div class="filter-field" style="width:210px;">
+      <div class="filter-field">
         <div class="filter-label">Statut mission</div>
         <div class="day-tags" id="statutTags">
           <span class="day-tag active" data-statut="">Toutes</span>
@@ -358,6 +358,20 @@
     missionSuggestionsEl.classList.remove('show');
   }
 
+  // Le menu de suggestions est en position:fixed (positionné en JS via les
+  // coordonnées écran du champ) plutôt qu'absolute/relatif au champ : la
+  // barre de filtres défile horizontalement (overflow-x:auto) quand tous
+  // les filtres ne tiennent pas sur une ligne, ce qui coupait un menu
+  // positionné normalement. Le fixed échappe à ce découpage et s'affiche
+  // toujours entièrement, par-dessus l'en-tête.
+  function positionMissionSuggestions() {
+    const rect = missionSearchEl.getBoundingClientRect();
+    const width = Math.max(rect.width, 260);
+    missionSuggestionsEl.style.width = width + 'px';
+    missionSuggestionsEl.style.left = Math.min(rect.left, window.innerWidth - width - 8) + 'px';
+    missionSuggestionsEl.style.top = (rect.bottom + 4) + 'px';
+  }
+
   function renderMissionSuggestions(query) {
     const q = (query || '').trim().toLowerCase();
     const list = q
@@ -387,6 +401,7 @@
         refreshData(true);
       });
     });
+    positionMissionSuggestions();
     missionSuggestionsEl.classList.add('show');
   }
 
@@ -399,6 +414,11 @@
       missionSearchEl.value = selectedMissionLabel;
     }, 150);
   });
+  // Ferme le menu si la page défile ou change de taille : sa position fixe
+  // ne suit pas le champ (qui peut bouger avec le scroll du header sticky
+  // ou de la barre de filtres), mieux vaut refermer que désynchroniser.
+  window.addEventListener('scroll', closeMissionSuggestions, { passive: true, capture: true });
+  window.addEventListener('resize', closeMissionSuggestions);
 
   // ---------------------------------------------------------------
   // Filtre période — mêmes raccourcis rapides que /rd.html (Total /
