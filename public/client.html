@@ -45,10 +45,9 @@
   select.selfilter.rm-active{border-color:var(--red); color:var(--red); background:var(--accent-tint);}
 
   .filters{margin-top:10px;}
-  .filter-row{display:flex; flex-wrap:wrap; gap:12px; align-items:flex-start;}
-  .filter-field{display:flex; flex-direction:column; gap:6px; flex:0 0 180px; width:180px;}
-  .filter-field.grow{flex:1 1 260px; width:auto;}
-  .filter-label{font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); font-weight:700; line-height:1;}
+  .filter-row{display:flex; flex-wrap:nowrap; gap:10px; align-items:flex-start; overflow-x:auto; padding-bottom:2px;}
+  .filter-field{display:flex; flex-direction:column; gap:6px; flex:0 0 auto;}
+  .filter-label{font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); font-weight:700; line-height:1; white-space:nowrap;}
   .control{
     background:#fff; color:var(--text); border:1px solid var(--line); border-radius:var(--sharp);
     padding:8px 10px; font-size:13px; width:100%; height:34px; box-sizing:border-box; font-family:inherit;
@@ -62,7 +61,7 @@
   .day-tag.active{border-color:var(--red); color:#fff; background:var(--red);}
   .mission-search-wrap{position:relative;}
   .mission-suggestions{
-    display:none; position:absolute; top:calc(100% + 4px); left:0; right:0; z-index:30;
+    display:none; position:absolute; top:calc(100% + 4px); left:0; z-index:30; min-width:260px;
     background:#fff; border:1px solid var(--line); border-radius:var(--sharp);
     box-shadow:0 6px 24px rgba(15,15,17,.12); max-height:260px; overflow-y:auto;
   }
@@ -140,26 +139,26 @@
 
   <div class="filters">
     <div class="filter-row">
-      <div class="filter-field grow">
+      <div class="filter-field" style="width:170px;">
         <div class="filter-label">Mission</div>
         <div class="mission-search-wrap">
           <input class="control" type="text" id="f-mission-search" placeholder="Toutes les missions" autocomplete="off">
           <div class="mission-suggestions" id="missionSuggestions"></div>
         </div>
       </div>
-      <div class="filter-field">
+      <div class="filter-field" style="width:260px;">
         <div class="filter-label">Période</div>
         <div class="day-tags" id="periodTags"></div>
       </div>
-      <div class="filter-field">
+      <div class="filter-field" style="width:130px;">
         <div class="filter-label">Du</div>
         <input class="control" type="date" id="f-date-min" aria-label="Date de début">
       </div>
-      <div class="filter-field">
+      <div class="filter-field" style="width:130px;">
         <div class="filter-label">Au</div>
         <input class="control" type="date" id="f-date-max" aria-label="Date de fin">
       </div>
-      <div class="filter-field">
+      <div class="filter-field" style="width:210px;">
         <div class="filter-label">Statut mission</div>
         <div class="day-tags" id="statutTags">
           <span class="day-tag active" data-statut="">Toutes</span>
