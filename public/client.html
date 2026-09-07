@@ -138,10 +138,11 @@
   </button>
   <div class="filters-panel" id="filtersPanel">
     <div class="filters-grid">
-      <label>Missions</label>
-      <div class="day-tags" id="missionTags"></div>
+      <label>Mission</label>
+      <select id="f-mission"><option value="">Toutes les missions</option></select>
 
-      <label>Date</label>
+      <label>Période</label>
+      <div class="day-tags" id="periodTags"></div>
       <input type="date" id="f-date-min" aria-label="Date de début">
       <input type="date" id="f-date-max" aria-label="Date de fin">
 
@@ -236,9 +237,9 @@
     return;
   }
 
-  // Le filtre "missions" et tous les filtres avancés vivent uniquement dans
+  // Le filtre "mission" et tous les filtres avancés vivent uniquement dans
   // l'état JS de la page — jamais dans l'URL — comme demandé.
-  const selectedMissionIds = new Set(); // vide = toutes les missions (passées/en cours)
+  let selectedMissionId = ''; // vide = toutes les missions (passées/en cours)
   let filters = { date_min: '', date_max: '', jour_semaine: '', emplacement: '', statut_mission: '' };
 
   const charts = {}; // instances Chart.js en cours, pour les détruire avant de les recréer
@@ -331,37 +332,100 @@
   }
 
   // ---------------------------------------------------------------
-  // Liste des missions du client (passées/en cours uniquement) → tags
-  // multi-sélectionnables, dans le menu de filtres.
+  // Liste des missions du client (passées/en cours uniquement) → menu
+  // déroulant à sélection unique, par code mission, dans le panneau de
+  // filtres. S'applique immédiatement (comme le filtre période).
   // ---------------------------------------------------------------
-  const missionTagsEl = document.getElementById('missionTags');
+  const missionSelectEl = document.getElementById('f-mission');
 
   async function loadMissions() {
     try {
       const res = await fetch('/api/client-missions?id_client=' + encodeURIComponent(idClient), { cache: 'no-store' });
       const rows = await res.json();
       if (!res.ok || rows.error) throw new Error(rows.error || 'Erreur missions');
-      missionTagsEl.innerHTML = rows.map((m) => {
-        const label = [m.code_mission_client, m.code_mission].filter(Boolean).join(' / ') || 'Mission';
-        return `<span class="day-tag" data-id="${m.id}">${label}</span>`;
-      }).join('');
-      missionTagsEl.querySelectorAll('.day-tag').forEach((tag) => {
-        tag.addEventListener('click', () => {
-          const id = tag.dataset.id;
-          if (selectedMissionIds.has(id)) selectedMissionIds.delete(id);
-          else selectedMissionIds.add(id);
-          tag.classList.toggle('active', selectedMissionIds.has(id));
-          loadFacets();
-        });
-      });
+      missionSelectEl.innerHTML = '<option value="">Toutes les missions</option>' +
+        rows.map((m) => {
+          const label = [m.code_mission_client, m.code_mission].filter(Boolean).join(' / ') || 'Mission';
+          return `<option value="${m.id}">${label.replace(/</g, '&lt;')}</option>`;
+        }).join('');
+      if (selectedMissionId) missionSelectEl.value = selectedMissionId;
     } catch (e) {
       console.warn('Chargement des missions impossible :', e.message);
       // Non bloquant : le dashboard agrégé (toutes missions) reste consultable.
     }
   }
+  missionSelectEl.addEventListener('change', () => {
+    selectedMissionId = missionSelectEl.value;
+    loadFacets();
+    updateFiltersCount();
+    refreshData(true);
+  });
 
   // ---------------------------------------------------------------
-  // Filtres avancés (missions, date, jour, emplacement, statut mission)
+  // Filtre période — mêmes raccourcis rapides que /rd.html (Total /
+  // Aujourd'hui / Hier / Cette semaine / Semaine dernière), avec
+  // application immédiate ; la saisie manuelle des dates s'applique
+  // aussi immédiatement.
+  // ---------------------------------------------------------------
+  function isoDate(d) { return d.toISOString().slice(0, 10); }
+  function mondayOf(d) {
+    const x = new Date(d);
+    const day = (x.getDay() + 6) % 7; // 0 = lundi
+    x.setDate(x.getDate() - day);
+    x.setHours(0, 0, 0, 0);
+    return x;
+  }
+
+  const periodTagsEl = document.getElementById('periodTags');
+  const dateMinEl = document.getElementById('f-date-min');
+  const dateMaxEl = document.getElementById('f-date-max');
+
+  function setActivePeriodTag(key) {
+    periodTagsEl.querySelectorAll('.day-tag').forEach((t) => t.classList.toggle('active', t.dataset.key === key));
+  }
+
+  function buildPeriodTags() {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const monday = mondayOf(today);
+    const sunday = new Date(monday); sunday.setDate(sunday.getDate() + 6);
+    const lastMonday = new Date(monday); lastMonday.setDate(lastMonday.getDate() - 7);
+    const lastSunday = new Date(monday); lastSunday.setDate(lastSunday.getDate() - 1);
+    const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+    const tags = [
+      { key: 'total', label: 'Total', from: '', to: '' },
+      { key: 'today', label: "Aujourd'hui", from: isoDate(today), to: isoDate(today) },
+      { key: 'yesterday', label: 'Hier', from: isoDate(yesterday), to: isoDate(yesterday) },
+      { key: 'week', label: 'Cette semaine', from: isoDate(monday), to: isoDate(sunday) },
+      { key: 'lastweek', label: 'Semaine dernière', from: isoDate(lastMonday), to: isoDate(lastSunday) },
+    ];
+    periodTagsEl.innerHTML = tags.map((t) =>
+      `<span class="day-tag" data-key="${t.key}" data-from="${t.from}" data-to="${t.to}">${t.label}</span>`
+    ).join('');
+    periodTagsEl.querySelectorAll('.day-tag').forEach((tag) => {
+      tag.addEventListener('click', () => {
+        filters.date_min = tag.dataset.from;
+        filters.date_max = tag.dataset.to;
+        dateMinEl.value = filters.date_min;
+        dateMaxEl.value = filters.date_max;
+        setActivePeriodTag(tag.dataset.key);
+        updateFiltersCount();
+        refreshData(true);
+      });
+    });
+    setActivePeriodTag('total');
+  }
+  [dateMinEl, dateMaxEl].forEach((el) => {
+    el.addEventListener('change', () => {
+      setActivePeriodTag(null);
+      filters.date_min = dateMinEl.value;
+      filters.date_max = dateMaxEl.value;
+      updateFiltersCount();
+      refreshData(true);
+    });
+  });
+
+  // ---------------------------------------------------------------
+  // Filtres avancés (jour, emplacement, statut mission)
   // ---------------------------------------------------------------
   const filtersToggle = document.getElementById('filtersToggle');
   const filtersPanel = document.getElementById('filtersPanel');
@@ -377,7 +441,7 @@
   });
 
   function missionQueryParams() {
-    return selectedMissionIds.size ? { mission_ids: [...selectedMissionIds].join(',') } : {};
+    return selectedMissionId ? { mission_ids: selectedMissionId } : {};
   }
 
   async function loadFacets() {
@@ -396,15 +460,15 @@
   }
 
   function updateFiltersCount() {
-    const n = Object.values(filters).filter(Boolean).length + (selectedMissionIds.size ? 1 : 0);
+    const n = Object.values(filters).filter(Boolean).length + (selectedMissionId ? 1 : 0);
     document.getElementById('filtersCount').textContent = n ? n + ' actif' + (n > 1 ? 's' : '') : '';
     filtersToggle.querySelector('span').textContent = 'Filtres';
   }
 
   document.getElementById('filtersApply').addEventListener('click', () => {
     filters = {
-      date_min: document.getElementById('f-date-min').value,
-      date_max: document.getElementById('f-date-max').value,
+      date_min: dateMinEl.value,
+      date_max: dateMaxEl.value,
       jour_semaine: document.getElementById('f-jour').value,
       emplacement: document.getElementById('f-emplacement').value,
       statut_mission: selectedStatutMission,
@@ -419,8 +483,9 @@
     });
     selectedStatutMission = '';
     statutTagsEl.querySelectorAll('.day-tag').forEach((t) => t.classList.toggle('active', t.dataset.statut === ''));
-    selectedMissionIds.clear();
-    missionTagsEl.querySelectorAll('.day-tag').forEach((t) => t.classList.remove('active'));
+    selectedMissionId = '';
+    missionSelectEl.value = '';
+    setActivePeriodTag('total');
     filters = { date_min: '', date_max: '', jour_semaine: '', emplacement: '', statut_mission: '' };
     loadFacets();
     updateFiltersCount();
@@ -603,6 +668,7 @@
   setInterval(tickCountdown, 1000);
 
   // INIT
+  buildPeriodTags();
   ensureChartJs().then((ok) => {
     if (!ok) console.warn('Chart.js indisponible (2 CDN testés) — les graphiques resteront vides, le reste du dashboard fonctionne normalement.');
     loadMissions();
