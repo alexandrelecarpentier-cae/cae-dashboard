@@ -44,34 +44,39 @@
   }
   select.selfilter.rm-active{border-color:var(--red); color:var(--red); background:var(--accent-tint);}
 
-  .filters-toggle{
-    margin-top:10px; background:none; border:1px solid var(--line); border-radius:var(--sharp);
-    padding:8px 12px; font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase;
-    letter-spacing:.04em; cursor:pointer; display:flex; align-items:center; gap:6px; justify-content:space-between; width:100%;
-  }
-  .filters-toggle .n{color:var(--red);}
-  .filters-panel{display:none; margin-top:10px; padding:12px; background:var(--surface-2); border:1px solid var(--line); border-radius:var(--sharp);}
-  .filters-panel.open{display:block;}
-  .filters-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
-  @media (max-width:520px){ .filters-grid{grid-template-columns:1fr;} }
-  .filters-grid label{grid-column:1/-1; font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); font-weight:700; margin-top:6px;}
-  .filters-grid label:first-child{margin-top:0;}
-  .filters-grid select, .filters-grid input[type="date"]{
+  .filters{margin-top:10px;}
+  .filter-row{display:flex; flex-wrap:wrap; gap:12px; align-items:flex-start;}
+  .filter-field{display:flex; flex-direction:column; gap:6px; min-width:150px;}
+  .filter-field.grow{flex:1 1 220px;}
+  .filter-label{font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); font-weight:700;}
+  .control{
     background:#fff; color:var(--text); border:1px solid var(--line); border-radius:var(--sharp);
-    padding:8px 10px; font-size:13px; width:100%;
+    padding:8px 10px; font-size:13px; width:100%; font-family:inherit;
   }
-  .filters-grid .day-tags{grid-column:1/-1; display:flex; flex-wrap:wrap; gap:6px;}
+  .day-tags{display:flex; flex-wrap:wrap; gap:6px;}
   .day-tag{
     background:#fff; color:var(--text); border:1px solid var(--line);
     border-radius:var(--sharp); padding:6px 10px; font-size:12.5px; font-weight:600;
     cursor:pointer; user-select:none; line-height:1.2;
   }
   .day-tag.active{border-color:var(--red); color:#fff; background:var(--red);}
-  .filters-actions{display:flex; gap:8px; margin-top:12px;}
-  .btn-reset{flex:1; background:#fff; border:1px solid var(--line); border-radius:var(--sharp);
-    padding:9px 10px; font-size:12.5px; font-weight:700; color:var(--muted); cursor:pointer; text-transform:uppercase; letter-spacing:.03em;}
-  .btn-apply{flex:1; background:var(--red); border:1px solid var(--red); border-radius:var(--sharp);
-    padding:9px 10px; font-size:12.5px; font-weight:700; color:#fff; cursor:pointer; text-transform:uppercase; letter-spacing:.03em;}
+  .mission-search-wrap{position:relative;}
+  .mission-suggestions{
+    display:none; position:absolute; top:calc(100% + 4px); left:0; right:0; z-index:30;
+    background:#fff; border:1px solid var(--line); border-radius:var(--sharp);
+    box-shadow:0 6px 24px rgba(15,15,17,.12); max-height:260px; overflow-y:auto;
+  }
+  .mission-suggestions.show{display:block;}
+  .mission-suggestions .opt{padding:8px 10px; font-size:12.5px; cursor:pointer; border-bottom:1px solid var(--line);}
+  .mission-suggestions .opt:last-child{border-bottom:none;}
+  .mission-suggestions .opt:hover{background:var(--surface-2);}
+  .mission-suggestions .opt.all{color:var(--muted); font-weight:700; text-transform:uppercase; font-size:10.5px; letter-spacing:.04em;}
+  .mission-suggestions .empty{padding:10px; font-size:12px; color:var(--muted); text-align:center;}
+  .btn-reset{
+    background:#fff; border:1px solid var(--line); border-radius:var(--sharp);
+    padding:9px 12px; font-size:12px; font-weight:700; color:var(--muted); cursor:pointer;
+    text-transform:uppercase; letter-spacing:.03em; align-self:flex-end;
+  }
 
   .error-banner{
     margin-top:12px; padding:10px 12px; border:1px solid var(--line); border-left:3px solid var(--red);
@@ -133,44 +138,36 @@
   </div>
   <div id="refreshBar"><div id="refreshFill"></div></div>
 
-  <button class="filters-toggle" id="filtersToggle" type="button">
-    <span>Filtres</span><span class="n" id="filtersCount"></span>
-  </button>
-  <div class="filters-panel" id="filtersPanel">
-    <div class="filters-grid">
-      <label>Mission</label>
-      <select id="f-mission"><option value="">Toutes les missions</option></select>
-
-      <label>Période</label>
-      <div class="day-tags" id="periodTags"></div>
-      <input type="date" id="f-date-min" aria-label="Date de début">
-      <input type="date" id="f-date-max" aria-label="Date de fin">
-
-      <label>Jour de la semaine</label>
-      <select id="f-jour">
-        <option value="">Tous les jours</option>
-        <option value="1">Lundi</option>
-        <option value="2">Mardi</option>
-        <option value="3">Mercredi</option>
-        <option value="4">Jeudi</option>
-        <option value="5">Vendredi</option>
-        <option value="6">Samedi</option>
-        <option value="7">Dimanche</option>
-      </select>
-
-      <label>Emplacement</label>
-      <select id="f-emplacement"><option value="">Tous les emplacements</option></select>
-
-      <label>Statut mission</label>
-      <div class="day-tags" id="statutTags">
-        <span class="day-tag active" data-statut="">Toutes</span>
-        <span class="day-tag" data-statut="en_cours">En cours</span>
-        <span class="day-tag" data-statut="terminee">Passées</span>
+  <div class="filters">
+    <div class="filter-row">
+      <div class="filter-field grow">
+        <div class="filter-label">Mission</div>
+        <div class="mission-search-wrap">
+          <input class="control" type="text" id="f-mission-search" placeholder="Toutes les missions" autocomplete="off">
+          <div class="mission-suggestions" id="missionSuggestions"></div>
+        </div>
       </div>
-    </div>
-    <div class="filters-actions">
+      <div class="filter-field">
+        <div class="filter-label">Période</div>
+        <div class="day-tags" id="periodTags"></div>
+      </div>
+      <div class="filter-field">
+        <div class="filter-label">Du</div>
+        <input class="control" type="date" id="f-date-min" aria-label="Date de début">
+      </div>
+      <div class="filter-field">
+        <div class="filter-label">Au</div>
+        <input class="control" type="date" id="f-date-max" aria-label="Date de fin">
+      </div>
+      <div class="filter-field">
+        <div class="filter-label">Statut mission</div>
+        <div class="day-tags" id="statutTags">
+          <span class="day-tag active" data-statut="">Toutes</span>
+          <span class="day-tag" data-statut="en_cours">En cours</span>
+          <span class="day-tag" data-statut="terminee">Passées</span>
+        </div>
+      </div>
       <button class="btn-reset" id="filtersReset" type="button">Réinitialiser</button>
-      <button class="btn-apply" id="filtersApply" type="button">Appliquer</button>
     </div>
   </div>
 
@@ -237,10 +234,11 @@
     return;
   }
 
-  // Le filtre "mission" et tous les filtres avancés vivent uniquement dans
-  // l'état JS de la page — jamais dans l'URL — comme demandé.
+  // Le filtre "mission" et tous les filtres vivent uniquement dans l'état
+  // JS de la page — jamais dans l'URL — comme demandé.
   let selectedMissionId = ''; // vide = toutes les missions (passées/en cours)
-  let filters = { date_min: '', date_max: '', jour_semaine: '', emplacement: '', statut_mission: '' };
+  let selectedMissionLabel = '';
+  let filters = { date_min: '', date_max: '', statut_mission: '' };
 
   const charts = {}; // instances Chart.js en cours, pour les détruire avant de les recréer
   const DEFAULT_ACCENT = '#E2173B';
@@ -332,33 +330,75 @@
   }
 
   // ---------------------------------------------------------------
-  // Liste des missions du client (passées/en cours uniquement) → menu
-  // déroulant à sélection unique, par code mission, dans le panneau de
-  // filtres. S'applique immédiatement (comme le filtre période).
+  // Liste des missions du client (passées/en cours uniquement) → champ
+  // texte avec recherche + suggestions : vide affiche les 20 dernières
+  // missions, la saisie filtre sur l'ensemble des missions du client.
+  // S'applique immédiatement à la sélection.
   // ---------------------------------------------------------------
-  const missionSelectEl = document.getElementById('f-mission');
+  let missionsCache = [];
+  const missionSearchEl = document.getElementById('f-mission-search');
+  const missionSuggestionsEl = document.getElementById('missionSuggestions');
+
+  function missionLabel(m) {
+    return [m.code_mission_client, m.code_mission].filter(Boolean).join(' / ') || 'Mission';
+  }
 
   async function loadMissions() {
     try {
       const res = await fetch('/api/client-missions?id_client=' + encodeURIComponent(idClient), { cache: 'no-store' });
       const rows = await res.json();
       if (!res.ok || rows.error) throw new Error(rows.error || 'Erreur missions');
-      missionSelectEl.innerHTML = '<option value="">Toutes les missions</option>' +
-        rows.map((m) => {
-          const label = [m.code_mission_client, m.code_mission].filter(Boolean).join(' / ') || 'Mission';
-          return `<option value="${m.id}">${label.replace(/</g, '&lt;')}</option>`;
-        }).join('');
-      if (selectedMissionId) missionSelectEl.value = selectedMissionId;
+      missionsCache = rows; // déjà triées par date_debut desc côté serveur
     } catch (e) {
       console.warn('Chargement des missions impossible :', e.message);
       // Non bloquant : le dashboard agrégé (toutes missions) reste consultable.
     }
   }
-  missionSelectEl.addEventListener('change', () => {
-    selectedMissionId = missionSelectEl.value;
-    loadFacets();
-    updateFiltersCount();
-    refreshData(true);
+
+  function closeMissionSuggestions() {
+    missionSuggestionsEl.classList.remove('show');
+  }
+
+  function renderMissionSuggestions(query) {
+    const q = (query || '').trim().toLowerCase();
+    const list = q
+      ? missionsCache.filter((m) => missionLabel(m).toLowerCase().includes(q)).slice(0, 30)
+      : missionsCache.slice(0, 20); // 20 dernières missions
+
+    const allOpt = '<div class="opt all" data-id="">Toutes les missions</div>';
+    const rows = list.length
+      ? list.map((m) => `<div class="opt" data-id="${m.id}">${missionLabel(m).replace(/</g, '&lt;')}</div>`).join('')
+      : '<div class="empty">Aucune mission trouvée</div>';
+    missionSuggestionsEl.innerHTML = allOpt + rows;
+
+    missionSuggestionsEl.querySelectorAll('.opt').forEach((opt) => {
+      opt.addEventListener('mousedown', (e) => {
+        e.preventDefault(); // empêche le blur du champ de fermer la liste avant le clic
+        const id = opt.dataset.id;
+        if (id) {
+          const m = missionsCache.find((mm) => mm.id === id);
+          selectedMissionId = id;
+          selectedMissionLabel = m ? missionLabel(m) : '';
+        } else {
+          selectedMissionId = '';
+          selectedMissionLabel = '';
+        }
+        missionSearchEl.value = selectedMissionLabel;
+        closeMissionSuggestions();
+        refreshData(true);
+      });
+    });
+    missionSuggestionsEl.classList.add('show');
+  }
+
+  missionSearchEl.addEventListener('focus', () => renderMissionSuggestions(''));
+  missionSearchEl.addEventListener('input', () => renderMissionSuggestions(missionSearchEl.value));
+  missionSearchEl.addEventListener('blur', () => {
+    // Laisse le mousedown d'une suggestion s'exécuter avant de refermer/restaurer.
+    setTimeout(() => {
+      closeMissionSuggestions();
+      missionSearchEl.value = selectedMissionLabel;
+    }, 150);
   });
 
   // ---------------------------------------------------------------
@@ -408,7 +448,6 @@
         dateMinEl.value = filters.date_min;
         dateMaxEl.value = filters.date_max;
         setActivePeriodTag(tag.dataset.key);
-        updateFiltersCount();
         refreshData(true);
       });
     });
@@ -419,24 +458,19 @@
       setActivePeriodTag(null);
       filters.date_min = dateMinEl.value;
       filters.date_max = dateMaxEl.value;
-      updateFiltersCount();
       refreshData(true);
     });
   });
 
   // ---------------------------------------------------------------
-  // Filtres avancés (jour, emplacement, statut mission)
+  // Filtre statut mission — application immédiate, comme les autres.
   // ---------------------------------------------------------------
-  const filtersToggle = document.getElementById('filtersToggle');
-  const filtersPanel = document.getElementById('filtersPanel');
-  filtersToggle.addEventListener('click', () => filtersPanel.classList.toggle('open'));
-
-  let selectedStatutMission = '';
   const statutTagsEl = document.getElementById('statutTags');
   statutTagsEl.querySelectorAll('.day-tag').forEach((tag) => {
     tag.addEventListener('click', () => {
-      selectedStatutMission = tag.dataset.statut;
+      filters.statut_mission = tag.dataset.statut;
       statutTagsEl.querySelectorAll('.day-tag').forEach((t) => t.classList.toggle('active', t === tag));
+      refreshData(true);
     });
   });
 
@@ -444,51 +478,14 @@
     return selectedMissionId ? { mission_ids: selectedMissionId } : {};
   }
 
-  async function loadFacets() {
-    try {
-      const p = new URLSearchParams({ id_client: idClient, ...missionQueryParams() });
-      const res = await fetch('/api/facets?' + p.toString(), { cache: 'no-store' });
-      const data = await res.json();
-      if (!res.ok || data.error) throw new Error(data.error || 'Erreur facettes');
-      const emplSel = document.getElementById('f-emplacement');
-      const currentEmpl = filters.emplacement;
-      emplSel.innerHTML = '<option value="">Tous les emplacements</option>' +
-        (data.emplacements || []).map((v) => `<option value="${v}" ${v === currentEmpl ? 'selected' : ''}>${v}</option>`).join('');
-    } catch (e) {
-      console.warn('Chargement du filtre emplacement impossible :', e.message);
-    }
-  }
-
-  function updateFiltersCount() {
-    const n = Object.values(filters).filter(Boolean).length + (selectedMissionId ? 1 : 0);
-    document.getElementById('filtersCount').textContent = n ? n + ' actif' + (n > 1 ? 's' : '') : '';
-    filtersToggle.querySelector('span').textContent = 'Filtres';
-  }
-
-  document.getElementById('filtersApply').addEventListener('click', () => {
-    filters = {
-      date_min: dateMinEl.value,
-      date_max: dateMaxEl.value,
-      jour_semaine: document.getElementById('f-jour').value,
-      emplacement: document.getElementById('f-emplacement').value,
-      statut_mission: selectedStatutMission,
-    };
-    updateFiltersCount();
-    refreshData(true);
-  });
-
   document.getElementById('filtersReset').addEventListener('click', () => {
-    ['f-date-min', 'f-date-max', 'f-jour', 'f-emplacement'].forEach((id) => {
-      document.getElementById(id).value = '';
-    });
-    selectedStatutMission = '';
+    dateMinEl.value = ''; dateMaxEl.value = '';
+    setActivePeriodTag('total');
     statutTagsEl.querySelectorAll('.day-tag').forEach((t) => t.classList.toggle('active', t.dataset.statut === ''));
     selectedMissionId = '';
-    missionSelectEl.value = '';
-    setActivePeriodTag('total');
-    filters = { date_min: '', date_max: '', jour_semaine: '', emplacement: '', statut_mission: '' };
-    loadFacets();
-    updateFiltersCount();
+    selectedMissionLabel = '';
+    missionSearchEl.value = '';
+    filters = { date_min: '', date_max: '', statut_mission: '' };
     refreshData(true);
   });
 
@@ -672,7 +669,6 @@
   ensureChartJs().then((ok) => {
     if (!ok) console.warn('Chart.js indisponible (2 CDN testés) — les graphiques resteront vides, le reste du dashboard fonctionne normalement.');
     loadMissions();
-    loadFacets();
     refreshData(false);
   });
 })();
