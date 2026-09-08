@@ -58,7 +58,7 @@ function missionScopeCTE(rmId, clientId, dateRange) {
   LEFT JOIN utilisateur_informations_personnelles uip_rm ON uip_rm.utilisateur_id = m.responsable_mission_id
   LEFT JOIN utilisateurs u_re ON u_re.id = m.responsable_equipe_id
   LEFT JOIN utilisateur_informations_personnelles uip_re ON uip_re.utilisateur_id = m.responsable_equipe_id
-  WHERE m.statut_mission <> 'annulee'
+  WHERE m.statut_mission IN ('terminee', 'en_cours')
     ${rmFilter}
     ${clientFilter}
     ${overlapFilter}
@@ -239,8 +239,10 @@ ORDER BY c.nom;`;
 
 // Liste des bulletins suspects, toutes missions filtrées confondues
 // (structure identique à /re-collecte, avec une colonne Mission en plus
-// puisque le RM couvre plusieurs missions à la fois). On inclut aussi les
-// dons annulés, avec leur statut affiché, pour garder une trace visible.
+// puisque le RM couvre plusieurs missions à la fois). On inclut les dons
+// annulés (avec leur statut affiché, pour garder une trace visible), mais
+// pas les dons déjà transmis : une fois transmis, le contrôle qualité est
+// considéré comme fait, ils n'ont plus besoin d'apparaître dans cette liste.
 function buildBulletinsSuspectsListQuery(rmId, clientId, dateRange) {
   const dateFilter = dateUpToTodayClause('l.date', dateRange);
   return `WITH filtered_missions AS (
@@ -251,7 +253,7 @@ dons_filtres AS (
     FROM dons d
     JOIN lots l ON d.lot_id = l.id
     WHERE l.mission_id IN (SELECT id FROM filtered_missions)
-      AND d.statut IN ('nouveau', 'transmis', 'en_attente', 'annule')
+      AND d.statut IN ('nouveau', 'en_attente', 'annule')
       ${dateFilter}
 ),
 recruteur_contacts AS (
