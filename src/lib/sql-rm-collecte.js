@@ -156,7 +156,7 @@ total_row AS (
 SELECT * FROM mission_rows
 UNION ALL
 SELECT * FROM total_row
-ORDER BY sort_order, bs_reel DESC NULLS LAST;`;
+ORDER BY sort_order, date_debut DESC NULLS LAST;`;
 }
 
 function buildAgePieQuery(rmId, clientId, dateRange) {
