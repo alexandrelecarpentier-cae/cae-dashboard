@@ -175,4 +175,4 @@ function buildMissionSuiviQueries(id_mission, id_utilisateur, dateRange) {
   };
 }
 
-export { buildMissionSuiviQueries };
+export { buildMissionSuiviQueries, buildWeeklyQuery, dateUpToTodayClause };

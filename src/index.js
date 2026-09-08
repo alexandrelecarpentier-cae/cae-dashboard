@@ -32,6 +32,7 @@ import { buildEmplacementQueries } from './lib/sql-emplacement.js';
 import { buildMobilisationQueries, rdInfoQuery } from './lib/sql-mobilisation.js';
 import { buildRdDashboardQueries } from './lib/sql-rd.js';
 import { buildMissionSuiviQueries } from './lib/sql-mission-suivi.js';
+import { buildReCollecteQueries } from './lib/sql-re-collecte.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -45,6 +46,7 @@ export default {
       if (url.pathname === '/api/recruteur-performance') return await handleRecruteurPerformance(url, env);
       if (url.pathname === '/api/rd') return await handleRdDashboard(url, env);
       if (url.pathname === '/api/mission-suivi') return await handleMissionSuivi(url, env);
+      if (url.pathname === '/api/re-collecte') return await handleReCollecte(url, env);
       if (url.pathname === '/api/challenge') return await handleChallenge(env);
       if (url.pathname === '/api/salarie') return await handleSalarie(url, env);
       if (url.pathname === '/api/emplacement') return await handleEmplacement(url, env);
@@ -420,6 +422,75 @@ async function handleMissionSuivi(url, env) {
       dayStats,
       dayComments,
       daySuspects,
+    });
+  } catch (e) {
+    return jsonResponse({ error: String(e.message || e) }, 502);
+  }
+}
+
+// ---------------------------------------------------------------
+// /api/re-collecte — dashboard "RE — Collecte" (re-collecte.html) :
+// vue d'équipe complète sur une mission (suivi hebdo, table équipe,
+// pies, bulletins/jour) + liste détaillée des bulletins suspects
+// (dons annulés inclus). id_utilisateur optionnel filtre les
+// graphes/KPIs/la liste suspects sur un seul RD ; la table d'équipe
+// reste toujours complète (le sélecteur RD filtre côté frontend,
+// comme sur /mission).
+// ---------------------------------------------------------------
+async function handleReCollecte(url, env) {
+  const configError = requireConfig(env);
+  if (configError) return jsonResponse({ error: configError }, 500);
+
+  const resolved = await resolveMissionId(url, env);
+  if (resolved.error) return jsonResponse({ error: resolved.error }, resolved.upstream ? 502 : resolved.notFound ? 404 : 400);
+  const { id_mission } = resolved;
+
+  const id_utilisateur = url.searchParams.get('id_utilisateur') || '';
+  if (id_utilisateur && !RE_UUID.test(id_utilisateur)) {
+    return jsonResponse({ error: 'id_utilisateur invalide' }, 400);
+  }
+
+  const date_from = url.searchParams.get('date_from') || '';
+  const date_to = url.searchParams.get('date_to') || '';
+  if (date_from && !RE_DATE.test(date_from)) return jsonResponse({ error: 'date_from invalide' }, 400);
+  if (date_to && !RE_DATE.test(date_to)) return jsonResponse({ error: 'date_to invalide' }, 400);
+  const dateRange = date_from && date_to ? { from: date_from, to: date_to } : null;
+
+  const queries = buildReCollecteQueries(id_mission, id_utilisateur || null, dateRange);
+
+  try {
+    const [info, roster, table, weekly, age, gender, bulletins, suspects, suspectsList] = await Promise.all([
+      runQuery(env, queries.info),
+      runQuery(env, queries.roster),
+      runQuery(env, queries.table),
+      runQuery(env, queries.weekly),
+      runQuery(env, queries.age),
+      runQuery(env, queries.gender),
+      runQuery(env, queries.bulletins),
+      runQuery(env, queries.suspects),
+      runQuery(env, queries.suspectsList),
+    ]);
+
+    const suspectsByRd = {};
+    let suspectsTotal = 0;
+    suspects.forEach((r) => {
+      const n = Number(r.bs_suspects) || 0;
+      suspectsByRd[r.utilisateur_id] = n;
+      suspectsTotal += n;
+    });
+    table.forEach((r) => {
+      r.bs_suspects = r.rd === 'TOTAL' ? suspectsTotal : (suspectsByRd[r.utilisateur_id] || 0);
+    });
+
+    return jsonResponse({
+      info: info[0] || null,
+      roster,
+      table,
+      weekly,
+      age,
+      gender,
+      bulletins,
+      suspectsList,
     });
   } catch (e) {
     return jsonResponse({ error: String(e.message || e) }, 502);
