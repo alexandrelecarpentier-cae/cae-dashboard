@@ -336,4 +336,15 @@ function buildRdDashboardQueries(id_mission, id_utilisateur, dateRange) {
   };
 }
 
-export { buildRdDashboardQueries };
+export {
+  buildRdDashboardQueries,
+  buildRdInfoQuery,
+  buildRdRosterQuery,
+  buildRdTableQuery,
+  buildRdAgePieQuery,
+  buildRdGenderPieQuery,
+  buildRdBulletinsParJourQuery,
+  buildRdBsSuspectsQuery,
+  donMotifCase,
+  dateFilterClause,
+};

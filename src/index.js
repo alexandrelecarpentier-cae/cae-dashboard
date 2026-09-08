@@ -31,6 +31,7 @@ import { buildSalarieQueries } from './lib/sql-salarie.js';
 import { buildEmplacementQueries } from './lib/sql-emplacement.js';
 import { buildMobilisationQueries, rdInfoQuery } from './lib/sql-mobilisation.js';
 import { buildRdDashboardQueries } from './lib/sql-rd.js';
+import { buildMissionSuiviQueries } from './lib/sql-mission-suivi.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -43,6 +44,7 @@ export default {
       if (url.pathname === '/api/mission-performance') return await handleMissionPerformance(url, env);
       if (url.pathname === '/api/recruteur-performance') return await handleRecruteurPerformance(url, env);
       if (url.pathname === '/api/rd') return await handleRdDashboard(url, env);
+      if (url.pathname === '/api/mission-suivi') return await handleMissionSuivi(url, env);
       if (url.pathname === '/api/challenge') return await handleChallenge(env);
       if (url.pathname === '/api/salarie') return await handleSalarie(url, env);
       if (url.pathname === '/api/emplacement') return await handleEmplacement(url, env);
@@ -346,6 +348,78 @@ async function handleRdDashboard(url, env) {
       age,
       gender,
       bulletins,
+    });
+  } catch (e) {
+    return jsonResponse({ error: String(e.message || e) }, 502);
+  }
+}
+
+// ---------------------------------------------------------------
+// /api/mission-suivi — dashboard "Suivi de mission" (mission.html) :
+// tendance hebdomadaire, table d'équipe complète, pies, bulletins/jour,
+// et fil par journée (stats + commentaires + suspects en détail).
+// id_utilisateur optionnel : filtre le fil/les graphes sur un seul RD
+// (roster et table restent toujours vue d'équipe, comme /rd les affiche
+// déjà pour la sélection du RD dans le sélecteur de la page).
+// ---------------------------------------------------------------
+async function handleMissionSuivi(url, env) {
+  const configError = requireConfig(env);
+  if (configError) return jsonResponse({ error: configError }, 500);
+
+  const resolved = await resolveMissionId(url, env);
+  if (resolved.error) return jsonResponse({ error: resolved.error }, resolved.upstream ? 502 : resolved.notFound ? 404 : 400);
+  const { id_mission } = resolved;
+
+  const id_utilisateur = url.searchParams.get('id_utilisateur') || '';
+  if (id_utilisateur && !RE_UUID.test(id_utilisateur)) {
+    return jsonResponse({ error: 'id_utilisateur invalide' }, 400);
+  }
+
+  const date_from = url.searchParams.get('date_from') || '';
+  const date_to = url.searchParams.get('date_to') || '';
+  if (date_from && !RE_DATE.test(date_from)) return jsonResponse({ error: 'date_from invalide' }, 400);
+  if (date_to && !RE_DATE.test(date_to)) return jsonResponse({ error: 'date_to invalide' }, 400);
+  const dateRange = date_from && date_to ? { from: date_from, to: date_to } : null;
+
+  const queries = buildMissionSuiviQueries(id_mission, id_utilisateur || null, dateRange);
+
+  try {
+    const [info, roster, table, weekly, age, gender, bulletins, suspects, dayStats, dayComments, daySuspects] = await Promise.all([
+      runQuery(env, queries.info),
+      runQuery(env, queries.roster),
+      runQuery(env, queries.table),
+      runQuery(env, queries.weekly),
+      runQuery(env, queries.age),
+      runQuery(env, queries.gender),
+      runQuery(env, queries.bulletins),
+      runQuery(env, queries.suspects),
+      runQuery(env, queries.dayStats),
+      runQuery(env, queries.dayComments),
+      runQuery(env, queries.daySuspects),
+    ]);
+
+    const suspectsByRd = {};
+    let suspectsTotal = 0;
+    suspects.forEach((r) => {
+      const n = Number(r.bs_suspects) || 0;
+      suspectsByRd[r.utilisateur_id] = n;
+      suspectsTotal += n;
+    });
+    table.forEach((r) => {
+      r.bs_suspects = r.rd === 'TOTAL' ? suspectsTotal : (suspectsByRd[r.utilisateur_id] || 0);
+    });
+
+    return jsonResponse({
+      info: info[0] || null,
+      roster,
+      table,
+      weekly,
+      age,
+      gender,
+      bulletins,
+      dayStats,
+      dayComments,
+      daySuspects,
     });
   } catch (e) {
     return jsonResponse({ error: String(e.message || e) }, 502);
