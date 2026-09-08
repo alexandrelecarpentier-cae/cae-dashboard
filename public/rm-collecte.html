@@ -1,0 +1,592 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RM — Collecte — CAE</title>
+<style>
+  :root{
+    --bg:#FFFFFF; --surface:#FFFFFF; --surface-2:#F5F5F6; --line:#E4E4E8;
+    --red:#E2173B; --text:#0F0F11; --muted:#75757C;
+    --sharp:2px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;}
+  @media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important; transition-duration:.001ms !important;}}
+
+  header{
+    position:sticky; top:0; z-index:20;
+    background:rgba(255,255,255,.92); backdrop-filter:blur(8px);
+    padding:calc(env(safe-area-inset-top) + 14px) 16px 12px;
+    border-bottom:1px solid var(--line);
+  }
+  .meta-row{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px;}
+  .sync{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:11.5px; color:var(--muted); display:flex; align-items:center; gap:6px;}
+  .sync b{color:var(--text); font-weight:600;}
+  .live-diamond{width:7px; height:7px; background:var(--red); transform:rotate(45deg); flex:0 0 auto;
+    animation:pulse 2.2s infinite;}
+  .live-diamond.off{background:#C7C7CC; animation:none;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(226,23,59,.45);}70%{box-shadow:0 0 0 7px rgba(226,23,59,0);}100%{box-shadow:0 0 0 0 rgba(226,23,59,0);}}
+  #refreshBar{height:2px; width:100%; background:var(--line); overflow:hidden; margin-bottom:12px;}
+  #refreshFill{height:100%; width:0%; background:var(--red); transition:width 1s linear;}
+
+  .filters{display:flex; flex-direction:column; gap:8px;}
+  .filter-label{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; font-weight:700;}
+  .filter-row{display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;}
+  select.control{
+    background:var(--surface-2); color:var(--text); border:1px solid var(--line);
+    border-radius:var(--sharp); padding:7px 10px; font-size:12.5px; font-weight:600;
+    font-family:inherit; max-width:100%;
+  }
+  input.control{
+    background:var(--surface-2); color:var(--text); border:1px solid var(--line);
+    border-radius:var(--sharp); padding:6px 9px; font-size:12.5px; font-weight:600;
+    font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
+  }
+  .quick-tags{display:flex; flex-wrap:wrap; gap:6px;}
+  .quick-tag{
+    background:var(--surface-2); color:var(--text); border:1px solid var(--line);
+    border-radius:var(--sharp); padding:6px 10px; font-size:12.5px; font-weight:600;
+    cursor:pointer; user-select:none; line-height:1.2;
+  }
+  .quick-tag.active{border-color:var(--red); color:#fff; background:var(--red);}
+
+  .error-banner{
+    margin-top:12px; padding:10px 12px; border:1px solid var(--line); border-left:3px solid var(--red);
+    background:#FFF6F7; font-size:12px; color:#7A1225; display:none; line-height:1.5;
+  }
+  .error-banner.show{display:block;}
+  .error-banner b{color:var(--red);}
+
+  main{padding:4px 16px 40px; max-width:1280px; margin:0 auto;}
+  .section-label{display:flex; align-items:center; gap:6px; font-size:10px; text-transform:uppercase;
+    letter-spacing:.08em; color:var(--muted); font-weight:700; margin:18px 2px 8px;}
+  .section-label .diamond{width:6px; height:6px; background:var(--red); transform:rotate(45deg); flex:0 0 auto;}
+  .section-label .info-btn{
+    margin-left:auto; width:16px; height:16px; border-radius:50%; border:1px solid var(--muted);
+    color:var(--muted); background:none; font-size:10px; font-weight:800; line-height:14px;
+    cursor:pointer; padding:0; text-transform:none; letter-spacing:0;
+  }
+  .info-wrap{position:relative;}
+  .info-panel{
+    display:none; position:absolute; right:0; top:22px; z-index:30; width:min(320px, 86vw);
+    background:#fff; border:1px solid var(--line); border-radius:var(--sharp); padding:12px 14px;
+    box-shadow:0 6px 24px rgba(15,15,17,.12); font-size:12px; line-height:1.6; color:var(--text);
+  }
+  .info-panel.show{display:block;}
+  .info-panel p{margin:0 0 8px;}
+  .info-panel ul{margin:0; padding-left:16px;}
+  .info-panel li{margin-bottom:2px;}
+
+  .kpi-scroll{display:grid; grid-template-columns:repeat(2,1fr); gap:10px;}
+  @media (min-width:480px){ .kpi-scroll{grid-template-columns:repeat(3,1fr);} }
+  @media (min-width:720px){ .kpi-scroll{grid-template-columns:repeat(4,1fr);} }
+  .kpi{background:var(--surface-2);
+    border:1px solid var(--line); border-left:2px solid var(--red); border-radius:var(--sharp); padding:12px 14px;}
+  .kpi .val{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:21px; font-weight:700; line-height:1;}
+  .kpi .lbl{font-size:10px; color:var(--muted); margin-top:6px; text-transform:uppercase; letter-spacing:.05em;}
+  .kpi.score{border-left-color:var(--text);}
+  .kpi .badge{display:inline-block; margin-top:6px; font-size:9.5px; font-weight:800; text-transform:uppercase;
+    letter-spacing:.03em; padding:2px 6px; border-radius:var(--sharp);}
+  .badge-alerte{background:#FFE3E8; color:#B10F32;}
+  .badge-moyen{background:#FFF3CE; color:#8A6200;}
+  .badge-fiable{background:#E4F3E1; color:#1F7A32;}
+  .badge-tresfiable{background:#0F0F11; color:#fff;}
+
+  .card{background:#fff; border:1px solid var(--line); border-radius:var(--sharp); padding:14px 14px 12px; margin-bottom:10px;
+    position:relative; overflow:hidden; box-shadow:0 1px 2px rgba(15,15,17,.03);}
+  .card::before{content:""; position:absolute; top:0; left:0; width:3px; height:100%; background:var(--red);}
+  .card-inner{padding-left:6px;}
+  .chart-box{position:relative; height:240px;}
+  .chart-empty{display:flex; align-items:center; justify-content:center; height:240px; color:var(--muted); font-size:13px;}
+  .pie-grid{display:grid; grid-template-columns:1fr; gap:10px;}
+  @media (min-width:640px){ .pie-grid{grid-template-columns:1fr 1fr;} }
+
+  .pie-legend{list-style:none; margin:10px 0 0; padding:0; font-size:12px;}
+  .pie-legend li{display:flex; align-items:center; gap:8px; padding:3px 0;}
+  .pie-legend .dot{width:8px; height:8px; border-radius:50%; flex:0 0 auto;}
+  .pie-legend .lbl{flex:1; color:var(--text); font-weight:600;}
+  .pie-legend .val{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; color:var(--muted); white-space:nowrap;}
+
+  /* Tables (Suivi des missions / Bulletins suspects) */
+  .table-wrap{overflow-x:auto;}
+  table{width:100%; border-collapse:collapse; font-size:12.5px; white-space:nowrap;}
+  th,td{padding:8px 10px; text-align:left; border-bottom:1px solid var(--line);}
+  th{color:var(--muted); font-weight:700; font-size:10px; text-transform:uppercase; letter-spacing:.04em;}
+  td.num, th.num{text-align:right; font-family:ui-monospace,SFMono-Regular,Consolas,monospace;}
+  tr.total-row td{font-weight:800; border-top:2px solid var(--text); background:var(--surface-2);}
+  .status-badge{display:inline-block; padding:2px 7px; border-radius:var(--sharp); font-size:10px; font-weight:800;
+    border:1px solid var(--text); color:var(--text); text-transform:uppercase;}
+  .status-badge.cancelled{background:var(--red); border-color:var(--red); color:#fff;}
+  .table-empty{padding:24px; text-align:center; color:var(--muted); font-size:13px;}
+
+  #state{padding:60px 16px; text-align:center; color:var(--muted); font-size:14px;}
+  #state.error{color:var(--red);}
+  .hidden{display:none;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="meta-row">
+    <div class="sync"><span class="live-diamond off" id="liveDiamond"></span>Synchro <b id="syncTime">—</b></div>
+    <div class="sync" id="countdown">5:00</div>
+  </div>
+  <div id="refreshBar"><div id="refreshFill"></div></div>
+
+  <div class="filters">
+    <div class="filter-row">
+      <div>
+        <div class="filter-label">RM</div>
+        <select class="control" id="rmSelect"><option value="">Tous les RM</option></select>
+      </div>
+      <div>
+        <div class="filter-label">Association</div>
+        <select class="control" id="clientSelect"><option value="">Toutes les associations</option></select>
+      </div>
+      <div>
+        <div class="filter-label">Période</div>
+        <div class="quick-tags" id="quickTags">
+          <span class="quick-tag" data-key="total" data-from="" data-to="">Total</span>
+          <span class="quick-tag" data-key="today">Aujourd'hui</span>
+          <span class="quick-tag" data-key="yesterday">Hier</span>
+        </div>
+      </div>
+      <div>
+        <div class="filter-label">Du</div>
+        <input class="control" type="date" id="dateFrom">
+      </div>
+      <div>
+        <div class="filter-label">Au</div>
+        <input class="control" type="date" id="dateTo">
+      </div>
+    </div>
+  </div>
+
+  <div class="error-banner" id="errorBanner">
+    <b>Connexion impossible.</b> <span id="errorDetail"></span> La page réessaiera automatiquement.
+  </div>
+</header>
+
+<div id="state">Chargement des données depuis Metabase…</div>
+
+<main id="content" class="hidden">
+  <div class="section-label"><span class="diamond"></span>Performance des missions</div>
+  <div class="kpi-scroll" id="kpiPerf"></div>
+
+  <div class="section-label info-wrap">
+    <span class="diamond"></span>Qualité des dons
+    <button class="info-btn" id="suspectsInfoBtn" type="button">i</button>
+    <div class="info-panel" id="suspectsInfoPanel">
+      <p><b>Score qualité</b> = don moyen × % de donateurs de 25 ans et plus.</p>
+      <ul>
+        <li>&lt; 4 : Alerte / peu fiable</li>
+        <li>4 – 5,5 : Fiable moyen</li>
+        <li>5,5 – 6,5 : Fiable</li>
+        <li>≥ 6,5 : Très fiable</li>
+      </ul>
+    </div>
+  </div>
+  <div class="kpi-scroll" id="kpiQualite"></div>
+
+  <div class="section-label"><span class="diamond"></span>Profil des donateurs</div>
+  <div class="pie-grid">
+    <div class="card"><div class="card-inner">
+      <div style="font-size:11px; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px;">Âge</div>
+      <div class="chart-box" id="ageChartBox" style="height:200px;"><canvas id="chart-age"></canvas></div>
+      <ul class="pie-legend" id="ageLegend"></ul>
+    </div></div>
+    <div class="card"><div class="card-inner">
+      <div style="font-size:11px; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px;">Genre</div>
+      <div class="chart-box" id="genderChartBox" style="height:200px;"><canvas id="chart-gender"></canvas></div>
+      <ul class="pie-legend" id="genderLegend"></ul>
+    </div></div>
+  </div>
+
+  <div class="section-label"><span class="diamond"></span>Suivi des missions</div>
+  <div class="card"><div class="card-inner">
+    <div class="table-wrap">
+      <table id="missionsTable">
+        <thead>
+          <tr>
+            <th>Mission</th><th>Asso</th><th>Début</th><th>Fin</th>
+            <th class="num">BS rue</th><th class="num">BS réel</th><th class="num">Taux réel</th>
+            <th class="num">Tx transfo</th><th class="num">H rue/H rém</th>
+            <th class="num">Score quali</th><th class="num">Don moyen</th><th class="num">Âge médian</th>
+            <th>RM</th><th>RE</th><th>Ville</th>
+          </tr>
+        </thead>
+        <tbody id="missionsTableBody"></tbody>
+      </table>
+    </div>
+  </div></div>
+
+  <div class="section-label"><span class="diamond"></span>Bulletins suspects</div>
+  <div class="card"><div class="card-inner">
+    <div class="table-wrap">
+      <table id="suspectsTable">
+        <thead>
+          <tr>
+            <th>Date</th><th>Mission</th><th>Statut</th><th>Contrôle qualité</th><th class="num">Montant</th>
+            <th>Donateur</th><th>Adresse</th><th>Email</th><th>RD</th>
+          </tr>
+        </thead>
+        <tbody id="suspectsTableBody"></tbody>
+      </table>
+    </div>
+  </div></div>
+</main>
+
+<script>
+(function () {
+  // ---------------------------------------------------------------
+  // Dashboard "RM — Collecte" — vue cross-missions filtrée par RM et/ou
+  // association, sur une plage de dates optionnelle (missions "en cours"
+  // par chevauchement d'intervalle par défaut sur la journée du jour).
+  // Contrairement aux autres dashboards de ce projet, pas de mission
+  // cible fixe dans l'URL : les filtres RM/Association/période
+  // définissent entièrement le périmètre. Table de missions (une ligne
+  // par mission + TOTAL), camemberts âge/genre des donateurs, et une
+  // liste des bulletins suspects toutes missions filtrées confondues
+  // (dons annulés inclus, avec une colonne Mission). Toutes les requêtes
+  // Metabase passent par le backend (/api/rm-collecte) : aucune clé
+  // Metabase n'est jamais exposée côté client.
+  // ---------------------------------------------------------------
+  const stateEl = document.getElementById('state');
+  const contentEl = document.getElementById('content');
+
+  function fmtNum(n, digits = 0) {
+    if (n === null || n === undefined) return '—';
+    return Number(n).toLocaleString('fr-FR', { maximumFractionDigits: digits, minimumFractionDigits: digits });
+  }
+  function fmtPct1(n) {
+    if (n === null || n === undefined) return '—';
+    return fmtNum(n, 1) + ' %';
+  }
+  // ratio_h est un ratio brut (ex: 0,71) — affiché en pourcentage (71,0 %)
+  function fmtRatioPct(n) {
+    if (n === null || n === undefined) return '—';
+    return fmtPct1(Number(n) * 100);
+  }
+  function fmtEuro(n) {
+    if (n === null || n === undefined) return '—';
+    return fmtNum(n, 2) + '€';
+  }
+  function fmtDate(d) {
+    if (!d) return '—';
+    return new Date(d).toLocaleDateString('fr-FR');
+  }
+  function isoDate(d) { return d.toISOString().slice(0, 10); }
+  function esc(s) { return String(s == null ? '' : s).replace(/</g, '&lt;'); }
+
+  // ---------------------------------------------------------------
+  // Chargement résilient de Chart.js
+  // ---------------------------------------------------------------
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = src; s.onload = resolve; s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+  async function ensureChartJs() {
+    if (window.Chart) return true;
+    const urls = [
+      'https://cdnjs.cloudflare.com/ajax/libs/chart.js/4.4.4/chart.umd.min.js',
+      'https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js',
+    ];
+    for (const url of urls) {
+      try { await loadScript(url); if (window.Chart) return true; } catch (e) { /* essaie le suivant */ }
+    }
+    return false;
+  }
+
+  let liveMode = false;
+  let firstLoadDone = false;
+  let agePieChart = null, genderPieChart = null;
+  let selectedRm = '', selectedClient = '';
+  let dateFrom = '', dateTo = '';
+
+  const dateFromEl = document.getElementById('dateFrom');
+  const dateToEl = document.getElementById('dateTo');
+  const quickTagsEl = document.getElementById('quickTags');
+  const rmSelectEl = document.getElementById('rmSelect');
+  const clientSelectEl = document.getElementById('clientSelect');
+
+  dateFromEl.addEventListener('change', () => { dateFrom = dateFromEl.value; dateTo = dateToEl.value; setActiveQuickTag(null); refreshData(); });
+  dateToEl.addEventListener('change', () => { dateFrom = dateFromEl.value; dateTo = dateToEl.value; setActiveQuickTag(null); refreshData(); });
+  rmSelectEl.addEventListener('change', () => { selectedRm = rmSelectEl.value; refreshData(); });
+  clientSelectEl.addEventListener('change', () => { selectedClient = clientSelectEl.value; refreshData(); });
+
+  function setActiveQuickTag(key) {
+    quickTagsEl.querySelectorAll('.quick-tag').forEach((t) => t.classList.toggle('active', t.dataset.key === key));
+  }
+
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+  quickTagsEl.querySelector('[data-key="today"]').dataset.from = isoDate(today);
+  quickTagsEl.querySelector('[data-key="today"]').dataset.to = isoDate(today);
+  quickTagsEl.querySelector('[data-key="yesterday"]').dataset.from = isoDate(yesterday);
+  quickTagsEl.querySelector('[data-key="yesterday"]').dataset.to = isoDate(yesterday);
+  quickTagsEl.querySelectorAll('.quick-tag').forEach((tag) => {
+    tag.addEventListener('click', () => {
+      dateFrom = tag.dataset.from || ''; dateTo = tag.dataset.to || '';
+      dateFromEl.value = dateFrom; dateToEl.value = dateTo;
+      setActiveQuickTag(tag.dataset.key);
+      refreshData();
+    });
+  });
+
+  // Préfiltre par défaut : missions en cours aujourd'hui (comme le prototype d'origine).
+  dateFrom = isoDate(today); dateTo = isoDate(today);
+  dateFromEl.value = dateFrom; dateToEl.value = dateTo;
+  setActiveQuickTag('today');
+
+  function buildFilterLists(rmList, clientList) {
+    if (!rmSelectEl.dataset.built) {
+      rmSelectEl.innerHTML = '<option value="">Tous les RM</option>' +
+        rmList.map((r) => `<option value="${r.id}">${esc(r.nom)}</option>`).join('');
+      rmSelectEl.dataset.built = '1';
+    }
+    if (!clientSelectEl.dataset.built) {
+      clientSelectEl.innerHTML = '<option value="">Toutes les associations</option>' +
+        clientList.map((c) => `<option value="${c.id}">${esc(c.nom)}</option>`).join('');
+      clientSelectEl.dataset.built = '1';
+    }
+  }
+
+  async function refreshData() {
+    try {
+      const p = new URLSearchParams();
+      if (selectedRm) p.set('id_rm', selectedRm);
+      if (selectedClient) p.set('id_client', selectedClient);
+      if (dateFrom && dateTo) { p.set('date_from', dateFrom); p.set('date_to', dateTo); }
+
+      const res = await fetch('/api/rm-collecte?' + p.toString(), { cache: 'no-store' });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || 'Erreur inconnue');
+      render(data);
+      liveMode = true;
+      firstLoadDone = true;
+      document.getElementById('errorBanner').classList.remove('show');
+    } catch (err) {
+      liveMode = false;
+      document.getElementById('errorDetail').textContent = err.message;
+      document.getElementById('errorBanner').classList.add('show');
+      console.warn('Fetch /api/rm-collecte failed:', err);
+      if (!firstLoadDone) {
+        stateEl.textContent = 'Connexion impossible : ' + err.message;
+        stateEl.classList.add('error');
+      }
+    }
+    document.getElementById('syncTime').textContent =
+      new Date().toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    document.getElementById('liveDiamond').classList.toggle('off', !liveMode);
+  }
+
+  function scoreQualite(donMoyen, pctMoins25) {
+    if (donMoyen === null || donMoyen === undefined || pctMoins25 === null || pctMoins25 === undefined) return null;
+    return donMoyen * (100 - pctMoins25) / 100;
+  }
+  function scoreBadge(score) {
+    if (score === null || score === undefined) return '';
+    if (score < 4) return '<span class="badge badge-alerte">Alerte</span>';
+    if (score < 5.5) return '<span class="badge badge-moyen">Moyen</span>';
+    if (score < 6.5) return '<span class="badge badge-fiable">Fiable</span>';
+    return '<span class="badge badge-tresfiable">Très fiable</span>';
+  }
+
+  function render(data) {
+    stateEl.classList.add('hidden');
+    contentEl.classList.remove('hidden');
+
+    buildFilterLists(data.rmList || [], data.clientList || []);
+
+    const missions = data.missions || [];
+    const total = missions.find((r) => r.code_mission === 'TOTAL') || {};
+    renderKpis(total);
+    renderAgePie(data.age || []);
+    renderGenderPie(data.gender || []);
+    renderMissionsTable(missions);
+    renderSuspectsTable(data.suspectsList || []);
+  }
+
+  function renderKpis(row) {
+    const perf = [
+      { v: fmtNum(row.bs_reel), l: 'BS réel' },
+      { v: fmtNum(row.bs_rue), l: 'BS rue' },
+      { v: row.taux_reel != null ? fmtNum(row.taux_reel, 3) : '—', l: 'Taux réel' },
+      { v: row.tx_transfo != null ? fmtPct1(row.tx_transfo) : '—', l: 'Transfo' },
+      { v: fmtNum(row.bs_incomplets), l: 'Incomplets' },
+      { v: fmtNum(row.bs_annules), l: 'Annulés' },
+      { v: row.ratio_h != null ? fmtRatioPct(row.ratio_h) : '—', l: 'Ratio h rue/rém' },
+      { v: fmtNum(row.nb_rd), l: 'RD actifs' },
+    ];
+    document.getElementById('kpiPerf').innerHTML = perf.map((k) => `
+      <div class="kpi"><div class="val">${k.v}</div><div class="lbl">${k.l}</div></div>`).join('');
+
+    const score = scoreQualite(row.don_moyen, row.pct_moins_25);
+    const qualite = [
+      { v: row.don_moyen != null ? fmtEuro(row.don_moyen) : '—', l: 'Don moyen' },
+      { v: row.pct_moins_25 != null ? fmtPct1(100 - row.pct_moins_25) : '—', l: 'Donateurs 25 ans et +' },
+      { v: score != null ? fmtNum(score, 1) : '—', l: 'Score qualité', badge: scoreBadge(score) },
+      { v: row.age_median != null ? fmtNum(row.age_median, 1) : '—', l: 'Âge médian' },
+    ];
+    document.getElementById('kpiQualite').innerHTML = qualite.map((k) => `
+      <div class="kpi${k.badge ? ' score' : ''}"><div class="val">${k.v}</div><div class="lbl">${k.l}</div>${k.badge || ''}</div>`).join('');
+  }
+
+  function pct(n, total) { return total > 0 ? (n / total * 100) : 0; }
+
+  function renderVentilation(elId, rows, labelKey, colors) {
+    const el = document.getElementById(elId);
+    const total = rows.reduce((s, r) => s + (Number(r.nb) || 0), 0);
+    el.innerHTML = rows.map((r, i) => {
+      const n = Number(r.nb) || 0;
+      return `<li><span class="dot" style="background:${colors[i % colors.length]}"></span>
+        <span class="lbl">${esc(r[labelKey] || '')}</span>
+        <span class="val">${fmtNum(n)} (${fmtNum(pct(n, total), 1)} %)</span></li>`;
+    }).join('');
+  }
+
+  const AGE_COLORS = ['#E2173B', '#0F0F11', '#75757C', '#F5B301', '#2E7D32'];
+  function renderAgePie(rows) {
+    if (agePieChart) { agePieChart.destroy(); agePieChart = null; }
+    const box = document.getElementById('ageChartBox');
+    document.getElementById('ageLegend').innerHTML = '';
+    if (typeof Chart === 'undefined') { box.innerHTML = '<div class="chart-empty">Graphique indisponible</div>'; return; }
+    if (!rows.length) { box.innerHTML = '<div class="chart-empty">Aucune donnée</div>'; return; }
+    if (!box.querySelector('canvas')) box.innerHTML = '<canvas id="chart-age"></canvas>';
+    const total = rows.reduce((s, r) => s + (Number(r.nb) || 0), 0);
+    agePieChart = new Chart(document.getElementById('chart-age'), {
+      type: 'doughnut',
+      data: {
+        labels: rows.map((r) => r.tranche_age),
+        datasets: [{ data: rows.map((r) => r.nb), backgroundColor: AGE_COLORS }],
+      },
+      options: {
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: (ctx) => ctx.label + ' : ' + fmtNum(ctx.parsed) + ' (' + fmtNum(pct(ctx.parsed, total), 1) + ' %)' } },
+        },
+      },
+    });
+    renderVentilation('ageLegend', rows, 'tranche_age', AGE_COLORS);
+  }
+
+  const GENDER_COLORS = ['#E2173B', '#0F0F11', '#75757C'];
+  function renderGenderPie(rows) {
+    if (genderPieChart) { genderPieChart.destroy(); genderPieChart = null; }
+    const box = document.getElementById('genderChartBox');
+    document.getElementById('genderLegend').innerHTML = '';
+    if (typeof Chart === 'undefined') { box.innerHTML = '<div class="chart-empty">Graphique indisponible</div>'; return; }
+    if (!rows.length) { box.innerHTML = '<div class="chart-empty">Aucune donnée</div>'; return; }
+    if (!box.querySelector('canvas')) box.innerHTML = '<canvas id="chart-gender"></canvas>';
+    const total = rows.reduce((s, r) => s + (Number(r.nb) || 0), 0);
+    genderPieChart = new Chart(document.getElementById('chart-gender'), {
+      type: 'doughnut',
+      data: {
+        labels: rows.map((r) => r.genre),
+        datasets: [{ data: rows.map((r) => r.nb), backgroundColor: GENDER_COLORS }],
+      },
+      options: {
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: (ctx) => ctx.label + ' : ' + fmtNum(ctx.parsed) + ' (' + fmtNum(pct(ctx.parsed, total), 1) + ' %)' } },
+        },
+      },
+    });
+    renderVentilation('genderLegend', rows, 'genre', GENDER_COLORS);
+  }
+
+  function renderMissionsTable(rows) {
+    const tbody = document.getElementById('missionsTableBody');
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="15" class="table-empty">Aucune mission ne correspond aux filtres sélectionnés</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map((r) => {
+      const isTotal = r.code_mission === 'TOTAL';
+      const score = scoreQualite(r.don_moyen, r.pct_moins_25);
+      return `<tr${isTotal ? ' class="total-row"' : ''}>
+        <td>${esc(r.code_mission)}</td>
+        <td>${esc(r.client || '')}</td>
+        <td>${isTotal ? '' : fmtDate(r.date_debut)}</td>
+        <td>${isTotal ? '' : fmtDate(r.date_fin)}</td>
+        <td class="num">${fmtNum(r.bs_rue)}</td>
+        <td class="num">${fmtNum(r.bs_reel)}</td>
+        <td class="num">${fmtNum(r.taux_reel, 3)}</td>
+        <td class="num">${fmtPct1(r.tx_transfo)}</td>
+        <td class="num">${fmtRatioPct(r.ratio_h)}</td>
+        <td class="num">${score != null ? fmtNum(score, 2) : '—'}</td>
+        <td class="num">${fmtEuro(r.don_moyen)}</td>
+        <td class="num">${r.age_median ?? '—'}</td>
+        <td>${esc(r.rm || '')}</td>
+        <td>${esc(r.re || '')}</td>
+        <td>${esc(r.ville_principale || '')}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function renderSuspectsTable(rows) {
+    const tbody = document.getElementById('suspectsTableBody');
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="9" class="table-empty">Aucun bulletin suspect pour les missions et la période sélectionnées</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map((r) => {
+      const isCancelled = r.statut === 'annule';
+      return `<tr>
+        <td>${fmtDate(r.date)}</td>
+        <td>${esc(r.mission || '')}</td>
+        <td><span class="status-badge${isCancelled ? ' cancelled' : ''}">${esc(r.statut || '')}</span></td>
+        <td>${esc(r.motif || '')}</td>
+        <td class="num">${fmtEuro(r.montant)}</td>
+        <td>${esc(r.donateur || '')}</td>
+        <td>${esc(r.adresse || '')}</td>
+        <td>${esc(r.email_donateur || '')}</td>
+        <td>${esc(r.rd || '')}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Tooltip info Score qualité
+  const suspectsInfoBtn = document.getElementById('suspectsInfoBtn');
+  const suspectsInfoPanel = document.getElementById('suspectsInfoPanel');
+  suspectsInfoBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    suspectsInfoPanel.classList.toggle('show');
+  });
+  document.addEventListener('click', (e) => {
+    if (!suspectsInfoPanel.contains(e.target) && e.target !== suspectsInfoBtn) suspectsInfoPanel.classList.remove('show');
+  });
+
+  // ---------------------------------------------------------------
+  // AUTO-REFRESH toutes les 5 min
+  // ---------------------------------------------------------------
+  const REFRESH_MS = 5 * 60 * 1000;
+  let remaining = REFRESH_MS;
+  function tickCountdown() {
+    remaining -= 1000;
+    if (remaining <= 0) { remaining = REFRESH_MS; refreshData(); return; }
+    const s = Math.floor(remaining / 1000);
+    const mm = Math.floor(s / 60), ss = s % 60;
+    document.getElementById('countdown').textContent = `${mm}:${ss.toString().padStart(2, '0')}`;
+    document.getElementById('refreshFill').style.width = (100 - (remaining / REFRESH_MS) * 100) + '%';
+  }
+  setInterval(tickCountdown, 1000);
+
+  // INIT
+  ensureChartJs().then((ok) => {
+    if (!ok) console.warn('Chart.js indisponible (2 CDN testés) — les graphiques resteront vides, le reste de la page fonctionne normalement.');
+    refreshData();
+  });
+})();
+</script>
+
+</body>
+</html>

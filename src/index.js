@@ -33,6 +33,7 @@ import { buildMobilisationQueries, rdInfoQuery } from './lib/sql-mobilisation.js
 import { buildRdDashboardQueries } from './lib/sql-rd.js';
 import { buildMissionSuiviQueries } from './lib/sql-mission-suivi.js';
 import { buildReCollecteQueries } from './lib/sql-re-collecte.js';
+import { buildRmCollecteQueries, buildRmListQuery, buildClientListQuery } from './lib/sql-rm-collecte.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -47,6 +48,7 @@ export default {
       if (url.pathname === '/api/rd') return await handleRdDashboard(url, env);
       if (url.pathname === '/api/mission-suivi') return await handleMissionSuivi(url, env);
       if (url.pathname === '/api/re-collecte') return await handleReCollecte(url, env);
+      if (url.pathname === '/api/rm-collecte') return await handleRmCollecte(url, env);
       if (url.pathname === '/api/challenge') return await handleChallenge(env);
       if (url.pathname === '/api/salarie') return await handleSalarie(url, env);
       if (url.pathname === '/api/emplacement') return await handleEmplacement(url, env);
@@ -492,6 +494,49 @@ async function handleReCollecte(url, env) {
       bulletins,
       suspectsList,
     });
+  } catch (e) {
+    return jsonResponse({ error: String(e.message || e) }, 502);
+  }
+}
+
+// ---------------------------------------------------------------
+// /api/rm-collecte — dashboard "RM — Collecte" (rm-collecte.html) : vue
+// cross-missions filtrée par RM (id_rm) et/ou association (id_client),
+// sur une plage de dates optionnelle (missions "en cours" par
+// chevauchement d'intervalle si aucune plage n'est fournie — sinon
+// bornée à aujourd'hui côté bulletins suspects). Contrairement aux
+// autres dashboards de ce fichier, il n'y a pas de mission cible fixe :
+// pas de resolveMissionId ici.
+// ---------------------------------------------------------------
+async function handleRmCollecte(url, env) {
+  const configError = requireConfig(env);
+  if (configError) return jsonResponse({ error: configError }, 500);
+
+  const id_rm = url.searchParams.get('id_rm') || '';
+  if (id_rm && !RE_UUID.test(id_rm)) return jsonResponse({ error: 'id_rm invalide' }, 400);
+
+  const id_client = url.searchParams.get('id_client') || '';
+  if (id_client && !RE_UUID.test(id_client)) return jsonResponse({ error: 'id_client invalide' }, 400);
+
+  const date_from = url.searchParams.get('date_from') || '';
+  const date_to = url.searchParams.get('date_to') || '';
+  if (date_from && !RE_DATE.test(date_from)) return jsonResponse({ error: 'date_from invalide' }, 400);
+  if (date_to && !RE_DATE.test(date_to)) return jsonResponse({ error: 'date_to invalide' }, 400);
+  const dateRange = date_from && date_to ? { from: date_from, to: date_to } : null;
+
+  const queries = buildRmCollecteQueries(id_rm || null, id_client || null, dateRange);
+
+  try {
+    const [missions, age, gender, suspectsList, rmList, clientList] = await Promise.all([
+      runQuery(env, queries.missions),
+      runQuery(env, queries.age),
+      runQuery(env, queries.gender),
+      runQuery(env, queries.suspectsList),
+      runQuery(env, buildRmListQuery()),
+      runQuery(env, buildClientListQuery()),
+    ]);
+
+    return jsonResponse({ missions, age, gender, suspectsList, rmList, clientList });
   } catch (e) {
     return jsonResponse({ error: String(e.message || e) }, 502);
   }
