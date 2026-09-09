@@ -278,7 +278,15 @@
     if (!d) return '—';
     return new Date(d).toLocaleDateString('fr-FR');
   }
-  function isoDate(d) { return d.toISOString().slice(0, 10); }
+  // Date locale au format AAAA-MM-JJ. toISOString() seul renvoie la date UTC,
+  // ce qui décale "aujourd'hui" d'un jour en arrière pendant les 1-2 premières
+  // heures après minuit heure de Paris (UTC+1/+2) — d'où la correction de
+  // fuseau avant de tronquer à la date.
+  function isoDate(d) {
+    const tz = d.getTimezoneOffset();
+    const local = new Date(d.getTime() - tz * 60000);
+    return local.toISOString().slice(0, 10);
+  }
   function esc(s) { return String(s == null ? '' : s).replace(/</g, '&lt;'); }
 
   // ---------------------------------------------------------------

@@ -426,7 +426,15 @@
   // application immédiate ; la saisie manuelle des dates s'applique
   // aussi immédiatement.
   // ---------------------------------------------------------------
-  function isoDate(d) { return d.toISOString().slice(0, 10); }
+  // Date locale au format AAAA-MM-JJ. toISOString() seul renvoie la date UTC,
+  // ce qui décale "aujourd'hui" d'un jour en arrière pendant les 1-2 premières
+  // heures après minuit heure de Paris (UTC+1/+2) — d'où la correction de
+  // fuseau avant de tronquer à la date.
+  function isoDate(d) {
+    const tz = d.getTimezoneOffset();
+    const local = new Date(d.getTime() - tz * 60000);
+    return local.toISOString().slice(0, 10);
+  }
   function mondayOf(d) {
     const x = new Date(d);
     const day = (x.getDay() + 6) % 7; // 0 = lundi
