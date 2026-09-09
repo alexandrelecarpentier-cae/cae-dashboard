@@ -2,6 +2,8 @@
 // Vue centrée sur UN lieu de rue : quelles missions y sont passées, avec
 // quels indicateurs (BS réel, taux réel) par mission. id_emplacement est un
 // UUID déjà validé par metabase.js (RE_UUID) avant d'arriver ici.
+import { excludeClientsClause } from './excluded-clients.js';
+
 const STATUTS_VALIDES = "('nouveau','en_attente','transmis')";
 
 function buildInfoQuery(id_emplacement) {
@@ -36,6 +38,7 @@ from par_mission pm
 join missions m on m.id = pm.mission_id
 left join clients cl on cl.id = m.client_id
 left join dons_e de on de.mission_id = pm.mission_id
+where 1=1 ${excludeClientsClause('m')}
 order by pm.derniere_date desc;`;
 }
 
@@ -45,7 +48,9 @@ order by pm.derniere_date desc;`;
 function buildRecruteursDistinctsQuery(id_emplacement) {
   return `select count(distinct l.utilisateur_id) as nb_recruteurs
 from lots l
-where l.emplacement_id = '${id_emplacement}';`;
+join missions m on m.id = l.mission_id
+where l.emplacement_id = '${id_emplacement}'
+  ${excludeClientsClause('m')};`;
 }
 
 function buildEmplacementQueries(id_emplacement) {

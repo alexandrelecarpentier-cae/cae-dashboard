@@ -34,6 +34,7 @@ import { buildRdDashboardQueries } from './lib/sql-rd.js';
 import { buildMissionSuiviQueries } from './lib/sql-mission-suivi.js';
 import { buildReCollecteQueries } from './lib/sql-re-collecte.js';
 import { buildRmCollecteQueries, buildRmListQuery, buildClientListQuery } from './lib/sql-rm-collecte.js';
+import { isExcludedClient, buildMissionClientQuery, EXCLUDED_CLIENT_NAMES } from './lib/excluded-clients.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -192,6 +193,14 @@ async function handleClientMissions(url, env) {
 // /api/mission-days, /api/mission-performance, /api/recruteur-performance
 // ---------------------------------------------------------------
 
+// Vrai si la mission appartient à un client exclu (cf. excluded-clients.js).
+// Utilisé partout où un id_mission arrive directement depuis l'URL (lien,
+// favori...) sans passer par une liste qui filtrerait déjà ces clients.
+async function missionIsExcluded(env, id_mission) {
+  const rows = await runQuery(env, buildMissionClientQuery(id_mission));
+  return !!rows[0] && isExcludedClient(rows[0].client_id);
+}
+
 // Résout id_mission à partir des paramètres d'URL : accepte soit id_mission
 // (UUID direct, cas normal — lien fourni depuis client.html/salarie.html/
 // etc.), soit code_mission (résolu via une requête Metabase — cas de la
@@ -201,6 +210,11 @@ async function resolveMissionId(url, env) {
   const idParam = url.searchParams.get('id_mission') || '';
   if (idParam) {
     if (!RE_UUID.test(idParam)) return { error: 'id_mission invalide' };
+    try {
+      if (await missionIsExcluded(env, idParam)) return { error: 'mission introuvable', notFound: true };
+    } catch (e) {
+      return { error: String(e.message || e), upstream: true };
+    }
     return { id_mission: idParam };
   }
 
@@ -211,6 +225,7 @@ async function resolveMissionId(url, env) {
   try {
     const rows = await runQuery(env, buildResolveMissionIdQuery(codeParam));
     if (!rows[0] || !rows[0].id) return { error: 'mission introuvable pour ce code_mission', notFound: true };
+    if (await missionIsExcluded(env, rows[0].id)) return { error: 'mission introuvable', notFound: true };
     return { id_mission: rows[0].id };
   } catch (e) {
     return { error: String(e.message || e), upstream: true };
@@ -284,6 +299,12 @@ async function handleRecruteurPerformance(url, env) {
 
   const configError = requireConfig(env);
   if (configError) return jsonResponse({ error: configError }, 500);
+
+  try {
+    if (await missionIsExcluded(env, id_mission)) return jsonResponse({ error: 'mission introuvable' }, 404);
+  } catch (e) {
+    return jsonResponse({ error: String(e.message || e) }, 502);
+  }
 
   const queries = buildRecruteurPerformanceQueries(id_mission, id_utilisateur, dates);
 
@@ -652,6 +673,12 @@ async function handleReMobilisation(url, env) {
   const configError = requireConfig(env);
   if (configError) return jsonResponse({ error: configError }, 500);
 
+  try {
+    if (await missionIsExcluded(env, id_mission)) return jsonResponse({ error: 'mission introuvable' }, 404);
+  } catch (e) {
+    return jsonResponse({ error: String(e.message || e) }, 502);
+  }
+
   const queries = buildMobilisationQueries(id_mission, null);
 
   try {
@@ -689,6 +716,12 @@ async function handleRdMobilisation(url, env) {
   const configError = requireConfig(env);
   if (configError) return jsonResponse({ error: configError }, 500);
 
+  try {
+    if (await missionIsExcluded(env, id_mission)) return jsonResponse({ error: 'mission introuvable' }, 404);
+  } catch (e) {
+    return jsonResponse({ error: String(e.message || e) }, 502);
+  }
+
   const queries = buildMobilisationQueries(id_mission, id_utilisateur);
 
   try {
@@ -724,7 +757,13 @@ async function handleRmMissions(env) {
 
   try {
     const data = await runCardQuery(env, CARD_MISSIONS_EN_COURS);
-    return new Response(JSON.stringify(data), {
+    // Cette carte est une question Metabase déjà construite (pas du SQL
+    // qu'on contrôle ici) : on filtre les clients exclus après coup, sur le
+    // nom affiché par la colonne "Clients → Nom" (cf. excluded-clients.js).
+    const filtered = Array.isArray(data)
+      ? data.filter((row) => !EXCLUDED_CLIENT_NAMES.includes(row && row['Clients → Nom']))
+      : data;
+    return new Response(JSON.stringify(filtered), {
       status: 200,
       headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
     });

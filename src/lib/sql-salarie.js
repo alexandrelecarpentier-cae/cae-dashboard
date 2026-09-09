@@ -9,6 +9,8 @@
 // ou responsable de mission (missions.responsable_mission_id) sur chaque
 // mission — une même personne peut avoir des rôles différents selon la
 // mission.
+import { excludeClientsClause } from './excluded-clients.js';
+
 const STATUTS_VALIDES = "('nouveau','en_attente','transmis')";
 
 function buildIdentiteQuery(id_utilisateur) {
@@ -31,6 +33,7 @@ from contrats ctr
 join u on ctr.utilisateur_id = u.id
 join missions m on m.id = ctr.mission_id
 left join clients cl on cl.id = m.client_id
+where 1=1 ${excludeClientsClause('m')}
 order by m.date_debut desc nulls last;`;
 }
 
@@ -46,7 +49,10 @@ function buildPerformanceParMissionQuery(id_utilisateur) {
   return `with u as (select '${id_utilisateur}'::uuid as id),
 lots_u as (
   select l.id, l.mission_id, l.nombre_horaires_rue, l.nombre_horaires_remuneration, l.presence_recruteur, l.heures_remuneration_completes
-  from lots l join u on l.utilisateur_id = u.id
+  from lots l
+  join u on l.utilisateur_id = u.id
+  join missions m on m.id = l.mission_id
+  where 1=1 ${excludeClientsClause('m')}
 ),
 heures as (
   -- heures_remuneration ne compte que les heures rémunérées déclarées :
@@ -102,7 +108,10 @@ function buildResumeQuery(id_utilisateur) {
   return `with u as (select '${id_utilisateur}'::uuid as id),
 lots_u as (
   select l.id, l.nombre_horaires_rue, l.nombre_horaires_remuneration, l.presence_recruteur, l.heures_remuneration_completes
-  from lots l join u on l.utilisateur_id = u.id
+  from lots l
+  join u on l.utilisateur_id = u.id
+  join missions m on m.id = l.mission_id
+  where 1=1 ${excludeClientsClause('m')}
 ),
 heures as (
   -- cf. buildPerformanceParMissionQuery : heures_remuneration ne compte
@@ -119,9 +128,9 @@ dons_u as (
   from lots_u l join dons d on d.lot_id = l.id and d.statut in ${STATUTS_VALIDES}
 )
 select
-  (select min(date_debut) from contrats c join u on c.utilisateur_id = u.id) as premiere_mission_le,
-  (select max(date_debut) from contrats c join u on c.utilisateur_id = u.id) as derniere_mission_le,
-  (select count(distinct mission_id) from contrats c join u on c.utilisateur_id = u.id) as nb_missions,
+  (select min(date_debut) from contrats c join u on c.utilisateur_id = u.id join missions m on m.id = c.mission_id where 1=1 ${excludeClientsClause('m')}) as premiere_mission_le,
+  (select max(date_debut) from contrats c join u on c.utilisateur_id = u.id join missions m on m.id = c.mission_id where 1=1 ${excludeClientsClause('m')}) as derniere_mission_le,
+  (select count(distinct mission_id) from contrats c join u on c.utilisateur_id = u.id join missions m on m.id = c.mission_id where 1=1 ${excludeClientsClause('m')}) as nb_missions,
   h.heures_rue_total, h.heures_remuneration_total, h.nb_lots_total,
   case when coalesce(h.heures_remuneration_total,0) > 0 then coalesce(h.heures_rue_total,0)::float / h.heures_remuneration_total else null end as taux_h_total,
   case when h.nb_lots_total > 0 then coalesce(h.heures_remuneration_total,0)::float / (h.nb_lots_total * 7) else null end as taux_absence_total,
@@ -140,8 +149,11 @@ function buildStatutGlobalQuery(id_utilisateur) {
   return `with u as (select '${id_utilisateur}'::uuid as id),
 lots_u as (
   select l.id, l.date, l.nombre_horaires_remuneration
-  from lots l join u on l.utilisateur_id = u.id
+  from lots l
+  join u on l.utilisateur_id = u.id
+  join missions m on m.id = l.mission_id
   where coalesce(l.presence_recruteur, true) and coalesce(l.heures_remuneration_completes, true)
+    ${excludeClientsClause('m')}
 ),
 lots_cumul as (
   select id, nombre_horaires_remuneration,

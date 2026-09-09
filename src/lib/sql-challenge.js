@@ -5,6 +5,8 @@
 // Aucune valeur utilisateur n'est interpolée dans ces requêtes (pas de
 // paramètre d'entrée), donc pas de risque d'injection.
 
+import { excludeClientsClause } from './excluded-clients.js';
+
 const STATUTS_VALIDES = "('nouveau','en_attente','transmis')";
 
 // Top recruteurs (par volume de BS réel) sur une période [date_min, date_max]
@@ -20,6 +22,7 @@ function buildTopRecruteursQuery(dateMinExpr, dateMaxExpr) {
   join dons d on d.lot_id = l.id and d.statut in ${STATUTS_VALIDES}
   left join clients c on c.id = m.client_id
   where l.date between ${dateMinExpr} and ${dateMaxExpr}
+    ${excludeClientsClause('m')}
   group by 1,2,3
 )
 select s.utilisateur_id, s.client_nom, s.bs_reel,
@@ -39,6 +42,7 @@ function buildTopEquipesQuery() {
   from lots l
   join missions m on m.id = l.mission_id and m.statut_mission = 'en_cours'
   where l.date between date_trunc('week', current_date)::date and current_date
+    ${excludeClientsClause('m')}
 ),
 lot_stats as (
   select mission_id,
@@ -76,6 +80,7 @@ function buildTopRecruteursDerniereHeureQuery() {
   join dons d on d.lot_id = l.id and d.statut in ${STATUTS_VALIDES}
     and d.created_at >= now() - interval '1 hour'
   left join clients c on c.id = m.client_id
+  where 1=1 ${excludeClientsClause('m')}
   group by 1,2,3
 )
 select s.utilisateur_id, s.client_nom, s.bs_reel,
@@ -99,6 +104,7 @@ join dons d on d.lot_id = l.id and d.statut in ${STATUTS_VALIDES}
 join donateurs don on don.id = d.donateur_id and don.date_de_naissance is not null
 left join clients c on c.id = m.client_id
 where m.statut_mission = 'en_cours'
+  ${excludeClientsClause('m')}
 group by 1,2,3,4
 having count(distinct d.id) >= 3
 order by age_moyen desc
@@ -116,7 +122,8 @@ join missions m on m.id = l.mission_id and m.statut_mission = 'en_cours'
 left join utilisateur_informations_personnelles uip on uip.utilisateur_id = l.utilisateur_id
 left join clients c on c.id = m.client_id
 where l.date = current_date
-  and uip.prenom is not null;`;
+  and uip.prenom is not null
+  ${excludeClientsClause('m')};`;
 }
 
 function buildChallengeQueries() {

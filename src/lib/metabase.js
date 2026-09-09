@@ -1,3 +1,5 @@
+import { isExcludedClient } from './excluded-clients.js';
+
 export const RE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const RE_CODE = /^[A-Za-z0-9_-]{1,30}$/;
 export const RE_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -5,9 +7,14 @@ export const GENRES = ['monsieur', 'madame'];
 export const TRANCHES_AGE = ['18-20', '21-25', '26-35', '36-50', '50 et +'];
 export const DATABASE_ID = 3; // base "Production" dans Metabase
 
+// Point de passage unique pour /api/client, /api/facets et
+// /api/client-missions (toutes appellent readClientId) : un client exclu
+// (cf. excluded-clients.js) ne doit jamais être consultable, même via un
+// lien direct connaissant son id_client.
 export function readClientId(url) {
   const id_client = url.searchParams.get('id_client') || '';
   if (!RE_UUID.test(id_client)) return { error: 'id_client manquant ou invalide' };
+  if (isExcludedClient(id_client)) return { error: 'client non disponible' };
   return { id_client };
 }
 

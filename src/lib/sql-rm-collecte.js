@@ -15,6 +15,7 @@
 // cours" par chevauchement d'intervalle plutôt que par date des lots.
 
 import { donMotifCase } from './sql-rd.js';
+import { excludeClientsClause, excludeClientsDirectClause } from './excluded-clients.js';
 
 // Missions annulées dans la réalité métier mais dont statut_mission n'a
 // pas (encore) été mis à jour côté base — à exclure manuellement en plus
@@ -62,7 +63,8 @@ function missionScopeCTE(rmId, clientId, dateRange) {
     ${rmFilter}
     ${clientFilter}
     ${overlapFilter}
-    ${manualExclusionFilter}`;
+    ${manualExclusionFilter}
+    ${excludeClientsClause('m')}`;
 }
 
 function buildMissionsDataQuery(rmId, clientId, dateRange) {
@@ -226,6 +228,7 @@ FROM missions m
 LEFT JOIN utilisateurs u ON u.id = m.responsable_mission_id
 LEFT JOIN utilisateur_informations_personnelles uip ON uip.utilisateur_id = m.responsable_mission_id
 WHERE m.responsable_mission_id IS NOT NULL
+  ${excludeClientsClause('m')}
 ORDER BY nom;`;
 }
 
@@ -234,6 +237,7 @@ function buildClientListQuery() {
 FROM clients c
 JOIN missions m ON m.client_id = c.id
 WHERE c.nom IS NOT NULL
+  ${excludeClientsDirectClause('c')}
 ORDER BY c.nom;`;
 }
 
