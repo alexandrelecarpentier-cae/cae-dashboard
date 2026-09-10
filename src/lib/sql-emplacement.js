@@ -1,10 +1,10 @@
 // Requêtes SQL pour la fiche "emplacement" (/emplacement?id_emplacement=...).
 // Vue centrée sur UN lieu de rue : quelles missions y sont passées, avec
-// quels indicateurs (BS réel, taux réel, don moyen, écart type du taux réel
-// jour par jour) par mission, plus des indicateurs et graphes globaux
-// (taux réel par jour de semaine / par mois de l'année) tous jours
-// confondus à cet emplacement. id_emplacement est un UUID déjà validé par
-// metabase.js (RE_UUID) avant d'arriver ici.
+// quels indicateurs (BS réel, taux réel, don moyen, jours de présence) par
+// mission, plus des indicateurs et graphes globaux (taux réel par jour de
+// semaine / par mois de l'année) tous jours confondus à cet emplacement.
+// id_emplacement est un UUID déjà validé par metabase.js (RE_UUID) avant
+// d'arriver ici.
 import { excludeClientsClause } from './excluded-clients.js';
 
 const STATUTS_VALIDES = "('nouveau','en_attente','transmis')";
@@ -17,11 +17,10 @@ where id = '${id_emplacement}';`;
 
 // Liste des missions passées ici, avec pour chacune : ses indicateurs
 // habituels (BS réel, taux réel), son don moyen, la liste des dates de
-// lots (jours de présence réelle des recruteurs, pour affichage détaillé
-// côté front), le nombre moyen de recruteurs par jour, et l'écart type du
-// taux réel JOUR PAR JOUR sur les jours de cette mission à cet emplacement
-// (mesure de régularité de la performance quotidienne, pas de comparaison
-// entre missions).
+// lots (jours de présence réelle des recruteurs, pour affichage direct
+// côté front) et le nombre moyen de recruteurs par jour. Le taux réel de
+// la mission se compare au taux réel global du site (calculé séparément
+// par buildGlobalStatsQuery) plutôt qu'à une dispersion jour par jour.
 function buildMissionsQuery(id_emplacement) {
   return `with e as (select '${id_emplacement}'::uuid as id),
 lots_e as (
@@ -35,27 +34,14 @@ jours_mission as (
   from lots_e
   group by 1,2
 ),
-dons_jour as (
-  select l.mission_id, l.date, count(distinct d.id) as bs_reel_jour
-  from lots_e l join dons d on d.lot_id = l.id and d.statut in ${STATUTS_VALIDES}
-  group by 1,2
-),
-taux_jour as (
-  select j.mission_id, j.date, j.heures_rue_jour, j.nb_recruteurs_jour,
-    coalesce(dj.bs_reel_jour, 0) as bs_reel_jour,
-    case when coalesce(j.heures_rue_jour,0) > 0 then coalesce(dj.bs_reel_jour,0)::float / j.heures_rue_jour else null end as taux_reel_jour
-  from jours_mission j
-  left join dons_jour dj on dj.mission_id = j.mission_id and dj.date = j.date
-),
 par_mission as (
   select mission_id,
     count(*) as nb_jours,
     sum(heures_rue_jour) as heures_rue,
     avg(nb_recruteurs_jour) as recruteurs_moyen_jour,
-    stddev_samp(taux_reel_jour) as ecart_type_taux_reel,
     min(date) as premiere_date, max(date) as derniere_date,
     string_agg(date::text, ',' order by date) as dates_lots
-  from taux_jour
+  from jours_mission
   group by 1
 ),
 dons_mission as (
@@ -65,7 +51,7 @@ dons_mission as (
 )
 select m.id as mission_id, m.code_mission, m.code_mission_client, m.statut_mission, cl.nom as client_nom,
   pm.nb_jours, pm.heures_rue, pm.premiere_date, pm.derniere_date, pm.dates_lots,
-  pm.recruteurs_moyen_jour, pm.ecart_type_taux_reel,
+  pm.recruteurs_moyen_jour,
   coalesce(dm.bs_reel,0) as bs_reel,
   dm.don_moyen,
   case when coalesce(pm.heures_rue,0) > 0 then coalesce(dm.bs_reel,0)::float / pm.heures_rue else null end as taux_reel

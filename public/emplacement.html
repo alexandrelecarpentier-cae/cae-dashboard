@@ -81,10 +81,8 @@
   .stat .stat-val{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:14.5px; font-weight:700;}
   .stat .stat-lbl{font-size:9.5px; color:var(--muted); margin-top:3px; text-transform:uppercase; letter-spacing:.04em;}
 
-  .dates-toggle{margin-top:10px; font-size:11px; color:var(--red); font-weight:700; cursor:pointer; user-select:none;
-    display:inline-block;}
-  .dates-chips{display:none; flex-wrap:wrap; gap:5px; margin-top:8px;}
-  .dates-chips.show{display:flex;}
+  .dates-label{margin-top:10px; font-size:9.5px; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.04em;}
+  .dates-chips{display:flex; flex-wrap:wrap; gap:5px; margin-top:6px;}
   .date-chip{font-size:10.5px; font-family:ui-monospace,SFMono-Regular,Consolas,monospace; background:var(--surface-2);
     border:1px solid var(--line); border-radius:var(--sharp); padding:3px 7px; color:var(--text); white-space:nowrap;}
 
@@ -276,7 +274,7 @@
     renderKpis(stats, missions);
     renderWeekdayChart(data.tauxParJourSemaine || []);
     renderMonthChart(data.tauxParMois || []);
-    renderMissions(missions);
+    renderMissions(missions, stats.taux_reel_global);
   }
 
   function renderKpis(stats, missions) {
@@ -351,18 +349,20 @@
     });
   }
 
-  function renderMissions(missions) {
+  function renderMissions(missions, siteTaux) {
     const el = document.getElementById('missionList');
     if (!missions.length) {
       el.innerHTML = '<div class="empty">Aucune mission enregistrée à cet emplacement</div>';
       return;
     }
-    el.innerHTML = missions.map((m, i) => {
+    el.innerHTML = missions.map((m) => {
       const missionLabel = m.code_mission || m.code_mission_client || 'Mission';
       const sub = [m.client_nom, fmtDate(m.premiere_date) + ' → ' + fmtDate(m.derniere_date), fmtNum(m.nb_jours) + ' j']
         .filter(Boolean).join(' · ');
       const dates = (m.dates_lots || '').split(',').filter(Boolean);
-      const chipsId = 'dates-' + i;
+      const compareVal = (siteTaux != null && m.taux_reel != null)
+        ? `${fmtNum(siteTaux, 3)} / ${fmtNum(m.taux_reel, 3)}`
+        : '—';
       return `
       <div class="mission-card">
         <div class="mission-head">
@@ -374,25 +374,17 @@
         </div>
         <div class="mission-stats">
           <div class="stat"><div class="stat-val">${m.taux_reel != null ? fmtNum(m.taux_reel, 3) : '—'}</div><div class="stat-lbl">Taux réel</div></div>
-          <div class="stat"><div class="stat-val">${m.ecart_type_taux_reel != null ? fmtNum(m.ecart_type_taux_reel, 3) : '—'}</div><div class="stat-lbl">Écart type</div></div>
+          <div class="stat"><div class="stat-val">${compareVal}</div><div class="stat-lbl">Taux réel site / mission</div></div>
           <div class="stat"><div class="stat-val">${m.don_moyen != null ? fmtEuro(m.don_moyen) : '—'}</div><div class="stat-lbl">Don moyen</div></div>
           <div class="stat"><div class="stat-val">${fmtNum(m.bs_reel)}</div><div class="stat-lbl">BS réel</div></div>
         </div>
         ${dates.length ? `
-        <div class="dates-toggle" data-target="${chipsId}">Voir les ${dates.length} jour${dates.length > 1 ? 's' : ''} de présence ▾</div>
-        <div class="dates-chips" id="${chipsId}">
+        <div class="dates-label">${dates.length} jour${dates.length > 1 ? 's' : ''} de présence</div>
+        <div class="dates-chips">
           ${dates.map((d) => `<span class="date-chip">${esc(fmtDateLong(d))}</span>`).join('')}
         </div>` : ''}
       </div>`;
     }).join('');
-
-    el.querySelectorAll('.dates-toggle').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const chips = document.getElementById(btn.dataset.target);
-        const showing = chips.classList.toggle('show');
-        btn.textContent = btn.textContent.replace(/[▾▴]$/, showing ? '▴' : '▾');
-      });
-    });
   }
 })();
 </script>
