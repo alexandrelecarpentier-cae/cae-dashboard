@@ -56,6 +56,13 @@
   .search-suggestions .opt:hover{background:var(--surface-2);}
   .search-suggestions .opt.all{color:var(--muted); font-weight:700; text-transform:uppercase; font-size:10.5px; letter-spacing:.04em;}
   .search-suggestions .empty{padding:10px; font-size:12px; color:var(--muted); text-align:center;}
+  .quick-tags{display:flex; flex-wrap:nowrap; gap:6px;}
+  .quick-tag{
+    background:var(--surface-2); color:var(--text); border:1px solid var(--line);
+    border-radius:var(--sharp); padding:0 10px; height:34px; box-sizing:border-box; display:flex; align-items:center;
+    font-size:12.5px; font-weight:600; cursor:pointer; user-select:none; line-height:1.2; white-space:nowrap;
+  }
+  .quick-tag.active{border-color:var(--red); color:#fff; background:var(--red);}
   .btn-reset{
     background:#fff; border:1px solid var(--line); border-radius:var(--sharp);
     padding:0 12px; height:34px; box-sizing:border-box; font-size:12px; font-weight:700; color:var(--muted); cursor:pointer;
@@ -135,6 +142,22 @@
           <input class="control" type="text" id="f-emplacement-search" placeholder="Tous les sites" autocomplete="off">
           <div class="search-suggestions" id="emplacementSuggestions"></div>
         </div>
+      </div>
+      <div class="filter-field" style="width:auto;">
+        <div class="filter-label">Période</div>
+        <div class="quick-tags" id="quickTags">
+          <span class="quick-tag active" data-key="total" data-from="" data-to="">Total</span>
+          <span class="quick-tag" data-key="today">Aujourd'hui</span>
+          <span class="quick-tag" data-key="yesterday">Hier</span>
+        </div>
+      </div>
+      <div class="filter-field" style="width:150px;">
+        <div class="filter-label">Du</div>
+        <input class="control" type="date" id="dateFrom">
+      </div>
+      <div class="filter-field" style="width:150px;">
+        <div class="filter-label">Au</div>
+        <input class="control" type="date" id="dateTo">
       </div>
       <button class="btn-reset" id="filtersReset" type="button">Réinitialiser</button>
     </div>
@@ -298,7 +321,18 @@
     inputEl.addEventListener('blur', () => {
       setTimeout(() => { close(); }, 150);
     });
-    window.addEventListener('scroll', close, { passive: true, capture: true });
+    // capture:true est nécessaire pour détecter un scroll de la page ou
+    // d'un conteneur défilant (position:fixed ne suit pas ces scrolls) —
+    // mais scroll ne bubble pas, donc sans exclusion explicite, le scroll
+    // *à l'intérieur même du dropdown* (qui est aussi un élément scrollable)
+    // remontait au listener capturé sur window et refermait la liste
+    // instantanément, rendant le défilement impossible. On ignore donc les
+    // événements dont la cible est le dropdown lui-même (ou un de ses
+    // descendants).
+    window.addEventListener('scroll', (e) => {
+      if (suggestionsEl.contains(e.target)) return;
+      close();
+    }, { passive: true, capture: true });
     window.addEventListener('resize', close);
     return { render, close };
   }
@@ -339,10 +373,49 @@
     refreshData();
   });
 
+  // ---------------------------------------------------------------
+  // Filtre période — mêmes raccourcis rapides que rm-collecte.html
+  // (Total / Aujourd'hui / Hier), avec saisie manuelle des dates
+  // appliquée immédiatement elle aussi. "Total" (par défaut) = aucun
+  // filtre de date, cohérent avec la vue agrégée par défaut de cette page.
+  // ---------------------------------------------------------------
+  function isoDate(d) {
+    const tz = d.getTimezoneOffset();
+    const local = new Date(d.getTime() - tz * 60000);
+    return local.toISOString().slice(0, 10);
+  }
+  let dateFrom = '', dateTo = '';
+  const dateFromEl = document.getElementById('dateFrom');
+  const dateToEl = document.getElementById('dateTo');
+  const quickTagsEl = document.getElementById('quickTags');
+
+  function setActiveQuickTag(key) {
+    quickTagsEl.querySelectorAll('.quick-tag').forEach((t) => t.classList.toggle('active', t.dataset.key === key));
+  }
+
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+  quickTagsEl.querySelector('[data-key="today"]').dataset.from = isoDate(today);
+  quickTagsEl.querySelector('[data-key="today"]').dataset.to = isoDate(today);
+  quickTagsEl.querySelector('[data-key="yesterday"]').dataset.from = isoDate(yesterday);
+  quickTagsEl.querySelector('[data-key="yesterday"]').dataset.to = isoDate(yesterday);
+  quickTagsEl.querySelectorAll('.quick-tag').forEach((tag) => {
+    tag.addEventListener('click', () => {
+      dateFrom = tag.dataset.from || ''; dateTo = tag.dataset.to || '';
+      dateFromEl.value = dateFrom; dateToEl.value = dateTo;
+      setActiveQuickTag(tag.dataset.key);
+      refreshData();
+    });
+  });
+  dateFromEl.addEventListener('change', () => { dateFrom = dateFromEl.value; dateTo = dateToEl.value; setActiveQuickTag(null); refreshData(); });
+  dateToEl.addEventListener('change', () => { dateFrom = dateFromEl.value; dateTo = dateToEl.value; setActiveQuickTag(null); refreshData(); });
+
   document.getElementById('filtersReset').addEventListener('click', () => {
     selectedMissionId = ''; selectedMissionLabel = ''; missionSearchEl.value = '';
     selectedEmplacementId = ''; selectedEmplacementLabel = ''; emplacementSearchEl.value = '';
     selectedClientId = ''; clientSelectEl.value = '';
+    dateFrom = ''; dateTo = ''; dateFromEl.value = ''; dateToEl.value = '';
+    setActiveQuickTag('total');
     refreshData();
   });
 
@@ -358,6 +431,7 @@
     if (selectedMissionId) p.set('id_mission', selectedMissionId);
     if (selectedClientId) p.set('id_client', selectedClientId);
     if (selectedEmplacementId) p.set('id_emplacement', selectedEmplacementId);
+    if (dateFrom && dateTo) { p.set('date_from', dateFrom); p.set('date_to', dateTo); }
     return p.toString();
   }
 
@@ -397,9 +471,14 @@
       listsBuilt = true;
     }
 
+    // Filtre défensif des typologies non renseignées : la requête backend
+    // les exclut déjà à la source, ce filtre couvre uniquement un éventuel
+    // "—"/null résiduel côté données.
+    const parTypologie = (data.parTypologie || []).filter((r) => r.categorie && r.categorie !== '—');
+
     renderKpis(data.globalStats || {});
-    renderTypoChart(data.parTypologie || []);
-    renderTypoTable(data.parTypologie || []);
+    renderTypoChart(parTypologie);
+    renderTypoTable(parTypologie);
     renderEnseigneTable(data.parEnseigne || []);
   }
 

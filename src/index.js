@@ -590,10 +590,17 @@ async function handleSitePrive(url, env) {
   const id_emplacement = url.searchParams.get('id_emplacement') || '';
   if (id_emplacement && !RE_UUID.test(id_emplacement)) return jsonResponse({ error: 'id_emplacement invalide' }, 400);
 
+  const date_from = url.searchParams.get('date_from') || '';
+  const date_to = url.searchParams.get('date_to') || '';
+  if (date_from && !RE_DATE.test(date_from)) return jsonResponse({ error: 'date_from invalide' }, 400);
+  if (date_to && !RE_DATE.test(date_to)) return jsonResponse({ error: 'date_to invalide' }, 400);
+
   const queries = buildSitePriveQueries({
     id_mission: id_mission || null,
     id_client: id_client || null,
     id_emplacement: id_emplacement || null,
+    date_from: date_from || null,
+    date_to: date_to || null,
   });
 
   try {

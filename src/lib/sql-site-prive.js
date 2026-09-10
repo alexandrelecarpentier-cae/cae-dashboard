@@ -21,12 +21,14 @@ function filtersClause(p) {
   if (p.id_mission) clauses.push(`m.id = '${p.id_mission}'`);
   if (p.id_client) clauses.push(`m.client_id = '${p.id_client}'`);
   if (p.id_emplacement) clauses.push(`e.id = '${p.id_emplacement}'`);
+  if (p.date_from) clauses.push(`l.date >= '${p.date_from}'`);
+  if (p.date_to) clauses.push(`l.date <= '${p.date_to}'`);
   return clauses.join(' AND ');
 }
 
 // CTE de base partagée par toutes les requêtes agrégées ci-dessous : les
 // lots (+ dons valides associés) sur des emplacements privés, filtrés par
-// mission/client/emplacement si demandé, hors clients exclus.
+// mission/client/emplacement/période si demandé, hors clients exclus.
 function baseCte(p) {
   return `with lots_f as (
   select l.id, l.mission_id, l.emplacement_id, l.nombre_horaires_rue, l.presence_recruteur,
@@ -68,21 +70,26 @@ from heures h, dons_agg da;`;
 }
 
 // Taux réel + don moyen par typologie d'emplacement (categorie : sup, hyp,
-// cco, prox, spec, bio, phar, aut...).
+// cco, prox, spec, bio, phar, aut...). Les emplacements sans categorie
+// renseignée (19 sur 5004, cf. exploration du schéma) sont exclus : ce
+// n'est pas une vraie typologie, l'afficher n'apporterait rien de
+// pilotable.
 function buildParTypologieQuery(p) {
   return `${baseCte(p)},
 par_cat as (
-  select coalesce(categorie, '—') as categorie,
+  select categorie,
     count(distinct emplacement_id) as nb_emplacements,
     sum(nombre_horaires_rue) filter (where coalesce(presence_recruteur,true)) as heures_rue
   from lots_f
+  where categorie is not null
   group by 1
 ),
 dons_cat as (
-  select coalesce(l.categorie, '—') as categorie,
+  select l.categorie,
     count(distinct d.id) as bs_reel, avg(d.montant) as don_moyen
   from dons_f d
   join lots_f l on l.id = d.lot_id
+  where l.categorie is not null
   group by 1
 )
 select pc.categorie, pc.nb_emplacements, pc.heures_rue,
