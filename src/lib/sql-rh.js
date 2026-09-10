@@ -190,6 +190,67 @@ group by 1
 order by 1;`;
 }
 
+// Taux de FPE par jour / semaine / mois (même base contrats que ci-dessus,
+// même détection d'avenant que buildFpeQuery), pour le graphe empilé
+// employeur/salarié : une ligne par période avec le nb de contrats du
+// périmètre et le nb de FPE par initiative, pour que le taux (nb_fpe /
+// nb_contrats) soit calculé côté front, cohérent avec le reste du projet
+// où les ratios sont recalculés au dernier moment plutôt que moyennés.
+function buildFpeEvolutionQuery(p, granularity) {
+  return `${contratsBaseCte(p)},
+fpe_f as (
+  select av.contrat_id, ta.libelle
+  from avenants av
+  join types_avenants ta on ta.id = av.type_avenant_id
+  join contrats_f cf on cf.id = av.contrat_id
+  where ta.categorie = 'fin_period_essai'
+)
+select ${recrutementsBucketSql(granularity)} as periode,
+  count(distinct cf.id) as nb_contrats,
+  count(distinct fpe_f.contrat_id) filter (where fpe_f.libelle ilike '%employeur%') as nb_fpe_employeur,
+  count(distinct fpe_f.contrat_id) filter (where fpe_f.libelle ilike '%salarié%') as nb_fpe_salarie
+from contrats_f cf
+left join fpe_f on fpe_f.contrat_id = cf.id
+group by 1
+order by 1;`;
+}
+
+// Candidatures (nouveaux candidats créés côté TeamTailor, remontés par
+// webhook) par jour / semaine / mois. webhooks_team_tailors est une table
+// brute d'événements TeamTailor (jsonb) sans lien direct vers missions ou
+// clients : contrairement aux autres requêtes RH, ce périmètre n'est donc
+// filtré QUE par la période globale (date_from/date_to), pas par
+// association ni statut de mission, qui n'ont pas de sens pour cette
+// source. Pour l'événement 'candidate.create', le payload jsonb EST
+// directement l'objet candidat (pas de clé "candidate" imbriquée comme
+// pour job_application.*, vérifié en base) : id, created_at, etc. sont à
+// la racine. Un même candidat peut avoir plusieurs webhooks de création
+// (doublons de livraison constatés en base : ~4% des lignes), d'où la
+// déduplication par id candidat (on garde la première réception).
+function candidaturesFiltersClause(p) {
+  const clauses = ["data->>'event_name' = 'candidate.create'"];
+  if (p.date_from) clauses.push(`created_at >= '${p.date_from}'`);
+  if (p.date_to) clauses.push(`created_at < ('${p.date_to}'::date + interval '1 day')`);
+  return clauses.join(' AND ');
+}
+function candidaturesBucketSql(granularity) {
+  if (granularity === 'semaine') return `date_trunc('week', event_date)::date`;
+  if (granularity === 'mois') return `date_trunc('month', event_date)::date`;
+  return 'event_date::date'; // 'jour'
+}
+function buildCandidaturesQuery(p, granularity) {
+  return `with candidatures_f as (
+  select data->>'id' as candidate_id, min(created_at) as event_date
+  from webhooks_team_tailors
+  where ${candidaturesFiltersClause(p)}
+  group by 1
+)
+select ${candidaturesBucketSql(granularity)} as periode, count(*) as nb_candidatures
+from candidatures_f
+group by 1
+order by 1;`;
+}
+
 // Délai de complétion d'équipe par mission : nombre de jours entre le
 // début de la mission et l'arrivée du DERNIER recruteur qui l'a rejointe
 // (date de début de son contrat) — après cette date, l'équipe n'a plus
@@ -253,6 +314,26 @@ dons_recruteur as (
   join lots_f l on l.id = d.lot_id
   group by 1
 ),
+-- Badge FPE par recruteur : même pattern que contrat_rd/fpe_rd dans
+-- sql-rd.js (repris par mission.html / re-collecte.html) — on regarde le
+-- contrat le PLUS RECENT du recruteur sur cette mission (pas forcément
+-- dans la plage de dates filtrée sur les lots, un contrat n'a qu'une
+-- date), et on marque 'FPE' si cet avenant y figure, peu importe
+-- l'initiative (contrairement au graphe agrégé employeur/salarié plus
+-- haut, ce badge ne distingue pas l'initiative).
+contrat_recent as (
+  select distinct on (c.utilisateur_id) c.id as contrat_id, c.utilisateur_id
+  from contrats c
+  where c.mission_id = '${id_mission}'
+  order by c.utilisateur_id, c.date_debut desc
+),
+fpe_recent as (
+  select distinct cr.utilisateur_id
+  from contrat_recent cr
+  join avenants av on av.contrat_id = cr.contrat_id
+  join types_avenants ta on ta.id = av.type_avenant_id
+  where ta.categorie = 'fin_period_essai'
+),
 recruteur_rows as (
   select
     0 as sort_order,
@@ -264,11 +345,13 @@ recruteur_rows as (
     case when (pr.jours_presence + pr.jours_absence) > 0 then pr.jours_absence::float / (pr.jours_presence + pr.jours_absence) else null end as taux_absence,
     case when pr.nb_lots > 0 then pr.lots_presence_renseignee::float / pr.nb_lots else null end as taux_completion_presence,
     case when pr.nb_lots > 0 then pr.lots_emplacement_renseigne::float / pr.nb_lots else null end as taux_completion_emplacement,
-    dr.don_moyen
+    dr.don_moyen,
+    case when fpe.utilisateur_id is not null then 'FPE' else null end as fpe
   from par_recruteur pr
   left join dons_recruteur dr on dr.utilisateur_id = pr.utilisateur_id
   left join utilisateurs u on u.id = pr.utilisateur_id
   left join utilisateur_informations_personnelles uip on uip.utilisateur_id = pr.utilisateur_id
+  left join fpe_recent fpe on fpe.utilisateur_id = pr.utilisateur_id
 ),
 total_agg as (
   select
@@ -292,7 +375,8 @@ total_row as (
     case when (ta.jours_presence + ta.jours_absence) > 0 then ta.jours_absence::float / (ta.jours_presence + ta.jours_absence) else null end as taux_absence,
     case when ta.nb_lots > 0 then ta.lots_presence_renseignee::float / ta.nb_lots else null end as taux_completion_presence,
     case when ta.nb_lots > 0 then ta.lots_emplacement_renseigne::float / ta.nb_lots else null end as taux_completion_emplacement,
-    td.don_moyen
+    td.don_moyen,
+    null::text as fpe
   from total_agg ta, total_dons td
 )
 select * from recruteur_rows
@@ -329,6 +413,12 @@ function buildRhQueries(p) {
     recrutementsParJour: buildRecrutementsQuery(p, 'jour'),
     recrutementsParSemaine: buildRecrutementsQuery(p, 'semaine'),
     recrutementsParMois: buildRecrutementsQuery(p, 'mois'),
+    fpeParJour: buildFpeEvolutionQuery(p, 'jour'),
+    fpeParSemaine: buildFpeEvolutionQuery(p, 'semaine'),
+    fpeParMois: buildFpeEvolutionQuery(p, 'mois'),
+    candidaturesParJour: buildCandidaturesQuery(p, 'jour'),
+    candidaturesParSemaine: buildCandidaturesQuery(p, 'semaine'),
+    candidaturesParMois: buildCandidaturesQuery(p, 'mois'),
     completionEquipe: buildCompletionEquipeQuery(p),
   };
 }

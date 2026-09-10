@@ -63,6 +63,8 @@
     font-size:12.5px; font-weight:600; cursor:pointer; user-select:none; line-height:1.2; white-space:nowrap;
   }
   .quick-tag.active{border-color:var(--red); color:#fff; background:var(--red);}
+  .fpe-badge{display:inline-block; margin-left:5px; padding:2px 7px; border-radius:var(--sharp); font-size:10px; font-weight:800;
+    background:var(--red); border:1px solid var(--red); color:#fff; text-transform:uppercase;}
   .btn-reset{
     background:#fff; border:1px solid var(--line); border-radius:var(--sharp);
     padding:0 12px; height:34px; box-sizing:border-box; font-size:12px; font-weight:700; color:var(--muted); cursor:pointer;
@@ -161,6 +163,8 @@
           <span class="quick-tag active" data-key="total" data-from="" data-to="">Total</span>
           <span class="quick-tag" data-key="today">Aujourd'hui</span>
           <span class="quick-tag" data-key="yesterday">Hier</span>
+          <span class="quick-tag" data-key="month_current">Mois en cours</span>
+          <span class="quick-tag" data-key="month_previous">Mois précédent</span>
         </div>
       </div>
       <div class="filter-field" style="width:150px;">
@@ -186,13 +190,6 @@
   <div class="section-label"><span class="diamond"></span>Indicateurs globaux</div>
   <div class="kpi-scroll" id="kpiGlobal"></div>
 
-  <div class="section-label"><span class="diamond"></span>Fin de période d'essai
-    <span class="note">Part des contrats du périmètre filtré (date de contrat), par initiative</span>
-  </div>
-  <div class="card"><div class="card-inner">
-    <div class="chart-box" id="fpeChartBox"><canvas id="chart-fpe"></canvas></div>
-  </div></div>
-
   <div class="section-label"><span class="diamond"></span>Recrutements
     <span class="note">Contrats signés, par date de début de contrat</span>
   </div>
@@ -203,6 +200,30 @@
       <span class="quick-tag" data-g="mois">Mois</span>
     </div>
     <div class="chart-box" id="recrutChartBox"><canvas id="chart-recrutements"></canvas></div>
+  </div></div>
+
+  <div class="section-label"><span class="diamond"></span>Fin de période d'essai
+    <span class="note">Taux de FPE (contrats du périmètre, date de contrat), par initiative</span>
+  </div>
+  <div class="card"><div class="card-inner">
+    <div class="quick-tags" id="fpeGranularityTags" style="margin-bottom:12px;">
+      <span class="quick-tag" data-g="jour">Jour</span>
+      <span class="quick-tag active" data-g="semaine">Semaine</span>
+      <span class="quick-tag" data-g="mois">Mois</span>
+    </div>
+    <div class="chart-box" id="fpeChartBox"><canvas id="chart-fpe"></canvas></div>
+  </div></div>
+
+  <div class="section-label"><span class="diamond"></span>Candidatures
+    <span class="note">Nouveaux candidats créés via TeamTailor (webhook)</span>
+  </div>
+  <div class="card"><div class="card-inner">
+    <div class="quick-tags" id="candidGranularityTags" style="margin-bottom:12px;">
+      <span class="quick-tag" data-g="jour">Jour</span>
+      <span class="quick-tag active" data-g="semaine">Semaine</span>
+      <span class="quick-tag" data-g="mois">Mois</span>
+    </div>
+    <div class="chart-box" id="candidChartBox"><canvas id="chart-candidatures"></canvas></div>
   </div></div>
 
   <div class="section-label"><span class="diamond"></span>Missions
@@ -295,6 +316,17 @@
   }
   const STATUT_LABELS = { en_cours: 'En cours', terminee: 'Terminée', en_attente: 'En attente', annulee: 'Annulée' };
   function statutLabel(s) { return STATUT_LABELS[s] || (s || '—'); }
+  // jours_completion_equipe = date du dernier recrutement - date de début
+  // de mission (cf. sql-rh.js) : déjà signé côté SQL, mais on préfixe
+  // explicitement d'un "+" les valeurs positives (recrutements après le
+  // début de la mission) pour lever toute ambiguïté visuelle — les
+  // négatives gardent leur "-" natif via toLocaleString, zéro reste neutre.
+  function fmtSignedDays(n) {
+    if (n === null || n === undefined) return '—';
+    const num = Number(n);
+    const sign = num > 0 ? '+' : '';
+    return sign + fmtNum(num) + ' j';
+  }
   // Formatage de l'axe X des graphes recrutements (jour/semaine/mois),
   // identique à site-prive.html (courbe de taux réel).
   function fmtPeriodeLabel(iso, granularity) {
@@ -435,6 +467,16 @@
   quickTagsEl.querySelector('[data-key="today"]').dataset.to = isoDate(today);
   quickTagsEl.querySelector('[data-key="yesterday"]').dataset.from = isoDate(yesterday);
   quickTagsEl.querySelector('[data-key="yesterday"]').dataset.to = isoDate(yesterday);
+  // Mois en cours / mois précédent : filtre global demandé en plus de
+  // Total/Aujourd'hui/Hier, même mécanique (dataset.from/to précalculés).
+  const monthCurrentStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  const monthCurrentEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  const monthPrevStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  const monthPrevEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+  quickTagsEl.querySelector('[data-key="month_current"]').dataset.from = isoDate(monthCurrentStart);
+  quickTagsEl.querySelector('[data-key="month_current"]').dataset.to = isoDate(monthCurrentEnd);
+  quickTagsEl.querySelector('[data-key="month_previous"]').dataset.from = isoDate(monthPrevStart);
+  quickTagsEl.querySelector('[data-key="month_previous"]').dataset.to = isoDate(monthPrevEnd);
   quickTagsEl.querySelectorAll('.quick-tag').forEach((tag) => {
     tag.addEventListener('click', () => {
       dateFrom = tag.dataset.from || ''; dateTo = tag.dataset.to || '';
@@ -473,8 +515,13 @@
   let listsBuilt = false;
   let fpeChart = null;
   let recrutChart = null;
+  let candidChart = null;
   let recrutData = { jour: [], semaine: [], mois: [] };
   let recrutGranularity = 'semaine';
+  let fpeData = { jour: [], semaine: [], mois: [] };
+  let fpeGranularity = 'semaine';
+  let candidData = { jour: [], semaine: [], mois: [] };
+  let candidGranularity = 'semaine';
   let completionEquipeByMission = {};
 
   const recrutGranularityTagsEl = document.getElementById('recrutGranularityTags');
@@ -483,6 +530,24 @@
       recrutGranularity = tag.dataset.g;
       recrutGranularityTagsEl.querySelectorAll('.quick-tag').forEach((t) => t.classList.toggle('active', t === tag));
       renderRecrutChart();
+    });
+  });
+
+  const fpeGranularityTagsEl = document.getElementById('fpeGranularityTags');
+  fpeGranularityTagsEl.querySelectorAll('.quick-tag').forEach((tag) => {
+    tag.addEventListener('click', () => {
+      fpeGranularity = tag.dataset.g;
+      fpeGranularityTagsEl.querySelectorAll('.quick-tag').forEach((t) => t.classList.toggle('active', t === tag));
+      renderFpeChart();
+    });
+  });
+
+  const candidGranularityTagsEl = document.getElementById('candidGranularityTags');
+  candidGranularityTagsEl.querySelectorAll('.quick-tag').forEach((tag) => {
+    tag.addEventListener('click', () => {
+      candidGranularity = tag.dataset.g;
+      candidGranularityTagsEl.querySelectorAll('.quick-tag').forEach((t) => t.classList.toggle('active', t === tag));
+      renderCandidChart();
     });
   });
 
@@ -545,10 +610,21 @@
       semaine: data.recrutementsParSemaine || [],
       mois: data.recrutementsParMois || [],
     };
+    fpeData = {
+      jour: data.fpeParJour || [],
+      semaine: data.fpeParSemaine || [],
+      mois: data.fpeParMois || [],
+    };
+    candidData = {
+      jour: data.candidaturesParJour || [],
+      semaine: data.candidaturesParSemaine || [],
+      mois: data.candidaturesParMois || [],
+    };
 
     renderKpis(data.globalStats || {}, completionEquipeRows);
-    renderFpeChart(data.fpe || {});
     renderRecrutChart();
+    renderFpeChart();
+    renderCandidChart();
     renderMissionsTable(data.missionsOverview || []);
 
     const section = document.getElementById('recruteurSection');
@@ -589,39 +665,6 @@
       <div class="kpi"><div class="val">${k.v}</div><div class="lbl">${k.l}</div></div>`).join('');
   }
 
-  // Taux de FPE (fin de période d'essai) = nb de contrats clôturés en FPE /
-  // nb total de contrats du périmètre, splitté employeur/salarié — cf.
-  // sql-rh.js pour le détail du matching des libellés d'avenant.
-  function renderFpeChart(fpe) {
-    if (fpeChart) { fpeChart.destroy(); fpeChart = null; }
-    const box = document.getElementById('fpeChartBox');
-    if (typeof Chart === 'undefined') { box.innerHTML = '<div class="chart-empty">Graphique indisponible</div>'; return; }
-    const nbContrats = fpe.nb_contrats || 0;
-    if (!nbContrats) { box.innerHTML = '<div class="chart-empty">Aucune donnée</div>'; return; }
-    const tauxEmployeur = (fpe.nb_fpe_employeur || 0) / nbContrats;
-    const tauxSalarie = (fpe.nb_fpe_salarie || 0) / nbContrats;
-    if (!box.querySelector('canvas')) box.innerHTML = '<canvas id="chart-fpe"></canvas>';
-    fpeChart = new Chart(document.getElementById('chart-fpe'), {
-      type: 'bar',
-      data: {
-        labels: ['Initiative employeur', 'Initiative salarié'],
-        datasets: [{ label: 'Taux de FPE', data: [tauxEmployeur, tauxSalarie], backgroundColor: '#E2173B', borderRadius: 0, maxBarThickness: 90 }],
-      },
-      options: {
-        maintainAspectRatio: false,
-        indexAxis: 'x',
-        scales: {
-          y: { beginAtZero: true, ticks: { color: '#75757C', font: { family: 'ui-monospace, monospace', size: 11 }, callback: (v) => fmtNum(v * 100, 1) + ' %' }, grid: { color: '#E4E4E8' } },
-          x: { ticks: { color: '#75757C', font: { family: 'ui-monospace, monospace', size: 11 } }, grid: { display: false } },
-        },
-        plugins: {
-          legend: { display: false },
-          tooltip: { callbacks: { label: (ctx) => 'Taux de FPE : ' + fmtPct(ctx.parsed.y) } },
-        },
-      },
-    });
-  }
-
   function renderRecrutChart() {
     const rows = recrutData[recrutGranularity] || [];
     if (recrutChart) { recrutChart.destroy(); recrutChart = null; }
@@ -649,6 +692,74 @@
     });
   }
 
+  // Taux de FPE (fin de période d'essai) par période, empilé employeur /
+  // salarié : chaque barre = nb_fpe_x / nb_contrats de la période (taux,
+  // pas un décompte brut), les deux composantes s'additionnant pour former
+  // le taux de FPE total de la période. Même base "contrats" (date de
+  // contrat) et même détection d'avenant que /rh globalStats.fpe, mais
+  // dans le temps plutôt qu'en agrégat unique.
+  function renderFpeChart() {
+    const rows = fpeData[fpeGranularity] || [];
+    if (fpeChart) { fpeChart.destroy(); fpeChart = null; }
+    const box = document.getElementById('fpeChartBox');
+    if (typeof Chart === 'undefined') { box.innerHTML = '<div class="chart-empty">Graphique indisponible</div>'; return; }
+    if (!rows.length) { box.innerHTML = '<div class="chart-empty">Aucune donnée</div>'; return; }
+    if (!box.querySelector('canvas')) box.innerHTML = '<canvas id="chart-fpe"></canvas>';
+    const labels = rows.map((r) => fmtPeriodeLabel(r.periode, fpeGranularity));
+    const tauxEmployeur = rows.map((r) => (r.nb_contrats ? (r.nb_fpe_employeur || 0) / r.nb_contrats : 0));
+    const tauxSalarie = rows.map((r) => (r.nb_contrats ? (r.nb_fpe_salarie || 0) / r.nb_contrats : 0));
+    fpeChart = new Chart(document.getElementById('chart-fpe'), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label: 'Initiative employeur', data: tauxEmployeur, backgroundColor: '#E2173B', borderRadius: 0, stack: 'fpe' },
+          { label: 'Initiative salarié', data: tauxSalarie, backgroundColor: '#0F0F11', borderRadius: 0, stack: 'fpe' },
+        ],
+      },
+      options: {
+        maintainAspectRatio: false,
+        scales: {
+          y: { stacked: true, beginAtZero: true, ticks: { color: '#75757C', font: { family: 'ui-monospace, monospace', size: 11 }, callback: (v) => fmtNum(v * 100, 1) + ' %' }, grid: { color: '#E4E4E8' } },
+          x: { stacked: true, ticks: { color: '#75757C', font: { family: 'ui-monospace, monospace', size: 10 }, maxRotation: 0, autoSkip: true }, grid: { display: false } },
+        },
+        plugins: {
+          legend: { display: true, position: 'top', labels: { color: '#75757C', font: { size: 11 }, boxWidth: 12 } },
+          tooltip: { callbacks: { label: (ctx) => ctx.dataset.label + ' : ' + fmtPct(ctx.parsed.y) } },
+        },
+      },
+    });
+  }
+
+  // Candidatures = nouveaux candidats créés côté TeamTailor (événement
+  // webhook 'candidate.create', dédupliqué en base côté sql-rh.js).
+  function renderCandidChart() {
+    const rows = candidData[candidGranularity] || [];
+    if (candidChart) { candidChart.destroy(); candidChart = null; }
+    const box = document.getElementById('candidChartBox');
+    if (typeof Chart === 'undefined') { box.innerHTML = '<div class="chart-empty">Graphique indisponible</div>'; return; }
+    if (!rows.length) { box.innerHTML = '<div class="chart-empty">Aucune donnée</div>'; return; }
+    if (!box.querySelector('canvas')) box.innerHTML = '<canvas id="chart-candidatures"></canvas>';
+    candidChart = new Chart(document.getElementById('chart-candidatures'), {
+      type: 'bar',
+      data: {
+        labels: rows.map((r) => fmtPeriodeLabel(r.periode, candidGranularity)),
+        datasets: [{ label: 'Candidatures', data: rows.map((r) => r.nb_candidatures), backgroundColor: '#E2173B', borderRadius: 0 }],
+      },
+      options: {
+        maintainAspectRatio: false,
+        scales: {
+          y: { beginAtZero: true, ticks: { color: '#75757C', font: { family: 'ui-monospace, monospace', size: 11 }, precision: 0 }, grid: { color: '#E4E4E8' } },
+          x: { ticks: { color: '#75757C', font: { family: 'ui-monospace, monospace', size: 10 }, maxRotation: 0, autoSkip: true }, grid: { display: false } },
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: (ctx) => 'Candidatures : ' + fmtNum(ctx.parsed.y) } },
+        },
+      },
+    });
+  }
+
   function renderMissionsTable(rows) {
     const el = document.getElementById('tbl-missions');
     if (!rows.length) {
@@ -671,7 +782,7 @@
         <td class="num">${fmtPct(m.taux_absence)}</td>
         <td class="num">${fmtPct(m.taux_completion_presence)}</td>
         <td class="num">${fmtPct(m.taux_completion_emplacement)}</td>
-        <td class="num">${joursCompletion != null ? fmtNum(joursCompletion) + ' j' : '—'}</td>
+        <td class="num">${fmtSignedDays(joursCompletion)}</td>
       </tr>`;
     }).join('');
     el.querySelectorAll('tr.clickable').forEach((tr) => {
@@ -702,7 +813,7 @@
       const isTotal = r.recruteur === 'TOTAL';
       return `
       <tr${isTotal ? ' class="total-row"' : ''}>
-        <td>${esc(r.recruteur)}</td>
+        <td>${esc(r.recruteur)}${r.fpe ? '<span class="fpe-badge">FPE</span>' : ''}</td>
         <td class="num">${fmtNum(r.nb_lots)}</td>
         <td class="num">${r.heures_rue != null ? fmtNum(r.heures_rue) : '—'}</td>
         <td class="num">${fmtNum(r.bs_reel)}</td>
