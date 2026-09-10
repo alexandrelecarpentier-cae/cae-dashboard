@@ -646,15 +646,19 @@ async function handleEmplacement(url, env) {
   const queries = buildEmplacementQueries(id_emplacement);
 
   try {
-    const [info, missions, recruteurs] = await Promise.all([
+    const [info, missions, globalStats, tauxParJourSemaine, tauxParMois] = await Promise.all([
       runQuery(env, queries.info),
       runQuery(env, queries.missions),
-      runQuery(env, queries.recruteurs),
+      runQuery(env, queries.globalStats),
+      runQuery(env, queries.tauxParJourSemaine),
+      runQuery(env, queries.tauxParMois),
     ]);
     return jsonResponse({
       info: info[0] || null,
       missions,
-      nb_recruteurs_distincts: (recruteurs[0] && recruteurs[0].nb_recruteurs) || 0,
+      globalStats: globalStats[0] || null,
+      tauxParJourSemaine,
+      tauxParMois,
     });
   } catch (e) {
     return jsonResponse({ error: String(e.message || e) }, 502);

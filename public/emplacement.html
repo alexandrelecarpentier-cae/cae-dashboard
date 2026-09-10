@@ -36,23 +36,37 @@
   .error-banner.show{display:block;}
   .error-banner b{color:var(--red);}
 
-  main{padding:4px 16px 40px; max-width:900px; margin:0 auto;}
+  main{padding:4px 16px 40px; max-width:1000px; margin:0 auto;}
 
   .profile-card{background:#fff; border:1px solid var(--line); border-radius:var(--sharp); padding:18px;
     margin-top:16px;}
   .profile-name{font-size:22px; font-weight:800; text-transform:uppercase; letter-spacing:-.01em;}
   .profile-sub{font-size:13px; color:var(--muted); margin-top:4px;}
-  .badge-row{display:flex; gap:6px; margin-top:10px; flex-wrap:wrap;}
-  .badge{font-size:10.5px; font-weight:800; text-transform:uppercase; letter-spacing:.03em;
-    padding:4px 8px; border-radius:var(--sharp); background:var(--surface-2); color:var(--muted);}
 
   .section-label{display:flex; align-items:center; gap:6px; font-size:10px; text-transform:uppercase;
     letter-spacing:.08em; color:var(--muted); font-weight:700; margin:22px 2px 8px;}
   .section-label .diamond{width:6px; height:6px; background:var(--red); transform:rotate(45deg); flex:0 0 auto;}
 
-  .mission-list{background:#fff; border:1px solid var(--line); border-radius:var(--sharp); overflow:hidden;}
-  .mission-row{display:flex; align-items:center; gap:12px; padding:12px 14px; border-bottom:1px solid var(--line);}
-  .mission-row:last-child{border-bottom:none;}
+  .kpi-scroll{display:grid; grid-template-columns:repeat(2,1fr); gap:10px;}
+  @media (min-width:480px){ .kpi-scroll{grid-template-columns:repeat(3,1fr);} }
+  @media (min-width:720px){ .kpi-scroll{grid-template-columns:repeat(6,1fr);} }
+  .kpi{background:var(--surface-2);
+    border:1px solid var(--line); border-left:2px solid var(--red); border-radius:var(--sharp); padding:12px 14px;}
+  .kpi .val{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:20px; font-weight:700; line-height:1;}
+  .kpi .lbl{font-size:10px; color:var(--muted); margin-top:6px; text-transform:uppercase; letter-spacing:.05em;}
+
+  .card{background:#fff; border:1px solid var(--line); border-radius:var(--sharp); padding:14px 14px 12px; margin-bottom:10px;
+    position:relative; overflow:hidden; box-shadow:0 1px 2px rgba(15,15,17,.03);}
+  .card::before{content:""; position:absolute; top:0; left:0; width:3px; height:100%; background:var(--red);}
+  .card-inner{padding-left:6px;}
+  .chart-box{position:relative; height:220px;}
+  .chart-empty{display:flex; align-items:center; justify-content:center; height:220px; color:var(--muted); font-size:13px;}
+  .chart-grid{display:grid; grid-template-columns:1fr; gap:10px;}
+  @media (min-width:720px){ .chart-grid{grid-template-columns:1fr 1fr;} }
+  .chart-title{font-size:11px; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px;}
+
+  .mission-card{background:#fff; border:1px solid var(--line); border-radius:var(--sharp); padding:14px; margin-bottom:10px;}
+  .mission-head{display:flex; align-items:center; gap:12px;}
   .client-avatar{width:32px; height:32px; border-radius:50%; flex:0 0 auto; display:flex; align-items:center;
     justify-content:center; color:#fff; font-weight:800; font-size:11px; font-family:ui-monospace,monospace;
     letter-spacing:.02em;}
@@ -60,9 +74,19 @@
   .mission-body{flex:1 1 auto; min-width:0;}
   .mission-name{font-size:14px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .mission-sub{font-size:11.5px; color:var(--muted); margin-top:2px;}
-  .mission-vals{text-align:right; flex:0 0 auto;}
-  .mission-vals .taux{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:15px; font-weight:800;}
-  .mission-vals .bs{font-size:10.5px; color:var(--muted); margin-top:1px;}
+
+  .mission-stats{display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-top:12px;}
+  @media (min-width:480px){ .mission-stats{grid-template-columns:repeat(4,1fr);} }
+  .stat{background:var(--surface-2); border-radius:var(--sharp); padding:8px 10px;}
+  .stat .stat-val{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:14.5px; font-weight:700;}
+  .stat .stat-lbl{font-size:9.5px; color:var(--muted); margin-top:3px; text-transform:uppercase; letter-spacing:.04em;}
+
+  .dates-toggle{margin-top:10px; font-size:11px; color:var(--red); font-weight:700; cursor:pointer; user-select:none;
+    display:inline-block;}
+  .dates-chips{display:none; flex-wrap:wrap; gap:5px; margin-top:8px;}
+  .dates-chips.show{display:flex;}
+  .date-chip{font-size:10.5px; font-family:ui-monospace,SFMono-Regular,Consolas,monospace; background:var(--surface-2);
+    border:1px solid var(--line); border-radius:var(--sharp); padding:3px 7px; color:var(--text); white-space:nowrap;}
 
   .empty{padding:24px 16px; text-align:center; color:var(--muted); font-size:13px;}
 </style>
@@ -92,9 +116,25 @@
     if (n === null || n === undefined) return '—';
     return Number(n).toLocaleString('fr-FR', { maximumFractionDigits: digits, minimumFractionDigits: digits });
   }
+  function fmtEuro(n) {
+    if (n === null || n === undefined) return '—';
+    return fmtNum(n, 2) + '€';
+  }
   function fmtDate(d) {
     if (!d) return '—';
     return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }
+  // Format "lundi 12/04/26" à partir d'une date AAAA-MM-JJ (jour de lot =
+  // présence réelle des recruteurs à cet emplacement).
+  const DAYS_FR = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+  function fmtDateLong(iso) {
+    const d = new Date(iso + 'T00:00:00');
+    if (isNaN(d.getTime())) return iso;
+    const dayName = DAYS_FR[d.getDay()];
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yy = String(d.getFullYear()).slice(-2);
+    return `${dayName} ${dd}/${mm}/${yy}`;
   }
   function showError(msg) {
     document.getElementById('errorDetail').textContent = msg;
@@ -103,6 +143,7 @@
   function clearError() {
     document.getElementById('errorBanner').classList.remove('show');
   }
+  function esc(s) { return String(s == null ? '' : s).replace(/</g, '&lt;'); }
   function initials(name) {
     if (!name) return '?';
     const words = name.replace(/[()[\]]/g, '').split(/\s+/).filter(Boolean);
@@ -118,6 +159,28 @@
     const safe = (name || '').replace(/"/g, '&quot;');
     return `<img class="client-avatar client-logo" src="/api/logo?client=${encodeURIComponent(name || '')}" alt="${safe}"
       onerror="this.outerHTML='<div class=&quot;client-avatar&quot; style=&quot;background:${avatarColor(name)}&quot;>${initials(name)}</div>'">`;
+  }
+
+  // ---------------------------------------------------------------
+  // Chargement résilient de Chart.js (comme rm-collecte.html / mission.html)
+  // ---------------------------------------------------------------
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = src; s.onload = resolve; s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+  async function ensureChartJs() {
+    if (window.Chart) return true;
+    const urls = [
+      'https://cdnjs.cloudflare.com/ajax/libs/chart.js/4.4.4/chart.umd.min.js',
+      'https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js',
+    ];
+    for (const url of urls) {
+      try { await loadScript(url); if (window.Chart) return true; } catch (e) { /* essaie le suivant */ }
+    }
+    return false;
   }
 
   // ---------------------------------------------------------------
@@ -147,12 +210,16 @@
   const qs = new URLSearchParams(window.location.search);
   const idEmplacement = qs.get('id_emplacement');
 
-  if (idEmplacement) {
-    loadFiche(idEmplacement);
-    setInterval(() => tickCountdown(idEmplacement), 1000);
-  } else {
-    showError('Lien invalide : le paramètre id_emplacement est manquant dans l\'URL.');
-  }
+  let weekdayChart = null, monthChart = null;
+
+  ensureChartJs().then(() => {
+    if (idEmplacement) {
+      loadFiche(idEmplacement);
+      setInterval(() => tickCountdown(idEmplacement), 1000);
+    } else {
+      showError('Lien invalide : le paramètre id_emplacement est manquant dans l\'URL.');
+    }
+  });
 
   async function loadFiche(id) {
     try {
@@ -179,48 +246,153 @@
       .filter(Boolean).join(' · ');
 
     const missions = data.missions || [];
-    const totalBs = missions.reduce((s, m) => s + (Number(m.bs_reel) || 0), 0);
-    const totalHeures = missions.reduce((s, m) => s + (Number(m.heures_rue) || 0), 0);
-    const tauxGlobal = totalHeures > 0 ? totalBs / totalHeures : null;
+    const stats = data.globalStats || {};
 
     area.innerHTML = `
       <div class="profile-card">
-        <div class="profile-name">${info.nom || 'Emplacement'}</div>
-        <div class="profile-sub">${[info.type_emplacement, info.categorie].filter(Boolean).join(' · ')}</div>
-        <div class="badge-row">
-          <span class="badge">${fmtNum(missions.length)} mission(s)</span>
-          <span class="badge">${fmtNum(data.nb_recruteurs_distincts)} recruteur(s) différent(s)</span>
-          <span class="badge">${fmtNum(totalBs)} BS réel cumulé</span>
-          <span class="badge">${tauxGlobal != null ? fmtNum(tauxGlobal, 3) : '—'} taux réel global</span>
-        </div>
+        <div class="profile-name">${esc(info.nom || 'Emplacement')}</div>
+        <div class="profile-sub">${esc([info.type_emplacement, info.categorie].filter(Boolean).join(' · '))}</div>
+      </div>
+
+      <div class="section-label"><span class="diamond"></span>Indicateurs globaux</div>
+      <div class="kpi-scroll" id="kpiGlobal"></div>
+
+      <div class="section-label"><span class="diamond"></span>Évolution du taux réel</div>
+      <div class="chart-grid">
+        <div class="card"><div class="card-inner">
+          <div class="chart-title">Par jour de semaine</div>
+          <div class="chart-box" id="weekdayChartBox"><canvas id="chart-weekday"></canvas></div>
+        </div></div>
+        <div class="card"><div class="card-inner">
+          <div class="chart-title">Par mois de l'année</div>
+          <div class="chart-box" id="monthChartBox"><canvas id="chart-month"></canvas></div>
+        </div></div>
       </div>
 
       <div class="section-label"><span class="diamond"></span>Missions passées ici</div>
-      <div class="mission-list" id="missionList"></div>
+      <div id="missionList"></div>
     `;
 
-    const missionList = document.getElementById('missionList');
+    renderKpis(stats, missions);
+    renderWeekdayChart(data.tauxParJourSemaine || []);
+    renderMonthChart(data.tauxParMois || []);
+    renderMissions(missions);
+  }
+
+  function renderKpis(stats, missions) {
+    const totalBs = missions.reduce((s, m) => s + (Number(m.bs_reel) || 0), 0);
+    const kpis = [
+      { v: fmtNum(missions.length), l: 'Missions' },
+      { v: stats.nb_jours_total != null ? fmtNum(stats.nb_jours_total) : '—', l: 'Jours' },
+      { v: stats.recruteurs_moyen_jour != null ? fmtNum(stats.recruteurs_moyen_jour, 1) : '—', l: 'Recruteurs / jour' },
+      { v: fmtNum(totalBs), l: 'BS réel cumulé' },
+      { v: stats.taux_reel_global != null ? fmtNum(stats.taux_reel_global, 3) : '—', l: 'Taux réel global' },
+      { v: stats.don_moyen_global != null ? fmtEuro(stats.don_moyen_global) : '—', l: 'Don moyen global' },
+    ];
+    document.getElementById('kpiGlobal').innerHTML = kpis.map((k) => `
+      <div class="kpi"><div class="val">${k.v}</div><div class="lbl">${k.l}</div></div>`).join('');
+  }
+
+  const WEEKDAY_LABELS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+  function renderWeekdayChart(rows) {
+    if (weekdayChart) { weekdayChart.destroy(); weekdayChart = null; }
+    const box = document.getElementById('weekdayChartBox');
+    if (typeof Chart === 'undefined') { box.innerHTML = '<div class="chart-empty">Graphique indisponible</div>'; return; }
+    if (!rows.length) { box.innerHTML = '<div class="chart-empty">Aucune donnée</div>'; return; }
+    if (!box.querySelector('canvas')) box.innerHTML = '<canvas id="chart-weekday"></canvas>';
+    const byDay = new Map(rows.map((r) => [Number(r.jour_semaine), r.taux_reel]));
+    const data = WEEKDAY_LABELS.map((_, i) => {
+      const v = byDay.get(i + 1);
+      return v === null || v === undefined ? null : Number(v);
+    });
+    weekdayChart = new Chart(document.getElementById('chart-weekday'), {
+      type: 'bar',
+      data: { labels: WEEKDAY_LABELS, datasets: [{ label: 'Taux réel', data, backgroundColor: '#E2173B', borderRadius: 0 }] },
+      options: {
+        maintainAspectRatio: false,
+        scales: {
+          y: { beginAtZero: true, ticks: { color: '#75757C', font: { family: 'ui-monospace, monospace', size: 11 }, callback: (v) => fmtNum(v, 2) }, grid: { color: '#E4E4E8' } },
+          x: { ticks: { color: '#75757C', font: { family: 'ui-monospace, monospace', size: 10.5 } }, grid: { display: false } },
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: (ctx) => 'Taux réel : ' + fmtNum(ctx.parsed.y, 3) } },
+        },
+      },
+    });
+  }
+
+  const MONTH_LABELS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+  function renderMonthChart(rows) {
+    if (monthChart) { monthChart.destroy(); monthChart = null; }
+    const box = document.getElementById('monthChartBox');
+    if (typeof Chart === 'undefined') { box.innerHTML = '<div class="chart-empty">Graphique indisponible</div>'; return; }
+    if (!rows.length) { box.innerHTML = '<div class="chart-empty">Aucune donnée</div>'; return; }
+    if (!box.querySelector('canvas')) box.innerHTML = '<canvas id="chart-month"></canvas>';
+    const byMonth = new Map(rows.map((r) => [Number(r.mois), r.taux_reel]));
+    const data = MONTH_LABELS.map((_, i) => {
+      const v = byMonth.get(i + 1);
+      return v === null || v === undefined ? null : Number(v);
+    });
+    monthChart = new Chart(document.getElementById('chart-month'), {
+      type: 'bar',
+      data: { labels: MONTH_LABELS.map((m) => m.slice(0, 3)), datasets: [{ label: 'Taux réel', data, backgroundColor: '#0F0F11', borderRadius: 0 }] },
+      options: {
+        maintainAspectRatio: false,
+        scales: {
+          y: { beginAtZero: true, ticks: { color: '#75757C', font: { family: 'ui-monospace, monospace', size: 11 }, callback: (v) => fmtNum(v, 2) }, grid: { color: '#E4E4E8' } },
+          x: { ticks: { color: '#75757C', font: { family: 'ui-monospace, monospace', size: 10.5 } }, grid: { display: false } },
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { title: (items) => MONTH_LABELS[items[0].dataIndex], label: (ctx) => 'Taux réel : ' + fmtNum(ctx.parsed.y, 3) } },
+        },
+      },
+    });
+  }
+
+  function renderMissions(missions) {
+    const el = document.getElementById('missionList');
     if (!missions.length) {
-      missionList.innerHTML = '<div class="empty">Aucune mission enregistrée à cet emplacement</div>';
-    } else {
-      missionList.innerHTML = missions.map((m) => {
-        const missionLabel = m.code_mission || m.code_mission_client || 'Mission';
-        const sub = [m.client_nom, fmtDate(m.premiere_date) + ' → ' + fmtDate(m.derniere_date), fmtNum(m.nb_jours) + ' j']
-          .filter(Boolean).join(' · ');
-        return `
-        <div class="mission-row">
+      el.innerHTML = '<div class="empty">Aucune mission enregistrée à cet emplacement</div>';
+      return;
+    }
+    el.innerHTML = missions.map((m, i) => {
+      const missionLabel = m.code_mission || m.code_mission_client || 'Mission';
+      const sub = [m.client_nom, fmtDate(m.premiere_date) + ' → ' + fmtDate(m.derniere_date), fmtNum(m.nb_jours) + ' j']
+        .filter(Boolean).join(' · ');
+      const dates = (m.dates_lots || '').split(',').filter(Boolean);
+      const chipsId = 'dates-' + i;
+      return `
+      <div class="mission-card">
+        <div class="mission-head">
           ${clientAvatarHtml(m.client_nom)}
           <div class="mission-body">
-            <div class="mission-name">${missionLabel}</div>
-            <div class="mission-sub">${sub}</div>
+            <div class="mission-name">${esc(missionLabel)}</div>
+            <div class="mission-sub">${esc(sub)}</div>
           </div>
-          <div class="mission-vals">
-            <div class="taux">${m.taux_reel != null ? fmtNum(m.taux_reel, 3) : '—'}</div>
-            <div class="bs">${fmtNum(m.bs_reel)} BS réel</div>
-          </div>
-        </div>`;
-      }).join('');
-    }
+        </div>
+        <div class="mission-stats">
+          <div class="stat"><div class="stat-val">${m.taux_reel != null ? fmtNum(m.taux_reel, 3) : '—'}</div><div class="stat-lbl">Taux réel</div></div>
+          <div class="stat"><div class="stat-val">${m.ecart_type_taux_reel != null ? fmtNum(m.ecart_type_taux_reel, 3) : '—'}</div><div class="stat-lbl">Écart type</div></div>
+          <div class="stat"><div class="stat-val">${m.don_moyen != null ? fmtEuro(m.don_moyen) : '—'}</div><div class="stat-lbl">Don moyen</div></div>
+          <div class="stat"><div class="stat-val">${fmtNum(m.bs_reel)}</div><div class="stat-lbl">BS réel</div></div>
+        </div>
+        ${dates.length ? `
+        <div class="dates-toggle" data-target="${chipsId}">Voir les ${dates.length} jour${dates.length > 1 ? 's' : ''} de présence ▾</div>
+        <div class="dates-chips" id="${chipsId}">
+          ${dates.map((d) => `<span class="date-chip">${esc(fmtDateLong(d))}</span>`).join('')}
+        </div>` : ''}
+      </div>`;
+    }).join('');
+
+    el.querySelectorAll('.dates-toggle').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const chips = document.getElementById(btn.dataset.target);
+        const showing = chips.classList.toggle('show');
+        btn.textContent = btn.textContent.replace(/[▾▴]$/, showing ? '▴' : '▾');
+      });
+    });
   }
 })();
 </script>
