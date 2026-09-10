@@ -22,7 +22,7 @@
   h1 em{color:var(--red); font-style:normal;}
   .sub{font-size:12.5px; color:var(--muted); margin-bottom:2px;}
 
-  .meta-row{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:10px;}
+  .meta-row{display:flex; justify-content:space-between; align-items:center; gap:10px;}
   .sync{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:11.5px; color:var(--muted); display:flex; align-items:center; gap:6px;}
   .sync b{color:var(--text); font-weight:600;}
   .live-diamond{width:7px; height:7px; background:var(--red); transform:rotate(45deg); flex:0 0 auto; animation:pulse 2.2s infinite;}
@@ -92,8 +92,6 @@
 <body>
 
 <header>
-  <h1>Fiche <em>emplacement</em></h1>
-  <div class="sub" id="subLabel"></div>
   <div class="meta-row">
     <div class="sync"><span class="live-diamond off" id="liveDiamond"></span>Synchro <b id="syncTime">—</b></div>
     <div class="sync mono" id="countdown">5:00</div>
@@ -236,8 +234,7 @@
     area.style.display = 'block';
 
     const info = data.info || {};
-    document.getElementById('subLabel').textContent = [info.adresse, info.code_postal, info.ville]
-      .filter(Boolean).join(' · ');
+    const adresse = [info.adresse, info.code_postal, info.ville].filter(Boolean).join(' · ');
 
     const missions = data.missions || [];
     const stats = data.globalStats || {};
@@ -246,6 +243,7 @@
       <div class="profile-card">
         <div class="profile-name">${esc(info.nom || 'Emplacement')}</div>
         <div class="profile-sub">${esc([info.type_emplacement, info.categorie].filter(Boolean).join(' · '))}</div>
+        ${adresse ? `<div class="profile-sub">${esc(adresse)}</div>` : ''}
       </div>
 
       <div class="section-label"><span class="diamond"></span>Indicateurs globaux</div>
