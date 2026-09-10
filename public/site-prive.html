@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Site privé — Dashboard CAE</title>
+<style>
+  :root{
+    --bg:#FFFFFF; --surface:#FFFFFF; --surface-2:#F5F5F6; --line:#E4E4E8;
+    --red:#E2173B; --text:#0F0F11; --muted:#75757C;
+    --sharp:2px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;}
+  @media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important; transition-duration:.001ms !important;}}
+
+  header{
+    position:sticky; top:0; z-index:20;
+    background:rgba(255,255,255,.92); backdrop-filter:blur(8px);
+    padding:calc(env(safe-area-inset-top) + 14px) 16px 12px;
+    border-bottom:1px solid var(--line);
+  }
+  h1{margin:0 0 10px; font-size:21px; font-weight:800; letter-spacing:-.01em; line-height:1.15; text-transform:uppercase;}
+  h1 em{color:var(--red); font-style:normal;}
+
+  .meta-row{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px;}
+  .sync{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:11.5px; color:var(--muted); display:flex; align-items:center; gap:6px;}
+  .sync b{color:var(--text); font-weight:600;}
+  .live-diamond{width:7px; height:7px; background:var(--red); transform:rotate(45deg); flex:0 0 auto;
+    animation:pulse 2.2s infinite;}
+  .live-diamond.off{background:#C7C7CC; animation:none;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(226,23,59,.45);}70%{box-shadow:0 0 0 7px rgba(226,23,59,0);}100%{box-shadow:0 0 0 0 rgba(226,23,59,0);}}
+  #refreshBar{height:2px; width:100%; background:var(--line); overflow:hidden; margin-bottom:12px;}
+  #refreshFill{height:100%; width:0%; background:var(--red); transition:width 1s linear;}
+
+  .filters{margin-top:0;}
+  .filter-row{display:flex; flex-wrap:nowrap; gap:10px; align-items:flex-end; overflow-x:auto; padding-bottom:2px;}
+  .filter-field{display:flex; flex-direction:column; gap:6px; flex:0 0 auto; width:200px;}
+  .filter-label{font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); font-weight:700; line-height:1; white-space:nowrap;}
+  .control{
+    background:var(--surface-2); color:var(--text); border:1px solid var(--line); border-radius:var(--sharp);
+    padding:8px 10px; font-size:13px; width:100%; height:34px; box-sizing:border-box; font-family:inherit; font-weight:600;
+  }
+  select.control{ font-family:inherit; }
+  .search-wrap{position:relative;}
+  .search-suggestions{
+    display:none; position:fixed; z-index:1000; min-width:260px;
+    background:#fff; border:1px solid var(--line); border-radius:var(--sharp);
+    box-shadow:0 6px 24px rgba(15,15,17,.12); max-height:260px; overflow-y:auto;
+  }
+  .search-suggestions.show{display:block;}
+  .search-suggestions .opt{padding:8px 10px; font-size:12.5px; cursor:pointer; border-bottom:1px solid var(--line);}
+  .search-suggestions .opt:last-child{border-bottom:none;}
+  .search-suggestions .opt:hover{background:var(--surface-2);}
+  .search-suggestions .opt.all{color:var(--muted); font-weight:700; text-transform:uppercase; font-size:10.5px; letter-spacing:.04em;}
+  .search-suggestions .empty{padding:10px; font-size:12px; color:var(--muted); text-align:center;}
+  .btn-reset{
+    background:#fff; border:1px solid var(--line); border-radius:var(--sharp);
+    padding:0 12px; height:34px; box-sizing:border-box; font-size:12px; font-weight:700; color:var(--muted); cursor:pointer;
+    text-transform:uppercase; letter-spacing:.03em; flex:0 0 auto;
+  }
+
+  .error-banner{
+    margin-top:12px; padding:10px 12px; border:1px solid var(--line); border-left:3px solid var(--red);
+    background:#FFF6F7; font-size:12px; color:#7A1225; display:none; line-height:1.5;
+  }
+  .error-banner.show{display:block;}
+  .error-banner b{color:var(--red);}
+
+  main{padding:4px 16px 40px; max-width:1100px; margin:0 auto;}
+
+  .section-label{display:flex; align-items:center; gap:6px; font-size:10px; text-transform:uppercase;
+    letter-spacing:.08em; color:var(--muted); font-weight:700; margin:22px 2px 8px;}
+  .section-label .diamond{width:6px; height:6px; background:var(--red); transform:rotate(45deg); flex:0 0 auto;}
+  .section-label .note{margin-left:auto; font-weight:600; text-transform:none; letter-spacing:0; font-size:11px;}
+
+  .kpi-scroll{display:grid; grid-template-columns:repeat(2,1fr); gap:10px;}
+  @media (min-width:480px){ .kpi-scroll{grid-template-columns:repeat(3,1fr);} }
+  @media (min-width:720px){ .kpi-scroll{grid-template-columns:repeat(6,1fr);} }
+  .kpi{background:var(--surface-2);
+    border:1px solid var(--line); border-left:2px solid var(--red); border-radius:var(--sharp); padding:12px 14px;}
+  .kpi .val{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:20px; font-weight:700; line-height:1;}
+  .kpi .lbl{font-size:10px; color:var(--muted); margin-top:6px; text-transform:uppercase; letter-spacing:.05em;}
+
+  .card{background:#fff; border:1px solid var(--line); border-radius:var(--sharp); padding:14px 14px 12px; margin-bottom:10px;
+    position:relative; overflow:hidden; box-shadow:0 1px 2px rgba(15,15,17,.03);}
+  .card::before{content:""; position:absolute; top:0; left:0; width:3px; height:100%; background:var(--red);}
+  .card-inner{padding-left:6px;}
+  .chart-box{position:relative; height:260px;}
+  .chart-empty{display:flex; align-items:center; justify-content:center; height:260px; color:var(--muted); font-size:13px;}
+
+  table{width:100%; border-collapse:collapse; font-size:12.5px;}
+  thead th{text-align:left; color:var(--muted); font-weight:700; font-size:10px;
+    text-transform:uppercase; letter-spacing:.05em; border-bottom:1px solid var(--line); padding:8px 8px;
+    position:sticky; top:0; background:#fff;}
+  thead th.num, tbody td.num{text-align:right;}
+  tbody td{padding:8px 8px; border-bottom:1px solid var(--line); font-family:ui-monospace,SFMono-Regular,Consolas,monospace;}
+  tbody tr:hover{background:var(--surface-2);}
+  .table-scroll{max-height:420px; overflow-y:auto;}
+
+  #state{padding:60px 16px; text-align:center; color:var(--muted); font-size:14px;}
+  #state.error{color:var(--red);}
+  .hidden{display:none;}
+  .empty{padding:24px 16px; text-align:center; color:var(--muted); font-size:13px;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Site <em>privé</em></h1>
+  <div class="meta-row">
+    <div class="sync"><span class="live-diamond off" id="liveDiamond"></span>Synchro <b id="syncTime">—</b></div>
+    <div class="sync" id="countdown">5:00</div>
+  </div>
+  <div id="refreshBar"><div id="refreshFill"></div></div>
+
+  <div class="filters">
+    <div class="filter-row">
+      <div class="filter-field">
+        <div class="filter-label">Mission</div>
+        <div class="search-wrap">
+          <input class="control" type="text" id="f-mission-search" placeholder="Toutes les missions" autocomplete="off">
+          <div class="search-suggestions" id="missionSuggestions"></div>
+        </div>
+      </div>
+      <div class="filter-field">
+        <div class="filter-label">Association</div>
+        <select class="control" id="clientSelect"><option value="">Toutes les associations</option></select>
+      </div>
+      <div class="filter-field">
+        <div class="filter-label">Site privé</div>
+        <div class="search-wrap">
+          <input class="control" type="text" id="f-emplacement-search" placeholder="Tous les sites" autocomplete="off">
+          <div class="search-suggestions" id="emplacementSuggestions"></div>
+        </div>
+      </div>
+      <button class="btn-reset" id="filtersReset" type="button">Réinitialiser</button>
+    </div>
+  </div>
+
+  <div class="error-banner" id="errorBanner">
+    <b>Connexion impossible.</b> <span id="errorDetail"></span> La page réessaiera automatiquement.
+  </div>
+</header>
+
+<div id="state">Chargement des données depuis Metabase…</div>
+
+<main id="content" class="hidden">
+  <div class="section-label"><span class="diamond"></span>Indicateurs globaux</div>
+  <div class="kpi-scroll" id="kpiGlobal"></div>
+
+  <div class="section-label"><span class="diamond"></span>Taux réel par typologie d'emplacement</div>
+  <div class="card"><div class="card-inner">
+    <div class="chart-box" id="typoChartBox"><canvas id="chart-typologie"></canvas></div>
+  </div></div>
+
+  <div class="section-label"><span class="diamond"></span>Par typologie d'emplacement</div>
+  <div class="card"><div class="card-inner">
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>Typologie</th><th class="num">Emplacements</th><th class="num">BS réel</th><th class="num">Taux réel</th><th class="num">Don moyen</th></tr>
+        </thead>
+        <tbody id="tbl-typologie"></tbody>
+      </table>
+    </div>
+  </div></div>
+
+  <div class="section-label"><span class="diamond"></span>Par enseigne
+    <span class="note">Top 40 — déduite du nom de l'emplacement, approximatif</span>
+  </div>
+  <div class="card"><div class="card-inner">
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>Enseigne</th><th class="num">Emplacements</th><th class="num">BS réel</th><th class="num">Taux réel</th><th class="num">Don moyen</th></tr>
+        </thead>
+        <tbody id="tbl-enseigne"></tbody>
+      </table>
+    </div>
+  </div></div>
+</main>
+
+<script>
+(function () {
+  // ---------------------------------------------------------------
+  // Cette page ne contient AUCUNE clé d'accès. Les données viennent de
+  // /api/site-prive, qui interroge Metabase côté serveur.
+  // Vue cross-emplacements (tous les emplacements de type "prive"),
+  // filtrable par mission / association / site privé précis, tous
+  // combinables et optionnels — pas de mission cible fixe, comme
+  // /rm-collecte.
+  // ---------------------------------------------------------------
+  const stateEl = document.getElementById('state');
+  const contentEl = document.getElementById('content');
+
+  const CATEGORIE_LABELS = {
+    sup: 'Supermarché', hyp: 'Hypermarché', cco: 'Centre commercial',
+    prox: 'Proximité', spec: 'Spécialisé', spe: 'Spécialisé',
+    bio: 'Bio', phar: 'Pharmacie', aut: 'Autre', '—': 'Non renseigné',
+  };
+  function categorieLabel(c) { return CATEGORIE_LABELS[c] || (c || '—').toUpperCase(); }
+
+  function esc(s) { return String(s == null ? '' : s).replace(/</g, '&lt;'); }
+  function fmtNum(n, digits = 0) {
+    if (n === null || n === undefined) return '—';
+    return Number(n).toLocaleString('fr-FR', { maximumFractionDigits: digits, minimumFractionDigits: digits });
+  }
+  function fmtEuro(n) {
+    if (n === null || n === undefined) return '—';
+    return fmtNum(n, 2) + '€';
+  }
+
+  // ---------------------------------------------------------------
+  // Chargement résilient de Chart.js (cdnjs d'abord, jsdelivr en repli).
+  // ---------------------------------------------------------------
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = src; s.onload = resolve; s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+  async function ensureChartJs() {
+    if (window.Chart) return true;
+    const urls = [
+      'https://cdnjs.cloudflare.com/ajax/libs/chart.js/4.4.4/chart.umd.min.js',
+      'https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js',
+    ];
+    for (const url of urls) {
+      try { await loadScript(url); if (window.Chart) return true; } catch (e) { /* essaie le suivant */ }
+    }
+    return false;
+  }
+
+  // ---------------------------------------------------------------
+  // Filtres : mission et site privé en recherche typeahead (trop
+  // d'entrées pour un <select> — 313 missions et ~1000 sites actifs),
+  // association en <select> classique (~32 entrées). Même pattern que
+  // client.html (mission-search) / rm-collecte.html (clientSelect).
+  // ---------------------------------------------------------------
+  let selectedMissionId = '', selectedMissionLabel = '';
+  let selectedEmplacementId = '', selectedEmplacementLabel = '';
+  let selectedClientId = '';
+
+  let missionsCache = [], emplacementsCache = [];
+
+  function missionLabel(m) {
+    return [m.code_mission, m.client_nom].filter(Boolean).join(' — ') || 'Mission';
+  }
+  function emplacementLabel(e) {
+    return [e.nom, e.ville].filter(Boolean).join(' — ') || 'Emplacement';
+  }
+
+  function setupSearchField(inputEl, suggestionsEl, {
+    getCache, labelFn, allLabel, onSelect,
+  }) {
+    function close() { suggestionsEl.classList.remove('show'); }
+    function position() {
+      const rect = inputEl.getBoundingClientRect();
+      const width = Math.max(rect.width, 260);
+      suggestionsEl.style.width = width + 'px';
+      suggestionsEl.style.left = Math.min(rect.left, window.innerWidth - width - 8) + 'px';
+      suggestionsEl.style.top = (rect.bottom + 4) + 'px';
+    }
+    function render(query) {
+      const cache = getCache();
+      const q = (query || '').trim().toLowerCase();
+      const list = q
+        ? cache.filter((it) => labelFn(it).toLowerCase().includes(q)).slice(0, 30)
+        : cache.slice(0, 20);
+      const allOpt = `<div class="opt all" data-id="">${allLabel}</div>`;
+      const rows = list.length
+        ? list.map((it) => `<div class="opt" data-id="${it.id}">${esc(labelFn(it))}</div>`).join('')
+        : '<div class="empty">Aucun résultat</div>';
+      suggestionsEl.innerHTML = allOpt + rows;
+      suggestionsEl.querySelectorAll('.opt').forEach((opt) => {
+        opt.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          const id = opt.dataset.id;
+          if (id) {
+            const item = cache.find((it) => it.id === id);
+            onSelect(id, item ? labelFn(item) : '');
+          } else {
+            onSelect('', '');
+          }
+          close();
+          refreshData();
+        });
+      });
+      position();
+      suggestionsEl.classList.add('show');
+    }
+    inputEl.addEventListener('focus', () => render(''));
+    inputEl.addEventListener('input', () => render(inputEl.value));
+    inputEl.addEventListener('blur', () => {
+      setTimeout(() => { close(); }, 150);
+    });
+    window.addEventListener('scroll', close, { passive: true, capture: true });
+    window.addEventListener('resize', close);
+    return { render, close };
+  }
+
+  const missionSearchEl = document.getElementById('f-mission-search');
+  const missionSuggestionsEl = document.getElementById('missionSuggestions');
+  setupSearchField(missionSearchEl, missionSuggestionsEl, {
+    getCache: () => missionsCache,
+    labelFn: missionLabel,
+    allLabel: 'Toutes les missions',
+    onSelect: (id, label) => {
+      selectedMissionId = id; selectedMissionLabel = label;
+      missionSearchEl.value = label;
+    },
+  });
+  missionSearchEl.addEventListener('blur', () => {
+    setTimeout(() => { missionSearchEl.value = selectedMissionLabel; }, 150);
+  });
+
+  const emplacementSearchEl = document.getElementById('f-emplacement-search');
+  const emplacementSuggestionsEl = document.getElementById('emplacementSuggestions');
+  setupSearchField(emplacementSearchEl, emplacementSuggestionsEl, {
+    getCache: () => emplacementsCache,
+    labelFn: emplacementLabel,
+    allLabel: 'Tous les sites',
+    onSelect: (id, label) => {
+      selectedEmplacementId = id; selectedEmplacementLabel = label;
+      emplacementSearchEl.value = label;
+    },
+  });
+  emplacementSearchEl.addEventListener('blur', () => {
+    setTimeout(() => { emplacementSearchEl.value = selectedEmplacementLabel; }, 150);
+  });
+
+  const clientSelectEl = document.getElementById('clientSelect');
+  clientSelectEl.addEventListener('change', () => {
+    selectedClientId = clientSelectEl.value;
+    refreshData();
+  });
+
+  document.getElementById('filtersReset').addEventListener('click', () => {
+    selectedMissionId = ''; selectedMissionLabel = ''; missionSearchEl.value = '';
+    selectedEmplacementId = ''; selectedEmplacementLabel = ''; emplacementSearchEl.value = '';
+    selectedClientId = ''; clientSelectEl.value = '';
+    refreshData();
+  });
+
+  // ---------------------------------------------------------------
+  // Données
+  // ---------------------------------------------------------------
+  let liveMode = false;
+  let listsBuilt = false;
+  let typoChart = null;
+
+  function buildQuery() {
+    const p = new URLSearchParams();
+    if (selectedMissionId) p.set('id_mission', selectedMissionId);
+    if (selectedClientId) p.set('id_client', selectedClientId);
+    if (selectedEmplacementId) p.set('id_emplacement', selectedEmplacementId);
+    return p.toString();
+  }
+
+  async function refreshData() {
+    try {
+      const res = await fetch('/api/site-prive?' + buildQuery(), { cache: 'no-store' });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.message || data.error || 'Erreur inconnue');
+      render(data);
+      liveMode = true;
+      document.getElementById('errorBanner').classList.remove('show');
+    } catch (err) {
+      liveMode = false;
+      document.getElementById('errorDetail').textContent = err.message;
+      document.getElementById('errorBanner').classList.add('show');
+      console.warn('Fetch /api/site-prive failed:', err);
+    }
+    renderSyncLabel();
+  }
+
+  function renderSyncLabel() {
+    document.getElementById('syncTime').textContent =
+      new Date().toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    document.getElementById('liveDiamond').classList.toggle('off', !liveMode);
+  }
+
+  function render(data) {
+    stateEl.classList.add('hidden');
+    contentEl.classList.remove('hidden');
+
+    if (!listsBuilt) {
+      missionsCache = data.missionList || [];
+      emplacementsCache = data.emplacementList || [];
+      const clientList = data.clientList || [];
+      clientSelectEl.innerHTML = '<option value="">Toutes les associations</option>' +
+        clientList.map((c) => `<option value="${c.id}">${esc(c.nom)}</option>`).join('');
+      listsBuilt = true;
+    }
+
+    renderKpis(data.globalStats || {});
+    renderTypoChart(data.parTypologie || []);
+    renderTypoTable(data.parTypologie || []);
+    renderEnseigneTable(data.parEnseigne || []);
+  }
+
+  function renderKpis(s) {
+    const kpis = [
+      { v: fmtNum(s.nb_emplacements), l: 'Emplacements' },
+      { v: fmtNum(s.nb_missions), l: 'Missions' },
+      { v: s.heures_rue != null ? fmtNum(s.heures_rue) : '—', l: 'Heures rue' },
+      { v: fmtNum(s.bs_reel), l: 'BS réel' },
+      { v: s.taux_reel != null ? fmtNum(s.taux_reel, 3) : '—', l: 'Taux réel' },
+      { v: s.don_moyen != null ? fmtEuro(s.don_moyen) : '—', l: 'Don moyen' },
+    ];
+    document.getElementById('kpiGlobal').innerHTML = kpis.map((k) => `
+      <div class="kpi"><div class="val">${k.v}</div><div class="lbl">${k.l}</div></div>`).join('');
+  }
+
+  function renderTypoChart(rows) {
+    if (typoChart) { typoChart.destroy(); typoChart = null; }
+    const box = document.getElementById('typoChartBox');
+    if (typeof Chart === 'undefined') { box.innerHTML = '<div class="chart-empty">Graphique indisponible</div>'; return; }
+    if (!rows.length) { box.innerHTML = '<div class="chart-empty">Aucune donnée</div>'; return; }
+    if (!box.querySelector('canvas')) box.innerHTML = '<canvas id="chart-typologie"></canvas>';
+    const sorted = rows.slice().sort((a, b) => (b.taux_reel || 0) - (a.taux_reel || 0));
+    typoChart = new Chart(document.getElementById('chart-typologie'), {
+      type: 'bar',
+      data: {
+        labels: sorted.map((r) => categorieLabel(r.categorie)),
+        datasets: [{ label: 'Taux réel', data: sorted.map((r) => r.taux_reel), backgroundColor: '#E2173B', borderRadius: 0 }],
+      },
+      options: {
+        maintainAspectRatio: false,
+        scales: {
+          y: { beginAtZero: true, ticks: { color: '#75757C', font: { family: 'ui-monospace, monospace', size: 11 }, callback: (v) => fmtNum(v, 2) }, grid: { color: '#E4E4E8' } },
+          x: { ticks: { color: '#75757C', font: { family: 'ui-monospace, monospace', size: 10.5 } }, grid: { display: false } },
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: (ctx) => 'Taux réel : ' + fmtNum(ctx.parsed.y, 3) } },
+        },
+      },
+    });
+  }
+
+  function renderTypoTable(rows) {
+    const sorted = rows.slice().sort((a, b) => (b.bs_reel || 0) - (a.bs_reel || 0));
+    document.getElementById('tbl-typologie').innerHTML = sorted.map((r) => `
+      <tr>
+        <td>${esc(categorieLabel(r.categorie))}</td>
+        <td class="num">${fmtNum(r.nb_emplacements)}</td>
+        <td class="num">${fmtNum(r.bs_reel)}</td>
+        <td class="num">${r.taux_reel != null ? fmtNum(r.taux_reel, 3) : '—'}</td>
+        <td class="num">${r.don_moyen != null ? fmtEuro(r.don_moyen) : '—'}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Aucune donnée</td></tr>';
+  }
+
+  function renderEnseigneTable(rows) {
+    document.getElementById('tbl-enseigne').innerHTML = rows.map((r) => `
+      <tr>
+        <td>${esc(r.enseigne)}</td>
+        <td class="num">${fmtNum(r.nb_emplacements)}</td>
+        <td class="num">${fmtNum(r.bs_reel)}</td>
+        <td class="num">${r.taux_reel != null ? fmtNum(r.taux_reel, 3) : '—'}</td>
+        <td class="num">${r.don_moyen != null ? fmtEuro(r.don_moyen) : '—'}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Aucune donnée</td></tr>';
+  }
+
+  // ---------------------------------------------------------------
+  // AUTO-REFRESH toutes les 5 min
+  // ---------------------------------------------------------------
+  const REFRESH_MS = 5 * 60 * 1000;
+  let remaining = REFRESH_MS;
+  function tickCountdown() {
+    remaining -= 1000;
+    if (remaining <= 0) { remaining = REFRESH_MS; refreshData(); return; }
+    const s = Math.floor(remaining / 1000);
+    const mm = Math.floor(s / 60), ss = s % 60;
+    document.getElementById('countdown').textContent = `${mm}:${ss.toString().padStart(2, '0')}`;
+    document.getElementById('refreshFill').style.width = (100 - (remaining / REFRESH_MS) * 100) + '%';
+  }
+  setInterval(tickCountdown, 1000);
+
+  // INIT
+  ensureChartJs().then((ok) => {
+    if (!ok) console.warn('Chart.js indisponible (2 CDN testés) — le graphique restera vide, le reste du dashboard fonctionne normalement.');
+    refreshData();
+  });
+})();
+</script>
+
+</body>
+</html>

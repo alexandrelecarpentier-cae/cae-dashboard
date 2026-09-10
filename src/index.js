@@ -34,6 +34,12 @@ import { buildRdDashboardQueries } from './lib/sql-rd.js';
 import { buildMissionSuiviQueries } from './lib/sql-mission-suivi.js';
 import { buildReCollecteQueries } from './lib/sql-re-collecte.js';
 import { buildRmCollecteQueries, buildRmListQuery, buildClientListQuery } from './lib/sql-rm-collecte.js';
+import {
+  buildSitePriveQueries,
+  buildMissionListQuery as buildSitePriveMissionListQuery,
+  buildClientListQuery as buildSitePriveClientListQuery,
+  buildEmplacementListQuery as buildSitePriveEmplacementListQuery,
+} from './lib/sql-site-prive.js';
 import { isExcludedClient, buildMissionClientQuery, EXCLUDED_CLIENT_NAMES } from './lib/excluded-clients.js';
 
 export default {
@@ -53,6 +59,7 @@ export default {
       if (url.pathname === '/api/challenge') return await handleChallenge(env);
       if (url.pathname === '/api/salarie') return await handleSalarie(url, env);
       if (url.pathname === '/api/emplacement') return await handleEmplacement(url, env);
+      if (url.pathname === '/api/site-prive') return await handleSitePrive(url, env);
       if (url.pathname === '/api/re-mobilisation') return await handleReMobilisation(url, env);
       if (url.pathname === '/api/rd-mobilisation') return await handleRdMobilisation(url, env);
       if (url.pathname === '/api/rm-missions') return await handleRmMissions(env);
@@ -558,6 +565,55 @@ async function handleRmCollecte(url, env) {
     ]);
 
     return jsonResponse({ missions, age, gender, suspectsList, rmList, clientList });
+  } catch (e) {
+    return jsonResponse({ error: String(e.message || e) }, 502);
+  }
+}
+
+// ---------------------------------------------------------------
+// /api/site-prive — dashboard "Site privé" (site-prive.html) : pilotage
+// agrégé de tous les emplacements de type "prive", avec breakdowns par
+// typologie et par enseigne, filtrable par mission / client / emplacement.
+// Pas de mission cible fixe : pas de resolveMissionId ici, comme sur
+// /api/rm-collecte.
+// ---------------------------------------------------------------
+async function handleSitePrive(url, env) {
+  const configError = requireConfig(env);
+  if (configError) return jsonResponse({ error: configError }, 500);
+
+  const id_mission = url.searchParams.get('id_mission') || '';
+  if (id_mission && !RE_UUID.test(id_mission)) return jsonResponse({ error: 'id_mission invalide' }, 400);
+
+  const id_client = url.searchParams.get('id_client') || '';
+  if (id_client && !RE_UUID.test(id_client)) return jsonResponse({ error: 'id_client invalide' }, 400);
+
+  const id_emplacement = url.searchParams.get('id_emplacement') || '';
+  if (id_emplacement && !RE_UUID.test(id_emplacement)) return jsonResponse({ error: 'id_emplacement invalide' }, 400);
+
+  const queries = buildSitePriveQueries({
+    id_mission: id_mission || null,
+    id_client: id_client || null,
+    id_emplacement: id_emplacement || null,
+  });
+
+  try {
+    const [globalStats, parTypologie, parEnseigne, missionList, clientList, emplacementList] = await Promise.all([
+      runQuery(env, queries.globalStats),
+      runQuery(env, queries.parTypologie),
+      runQuery(env, queries.parEnseigne),
+      runQuery(env, buildSitePriveMissionListQuery()),
+      runQuery(env, buildSitePriveClientListQuery()),
+      runQuery(env, buildSitePriveEmplacementListQuery()),
+    ]);
+
+    return jsonResponse({
+      globalStats: globalStats[0] || null,
+      parTypologie,
+      parEnseigne,
+      missionList,
+      clientList,
+      emplacementList,
+    });
   } catch (e) {
     return jsonResponse({ error: String(e.message || e) }, 502);
   }
