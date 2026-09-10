@@ -40,6 +40,12 @@ import {
   buildClientListQuery as buildSitePriveClientListQuery,
   buildEmplacementListQuery as buildSitePriveEmplacementListQuery,
 } from './lib/sql-site-prive.js';
+import {
+  buildRhQueries,
+  buildRecruteursParMissionQuery,
+  buildClientListQuery as buildRhClientListQuery,
+  buildMissionListQuery as buildRhMissionListQuery,
+} from './lib/sql-rh.js';
 import { isExcludedClient, buildMissionClientQuery, EXCLUDED_CLIENT_NAMES } from './lib/excluded-clients.js';
 
 export default {
@@ -60,6 +66,7 @@ export default {
       if (url.pathname === '/api/salarie') return await handleSalarie(url, env);
       if (url.pathname === '/api/emplacement') return await handleEmplacement(url, env);
       if (url.pathname === '/api/site-prive') return await handleSitePrive(url, env);
+      if (url.pathname === '/api/rh') return await handleRh(url, env);
       if (url.pathname === '/api/re-mobilisation') return await handleReMobilisation(url, env);
       if (url.pathname === '/api/rd-mobilisation') return await handleRdMobilisation(url, env);
       if (url.pathname === '/api/rm-missions') return await handleRmMissions(env);
@@ -632,6 +639,73 @@ async function handleSitePrive(url, env) {
       missionList,
       clientList,
       emplacementList,
+    });
+  } catch (e) {
+    return jsonResponse({ error: String(e.message || e) }, 502);
+  }
+}
+
+// ---------------------------------------------------------------
+// /api/rh — dashboard "RH" (rh.html) : taux réel / taux d'absence / taux
+// de complétion des lots (présence, emplacement) par mission, avec un
+// détail optionnel par recruteur pour une mission choisie (id_mission).
+// Comme /rm-collecte et /site-prive, pas de mission cible fixe : les
+// filtres association/statut/période définissent le périmètre de la vue
+// d'ensemble ; id_mission ne sert qu'à ouvrir le détail par recruteur en
+// plus (pas à filtrer le tableau missions lui-même).
+// ---------------------------------------------------------------
+const RH_STATUTS_MISSION = ['en_cours', 'terminee', 'en_attente', 'annulee'];
+
+async function handleRh(url, env) {
+  const configError = requireConfig(env);
+  if (configError) return jsonResponse({ error: configError }, 500);
+
+  const id_client = url.searchParams.get('id_client') || '';
+  if (id_client && !RE_UUID.test(id_client)) return jsonResponse({ error: 'id_client invalide' }, 400);
+
+  const statut_mission = url.searchParams.get('statut_mission') || '';
+  if (statut_mission && !RH_STATUTS_MISSION.includes(statut_mission)) {
+    return jsonResponse({ error: 'statut_mission invalide' }, 400);
+  }
+
+  const date_from = url.searchParams.get('date_from') || '';
+  const date_to = url.searchParams.get('date_to') || '';
+  if (date_from && !RE_DATE.test(date_from)) return jsonResponse({ error: 'date_from invalide' }, 400);
+  if (date_to && !RE_DATE.test(date_to)) return jsonResponse({ error: 'date_to invalide' }, 400);
+
+  const id_mission = url.searchParams.get('id_mission') || '';
+  if (id_mission && !RE_UUID.test(id_mission)) return jsonResponse({ error: 'id_mission invalide' }, 400);
+
+  const queries = buildRhQueries({
+    id_client: id_client || null,
+    statut_mission: statut_mission || null,
+    date_from: date_from || null,
+    date_to: date_to || null,
+  });
+
+  try {
+    const [globalStats, missionsOverview, clientList, missionList] = await Promise.all([
+      runQuery(env, queries.globalStats),
+      runQuery(env, queries.missionsOverview),
+      runQuery(env, buildRhClientListQuery()),
+      runQuery(env, buildRhMissionListQuery()),
+    ]);
+
+    let recruteurs = null;
+    if (id_mission) {
+      if (await missionIsExcluded(env, id_mission)) {
+        return jsonResponse({ error: 'mission introuvable' }, 404);
+      }
+      const dateRange = date_from && date_to ? { from: date_from, to: date_to } : null;
+      recruteurs = await runQuery(env, buildRecruteursParMissionQuery(id_mission, dateRange));
+    }
+
+    return jsonResponse({
+      globalStats: globalStats[0] || null,
+      missionsOverview,
+      clientList,
+      missionList,
+      recruteurs,
     });
   } catch (e) {
     return jsonResponse({ error: String(e.message || e) }, 502);

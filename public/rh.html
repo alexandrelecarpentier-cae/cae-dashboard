@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RH — Dashboard CAE</title>
+<style>
+  :root{
+    --bg:#FFFFFF; --surface:#FFFFFF; --surface-2:#F5F5F6; --line:#E4E4E8;
+    --red:#E2173B; --text:#0F0F11; --muted:#75757C;
+    --sharp:2px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;}
+  @media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important; transition-duration:.001ms !important;}}
+
+  header{
+    position:sticky; top:0; z-index:20;
+    background:rgba(255,255,255,.92); backdrop-filter:blur(8px);
+    padding:calc(env(safe-area-inset-top) + 14px) 16px 12px;
+    border-bottom:1px solid var(--line);
+  }
+  h1{margin:0 0 10px; font-size:21px; font-weight:800; letter-spacing:-.01em; line-height:1.15; text-transform:uppercase;}
+  h1 em{color:var(--red); font-style:normal;}
+
+  .meta-row{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px;}
+  .sync{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:11.5px; color:var(--muted); display:flex; align-items:center; gap:6px;}
+  .sync b{color:var(--text); font-weight:600;}
+  .live-diamond{width:7px; height:7px; background:var(--red); transform:rotate(45deg); flex:0 0 auto;
+    animation:pulse 2.2s infinite;}
+  .live-diamond.off{background:#C7C7CC; animation:none;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(226,23,59,.45);}70%{box-shadow:0 0 0 7px rgba(226,23,59,0);}100%{box-shadow:0 0 0 0 rgba(226,23,59,0);}}
+  #refreshBar{height:2px; width:100%; background:var(--line); overflow:hidden; margin-bottom:12px;}
+  #refreshFill{height:100%; width:0%; background:var(--red); transition:width 1s linear;}
+
+  .filters{margin-top:0;}
+  .filter-row{display:flex; flex-wrap:nowrap; gap:10px; align-items:flex-end; overflow-x:auto; padding-bottom:2px;}
+  .filter-field{display:flex; flex-direction:column; gap:6px; flex:0 0 auto; width:200px;}
+  .filter-label{font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); font-weight:700; line-height:1; white-space:nowrap;}
+  .control{
+    background:var(--surface-2); color:var(--text); border:1px solid var(--line); border-radius:var(--sharp);
+    padding:8px 10px; font-size:13px; width:100%; height:34px; box-sizing:border-box; font-family:inherit; font-weight:600;
+  }
+  select.control{ font-family:inherit; }
+  .search-wrap{position:relative;}
+  .search-suggestions{
+    display:none; position:fixed; z-index:1000; min-width:260px;
+    background:#fff; border:1px solid var(--line); border-radius:var(--sharp);
+    box-shadow:0 6px 24px rgba(15,15,17,.12); max-height:260px; overflow-y:auto;
+  }
+  .search-suggestions.show{display:block;}
+  .search-suggestions .opt{padding:8px 10px; font-size:12.5px; cursor:pointer; border-bottom:1px solid var(--line);}
+  .search-suggestions .opt:last-child{border-bottom:none;}
+  .search-suggestions .opt:hover{background:var(--surface-2);}
+  .search-suggestions .opt.all{color:var(--muted); font-weight:700; text-transform:uppercase; font-size:10.5px; letter-spacing:.04em;}
+  .search-suggestions .empty{padding:10px; font-size:12px; color:var(--muted); text-align:center;}
+  .quick-tags{display:flex; flex-wrap:nowrap; gap:6px;}
+  .quick-tag{
+    background:var(--surface-2); color:var(--text); border:1px solid var(--line);
+    border-radius:var(--sharp); padding:0 10px; height:34px; box-sizing:border-box; display:flex; align-items:center;
+    font-size:12.5px; font-weight:600; cursor:pointer; user-select:none; line-height:1.2; white-space:nowrap;
+  }
+  .quick-tag.active{border-color:var(--red); color:#fff; background:var(--red);}
+  .btn-reset{
+    background:#fff; border:1px solid var(--line); border-radius:var(--sharp);
+    padding:0 12px; height:34px; box-sizing:border-box; font-size:12px; font-weight:700; color:var(--muted); cursor:pointer;
+    text-transform:uppercase; letter-spacing:.03em; flex:0 0 auto;
+  }
+
+  .error-banner{
+    margin-top:12px; padding:10px 12px; border:1px solid var(--line); border-left:3px solid var(--red);
+    background:#FFF6F7; font-size:12px; color:#7A1225; display:none; line-height:1.5;
+  }
+  .error-banner.show{display:block;}
+  .error-banner b{color:var(--red);}
+
+  main{padding:4px 16px 40px; max-width:1200px; margin:0 auto;}
+
+  .section-label{display:flex; align-items:center; gap:6px; font-size:10px; text-transform:uppercase;
+    letter-spacing:.08em; color:var(--muted); font-weight:700; margin:22px 2px 8px;}
+  .section-label .diamond{width:6px; height:6px; background:var(--red); transform:rotate(45deg); flex:0 0 auto;}
+  .section-label .note{margin-left:auto; font-weight:600; text-transform:none; letter-spacing:0; font-size:11px;}
+  .section-label .btn-close{
+    margin-left:auto; background:none; border:1px solid var(--line); border-radius:var(--sharp);
+    color:var(--muted); font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.03em;
+    padding:4px 9px; cursor:pointer;
+  }
+
+  .kpi-scroll{display:grid; grid-template-columns:repeat(2,1fr); gap:10px;}
+  @media (min-width:480px){ .kpi-scroll{grid-template-columns:repeat(3,1fr);} }
+  @media (min-width:720px){ .kpi-scroll{grid-template-columns:repeat(7,1fr);} }
+  .kpi{background:var(--surface-2);
+    border:1px solid var(--line); border-left:2px solid var(--red); border-radius:var(--sharp); padding:12px 14px;}
+  .kpi .val{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:19px; font-weight:700; line-height:1;}
+  .kpi .lbl{font-size:10px; color:var(--muted); margin-top:6px; text-transform:uppercase; letter-spacing:.05em;}
+
+  .card{background:#fff; border:1px solid var(--line); border-radius:var(--sharp); padding:14px 14px 12px; margin-bottom:10px;
+    position:relative; overflow:hidden; box-shadow:0 1px 2px rgba(15,15,17,.03);}
+  .card::before{content:""; position:absolute; top:0; left:0; width:3px; height:100%; background:var(--red);}
+  .card-inner{padding-left:6px;}
+
+  .table-scroll{max-height:460px; overflow-y:auto;}
+  .table-wrap{overflow-x:auto;}
+  table{width:100%; border-collapse:collapse; font-size:12.5px; white-space:nowrap;}
+  thead th{text-align:left; color:var(--muted); font-weight:700; font-size:10px;
+    text-transform:uppercase; letter-spacing:.05em; border-bottom:1px solid var(--line); padding:8px 10px;
+    position:sticky; top:0; background:#fff;}
+  thead th.num, tbody td.num{text-align:right; font-family:ui-monospace,SFMono-Regular,Consolas,monospace;}
+  tbody td{padding:8px 10px; border-bottom:1px solid var(--line);}
+  tbody tr.clickable{cursor:pointer;}
+  tbody tr.clickable:hover{background:var(--surface-2);}
+  tbody tr.selected{background:#FFF3F5;}
+  tr.total-row td{font-weight:800; border-top:2px solid var(--text); background:var(--surface-2); font-family:ui-monospace,SFMono-Regular,Consolas,monospace;}
+  tr.total-row td:first-child{font-family:inherit;}
+
+  #state{padding:60px 16px; text-align:center; color:var(--muted); font-size:14px;}
+  #state.error{color:var(--red);}
+  .hidden{display:none;}
+  .empty{padding:24px 16px; text-align:center; color:var(--muted); font-size:13px;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Dashboard <em>RH</em></h1>
+  <div class="meta-row">
+    <div class="sync"><span class="live-diamond off" id="liveDiamond"></span>Synchro <b id="syncTime">—</b></div>
+    <div class="sync" id="countdown">5:00</div>
+  </div>
+  <div id="refreshBar"><div id="refreshFill"></div></div>
+
+  <div class="filters">
+    <div class="filter-row">
+      <div class="filter-field">
+        <div class="filter-label">Association</div>
+        <select class="control" id="clientSelect"><option value="">Toutes les associations</option></select>
+      </div>
+      <div class="filter-field" style="width:auto;">
+        <div class="filter-label">Statut mission</div>
+        <div class="quick-tags" id="statutTags">
+          <span class="quick-tag" data-statut="">Toutes</span>
+          <span class="quick-tag active" data-statut="en_cours">En cours</span>
+          <span class="quick-tag" data-statut="terminee">Passées</span>
+        </div>
+      </div>
+      <div class="filter-field">
+        <div class="filter-label">Mission</div>
+        <div class="search-wrap">
+          <input class="control" type="text" id="f-mission-search" placeholder="Rechercher une mission" autocomplete="off">
+          <div class="search-suggestions" id="missionSuggestions"></div>
+        </div>
+      </div>
+      <div class="filter-field" style="width:auto;">
+        <div class="filter-label">Période</div>
+        <div class="quick-tags" id="quickTags">
+          <span class="quick-tag active" data-key="total" data-from="" data-to="">Total</span>
+          <span class="quick-tag" data-key="today">Aujourd'hui</span>
+          <span class="quick-tag" data-key="yesterday">Hier</span>
+        </div>
+      </div>
+      <div class="filter-field" style="width:150px;">
+        <div class="filter-label">Du</div>
+        <input class="control" type="date" id="dateFrom">
+      </div>
+      <div class="filter-field" style="width:150px;">
+        <div class="filter-label">Au</div>
+        <input class="control" type="date" id="dateTo">
+      </div>
+      <button class="btn-reset" id="filtersReset" type="button">Réinitialiser</button>
+    </div>
+  </div>
+
+  <div class="error-banner" id="errorBanner">
+    <b>Connexion impossible.</b> <span id="errorDetail"></span> La page réessaiera automatiquement.
+  </div>
+</header>
+
+<div id="state">Chargement des données depuis Metabase…</div>
+
+<main id="content" class="hidden">
+  <div class="section-label"><span class="diamond"></span>Indicateurs globaux</div>
+  <div class="kpi-scroll" id="kpiGlobal"></div>
+
+  <div class="section-label"><span class="diamond"></span>Missions
+    <span class="note">Cliquer une ligne pour voir le détail par recruteur</span>
+  </div>
+  <div class="card"><div class="card-inner">
+    <div class="table-scroll">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Mission</th><th>Association</th><th>Statut</th>
+              <th class="num">Recruteurs</th><th class="num">Heures rue</th><th class="num">BS réel</th>
+              <th class="num">Taux réel</th><th class="num">Taux absence</th>
+              <th class="num">Compl. présence</th><th class="num">Compl. emplacement</th>
+            </tr>
+          </thead>
+          <tbody id="tbl-missions"></tbody>
+        </table>
+      </div>
+    </div>
+  </div></div>
+
+  <div id="recruteurSection" class="hidden">
+    <div class="section-label"><span class="diamond"></span><span id="recruteurTitle">Performance par recruteur</span>
+      <button class="btn-close" id="recruteurClose" type="button">Fermer</button>
+    </div>
+    <div class="card"><div class="card-inner">
+      <div class="table-scroll">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Recruteur</th><th class="num">Jours</th><th class="num">Heures rue</th><th class="num">BS réel</th>
+                <th class="num">Taux réel</th><th class="num">Taux absence</th>
+                <th class="num">Compl. présence</th><th class="num">Compl. emplacement</th><th class="num">Don moyen</th>
+              </tr>
+            </thead>
+            <tbody id="tbl-recruteurs"></tbody>
+          </table>
+        </div>
+      </div>
+    </div></div>
+  </div>
+</main>
+
+<script>
+(function () {
+  // ---------------------------------------------------------------
+  // Cette page ne contient AUCUNE clé d'accès. Les données viennent de
+  // /api/rh, qui interroge Metabase côté serveur. Vue cross-missions
+  // (toutes missions, pas seulement celles sur emplacements privés),
+  // filtrable par association / statut de mission / période, tous
+  // combinables et optionnels — pas de mission cible fixe, comme
+  // /rm-collecte et /site-prive. Le filtre "Statut mission" démarre sur
+  // "En cours" plutôt que "Toutes" : sur ~1300 missions historiques,
+  // afficher tout par défaut serait à la fois moins pertinent pour un
+  // suivi RH au jour le jour et une table bien plus lourde à parcourir —
+  // "Toutes" reste un clic.
+  // Cliquer une ligne de la table missions (ou choisir une mission dans le
+  // champ de recherche) ouvre le détail par recruteur pour cette mission
+  // (même période filtrée), sans quoi la vue reste uniquement l'ensemble
+  // des missions.
+  // ---------------------------------------------------------------
+  const stateEl = document.getElementById('state');
+  const contentEl = document.getElementById('content');
+
+  function esc(s) { return String(s == null ? '' : s).replace(/</g, '&lt;'); }
+  function fmtNum(n, digits = 0) {
+    if (n === null || n === undefined) return '—';
+    return Number(n).toLocaleString('fr-FR', { maximumFractionDigits: digits, minimumFractionDigits: digits });
+  }
+  function fmtEuro(n) {
+    if (n === null || n === undefined) return '—';
+    return fmtNum(n, 2) + '€';
+  }
+  // taux_reel s'affiche en nombre brut (ex. 0,394), comme partout ailleurs
+  // dans ce projet — jamais en pourcentage.
+  function fmtRatio(n) {
+    if (n === null || n === undefined) return '—';
+    return fmtNum(n, 3);
+  }
+  // taux_absence / taux_completion_* sont calculés en ratio (0-1) côté SQL
+  // (cohérent avec taux_reel) mais s'affichent en pourcentage ici, plus
+  // lisible pour ce type d'indicateur.
+  function fmtPct(n, digits = 1) {
+    if (n === null || n === undefined) return '—';
+    return fmtNum(Number(n) * 100, digits) + ' %';
+  }
+  const STATUT_LABELS = { en_cours: 'En cours', terminee: 'Terminée', en_attente: 'En attente', annulee: 'Annulée' };
+  function statutLabel(s) { return STATUT_LABELS[s] || (s || '—'); }
+
+  // ---------------------------------------------------------------
+  // Filtre mission : recherche typeahead (comme site-prive.html) —
+  // toutes les missions non exclues, pas seulement celles avec activité
+  // en cours.
+  // ---------------------------------------------------------------
+  let missionsCache = [];
+  function missionLabel(m) {
+    return [m.code_mission, m.client_nom].filter(Boolean).join(' — ') || 'Mission';
+  }
+
+  const missionSearchEl = document.getElementById('f-mission-search');
+  const missionSuggestionsEl = document.getElementById('missionSuggestions');
+
+  function closeMissionSuggestions() { missionSuggestionsEl.classList.remove('show'); }
+  function positionMissionSuggestions() {
+    const rect = missionSearchEl.getBoundingClientRect();
+    const width = Math.max(rect.width, 260);
+    missionSuggestionsEl.style.width = width + 'px';
+    missionSuggestionsEl.style.left = Math.min(rect.left, window.innerWidth - width - 8) + 'px';
+    missionSuggestionsEl.style.top = (rect.bottom + 4) + 'px';
+  }
+  function renderMissionSuggestions(query) {
+    const q = (query || '').trim().toLowerCase();
+    const list = q
+      ? missionsCache.filter((m) => missionLabel(m).toLowerCase().includes(q)).slice(0, 30)
+      : missionsCache.slice(0, 20);
+    const rows = list.length
+      ? list.map((m) => `<div class="opt" data-id="${m.id}">${esc(missionLabel(m))}</div>`).join('')
+      : '<div class="empty">Aucun résultat</div>';
+    missionSuggestionsEl.innerHTML = rows;
+    missionSuggestionsEl.querySelectorAll('.opt').forEach((opt) => {
+      opt.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        const id = opt.dataset.id;
+        const m = missionsCache.find((mm) => mm.id === id);
+        selectMission(id, m ? missionLabel(m) : '');
+        missionSearchEl.value = m ? missionLabel(m) : '';
+        closeMissionSuggestions();
+      });
+    });
+    positionMissionSuggestions();
+    missionSuggestionsEl.classList.add('show');
+  }
+  missionSearchEl.addEventListener('focus', () => renderMissionSuggestions(missionSearchEl.value));
+  missionSearchEl.addEventListener('input', () => renderMissionSuggestions(missionSearchEl.value));
+  missionSearchEl.addEventListener('blur', () => {
+    setTimeout(() => {
+      closeMissionSuggestions();
+      missionSearchEl.value = selectedMissionLabel;
+    }, 150);
+  });
+  // Voir site-prive.html pour le détail de ce correctif : sans l'exclusion
+  // du scroll interne au dropdown, le scroll dans la liste de suggestions
+  // refermait celle-ci instantanément (capture:true remonte tout scroll,
+  // y compris celui du dropdown lui-même).
+  window.addEventListener('scroll', (e) => {
+    if (missionSuggestionsEl.contains(e.target)) return;
+    closeMissionSuggestions();
+  }, { passive: true, capture: true });
+  window.addEventListener('resize', closeMissionSuggestions);
+
+  // ---------------------------------------------------------------
+  // Filtres : association (select), statut mission (tags), période
+  // (quick-tags + Du/Au, comme rm-collecte.html / site-prive.html).
+  // ---------------------------------------------------------------
+  let selectedClientId = '';
+  let selectedStatut = 'en_cours';
+  let selectedMissionId = '', selectedMissionLabel = '';
+  let dateFrom = '', dateTo = '';
+
+  const clientSelectEl = document.getElementById('clientSelect');
+  clientSelectEl.addEventListener('change', () => {
+    selectedClientId = clientSelectEl.value;
+    refreshData();
+  });
+
+  const statutTagsEl = document.getElementById('statutTags');
+  statutTagsEl.querySelectorAll('.quick-tag').forEach((tag) => {
+    tag.addEventListener('click', () => {
+      selectedStatut = tag.dataset.statut;
+      statutTagsEl.querySelectorAll('.quick-tag').forEach((t) => t.classList.toggle('active', t === tag));
+      refreshData();
+    });
+  });
+
+  function isoDate(d) {
+    const tz = d.getTimezoneOffset();
+    const local = new Date(d.getTime() - tz * 60000);
+    return local.toISOString().slice(0, 10);
+  }
+  const dateFromEl = document.getElementById('dateFrom');
+  const dateToEl = document.getElementById('dateTo');
+  const quickTagsEl = document.getElementById('quickTags');
+  function setActiveQuickTag(key) {
+    quickTagsEl.querySelectorAll('.quick-tag').forEach((t) => t.classList.toggle('active', t.dataset.key === key));
+  }
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+  quickTagsEl.querySelector('[data-key="today"]').dataset.from = isoDate(today);
+  quickTagsEl.querySelector('[data-key="today"]').dataset.to = isoDate(today);
+  quickTagsEl.querySelector('[data-key="yesterday"]').dataset.from = isoDate(yesterday);
+  quickTagsEl.querySelector('[data-key="yesterday"]').dataset.to = isoDate(yesterday);
+  quickTagsEl.querySelectorAll('.quick-tag').forEach((tag) => {
+    tag.addEventListener('click', () => {
+      dateFrom = tag.dataset.from || ''; dateTo = tag.dataset.to || '';
+      dateFromEl.value = dateFrom; dateToEl.value = dateTo;
+      setActiveQuickTag(tag.dataset.key);
+      refreshData();
+    });
+  });
+  dateFromEl.addEventListener('change', () => { dateFrom = dateFromEl.value; dateTo = dateToEl.value; setActiveQuickTag(null); refreshData(); });
+  dateToEl.addEventListener('change', () => { dateFrom = dateFromEl.value; dateTo = dateToEl.value; setActiveQuickTag(null); refreshData(); });
+
+  document.getElementById('filtersReset').addEventListener('click', () => {
+    selectedClientId = ''; clientSelectEl.value = '';
+    selectedStatut = 'en_cours';
+    statutTagsEl.querySelectorAll('.quick-tag').forEach((t) => t.classList.toggle('active', t.dataset.statut === 'en_cours'));
+    selectedMissionId = ''; selectedMissionLabel = ''; missionSearchEl.value = '';
+    dateFrom = ''; dateTo = ''; dateFromEl.value = ''; dateToEl.value = '';
+    setActiveQuickTag('total');
+    refreshData();
+  });
+
+  document.getElementById('recruteurClose').addEventListener('click', () => {
+    selectedMissionId = ''; selectedMissionLabel = ''; missionSearchEl.value = '';
+    document.getElementById('recruteurSection').classList.add('hidden');
+  });
+
+  function selectMission(id, label) {
+    selectedMissionId = id; selectedMissionLabel = label;
+    refreshData();
+  }
+
+  // ---------------------------------------------------------------
+  // Données
+  // ---------------------------------------------------------------
+  let liveMode = false;
+  let listsBuilt = false;
+
+  function buildQuery() {
+    const p = new URLSearchParams();
+    if (selectedClientId) p.set('id_client', selectedClientId);
+    if (selectedStatut) p.set('statut_mission', selectedStatut);
+    if (dateFrom && dateTo) { p.set('date_from', dateFrom); p.set('date_to', dateTo); }
+    if (selectedMissionId) p.set('id_mission', selectedMissionId);
+    return p.toString();
+  }
+
+  async function refreshData() {
+    try {
+      const res = await fetch('/api/rh?' + buildQuery(), { cache: 'no-store' });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.message || data.error || 'Erreur inconnue');
+      render(data);
+      liveMode = true;
+      document.getElementById('errorBanner').classList.remove('show');
+    } catch (err) {
+      liveMode = false;
+      document.getElementById('errorDetail').textContent = err.message;
+      document.getElementById('errorBanner').classList.add('show');
+      console.warn('Fetch /api/rh failed:', err);
+    }
+    renderSyncLabel();
+  }
+
+  function renderSyncLabel() {
+    document.getElementById('syncTime').textContent =
+      new Date().toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    document.getElementById('liveDiamond').classList.toggle('off', !liveMode);
+  }
+
+  function render(data) {
+    stateEl.classList.add('hidden');
+    contentEl.classList.remove('hidden');
+
+    if (!listsBuilt) {
+      missionsCache = data.missionList || [];
+      const clientList = data.clientList || [];
+      clientSelectEl.innerHTML = '<option value="">Toutes les associations</option>' +
+        clientList.map((c) => `<option value="${c.id}">${esc(c.nom)}</option>`).join('');
+      listsBuilt = true;
+    }
+
+    renderKpis(data.globalStats || {});
+    renderMissionsTable(data.missionsOverview || []);
+
+    const section = document.getElementById('recruteurSection');
+    if (selectedMissionId && data.recruteurs) {
+      const mission = (data.missionsOverview || []).find((m) => m.mission_id === selectedMissionId);
+      const title = mission
+        ? `Performance par recruteur — ${mission.code_mission || ''}${mission.client_nom ? ' · ' + mission.client_nom : ''}`
+        : `Performance par recruteur — ${selectedMissionLabel}`;
+      document.getElementById('recruteurTitle').textContent = title;
+      renderRecruteursTable(data.recruteurs);
+      section.classList.remove('hidden');
+    } else {
+      section.classList.add('hidden');
+    }
+  }
+
+  function renderKpis(s) {
+    const kpis = [
+      { v: fmtNum(s.nb_missions), l: 'Missions' },
+      { v: s.heures_rue != null ? fmtNum(s.heures_rue) : '—', l: 'Heures rue' },
+      { v: fmtNum(s.bs_reel), l: 'BS réel' },
+      { v: fmtRatio(s.taux_reel), l: 'Taux réel' },
+      { v: fmtPct(s.taux_absence), l: 'Taux absence' },
+      { v: fmtPct(s.taux_completion_presence), l: 'Compl. présence' },
+      { v: fmtPct(s.taux_completion_emplacement), l: 'Compl. emplacement' },
+    ];
+    document.getElementById('kpiGlobal').innerHTML = kpis.map((k) => `
+      <div class="kpi"><div class="val">${k.v}</div><div class="lbl">${k.l}</div></div>`).join('');
+  }
+
+  function renderMissionsTable(rows) {
+    const el = document.getElementById('tbl-missions');
+    if (!rows.length) {
+      el.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--muted);">Aucune mission pour ces filtres</td></tr>';
+      return;
+    }
+    el.innerHTML = rows.map((m) => {
+      const sub = [m.code_mission, m.code_mission_client].filter(Boolean).join(' / ') || 'Mission';
+      const selected = m.mission_id === selectedMissionId;
+      return `
+      <tr class="clickable${selected ? ' selected' : ''}" data-id="${m.mission_id}" data-label="${esc(sub)}">
+        <td>${esc(sub)}</td>
+        <td>${esc(m.client_nom || '—')}</td>
+        <td>${esc(statutLabel(m.statut_mission))}</td>
+        <td class="num">${fmtNum(m.nb_recruteurs)}</td>
+        <td class="num">${m.heures_rue != null ? fmtNum(m.heures_rue) : '—'}</td>
+        <td class="num">${fmtNum(m.bs_reel)}</td>
+        <td class="num">${fmtRatio(m.taux_reel)}</td>
+        <td class="num">${fmtPct(m.taux_absence)}</td>
+        <td class="num">${fmtPct(m.taux_completion_presence)}</td>
+        <td class="num">${fmtPct(m.taux_completion_emplacement)}</td>
+      </tr>`;
+    }).join('');
+    el.querySelectorAll('tr.clickable').forEach((tr) => {
+      tr.addEventListener('click', () => {
+        const id = tr.dataset.id;
+        if (id === selectedMissionId) {
+          // Reclic sur la même ligne : referme le détail.
+          selectedMissionId = ''; selectedMissionLabel = ''; missionSearchEl.value = '';
+          refreshData();
+          return;
+        }
+        missionSearchEl.value = tr.dataset.label;
+        selectMission(id, tr.dataset.label);
+        setTimeout(() => {
+          document.getElementById('recruteurSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+      });
+    });
+  }
+
+  function renderRecruteursTable(rows) {
+    const el = document.getElementById('tbl-recruteurs');
+    if (!rows.length) {
+      el.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--muted);">Aucune donnée</td></tr>';
+      return;
+    }
+    el.innerHTML = rows.map((r) => {
+      const isTotal = r.recruteur === 'TOTAL';
+      return `
+      <tr${isTotal ? ' class="total-row"' : ''}>
+        <td>${esc(r.recruteur)}</td>
+        <td class="num">${fmtNum(r.nb_lots)}</td>
+        <td class="num">${r.heures_rue != null ? fmtNum(r.heures_rue) : '—'}</td>
+        <td class="num">${fmtNum(r.bs_reel)}</td>
+        <td class="num">${fmtRatio(r.taux_reel)}</td>
+        <td class="num">${fmtPct(r.taux_absence)}</td>
+        <td class="num">${fmtPct(r.taux_completion_presence)}</td>
+        <td class="num">${fmtPct(r.taux_completion_emplacement)}</td>
+        <td class="num">${r.don_moyen != null ? fmtEuro(r.don_moyen) : '—'}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ---------------------------------------------------------------
+  // AUTO-REFRESH toutes les 5 min
+  // ---------------------------------------------------------------
+  const REFRESH_MS = 5 * 60 * 1000;
+  let remaining = REFRESH_MS;
+  function tickCountdown() {
+    remaining -= 1000;
+    if (remaining <= 0) { remaining = REFRESH_MS; refreshData(); return; }
+    const s = Math.floor(remaining / 1000);
+    const mm = Math.floor(s / 60), ss = s % 60;
+    document.getElementById('countdown').textContent = `${mm}:${ss.toString().padStart(2, '0')}`;
+    document.getElementById('refreshFill').style.width = (100 - (remaining / REFRESH_MS) * 100) + '%';
+  }
+  setInterval(tickCountdown, 1000);
+
+  // INIT
+  refreshData();
+})();
+</script>
+
+</body>
+</html>
