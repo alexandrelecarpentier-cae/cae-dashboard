@@ -123,6 +123,100 @@ function dateFilterClause(col, dateRange) {
   return dateRange ? `AND ${col} >= '${dateRange.from}' AND ${col} <= '${dateRange.to}'` : '';
 }
 
+// ---------------------------------------------------------------
+// Requêtes basées sur les CONTRATS (date de contrat = contrats.date_debut,
+// pas lots.date) : fin de période d'essai, recrutements dans le temps,
+// délai de complétion d'équipe. Mêmes filtres association/statut/période
+// que la vue d'ensemble ci-dessus, mais appliqués à la date de début de
+// contrat plutôt qu'à la date des lots — deux dimensions temporelles
+// différentes sur la même page, comme des filtres globaux appliqués à
+// des données de nature différente. Les contrats sans date_debut (rares)
+// sont exclus : ils ne peuvent être placés sur aucune ligne du temps.
+function contratsFiltersClause(p) {
+  const clauses = ['c.date_debut is not null'];
+  if (p.id_client) clauses.push(`m.client_id = '${p.id_client}'`);
+  if (p.statut_mission) clauses.push(`m.statut_mission = '${p.statut_mission}'`);
+  if (p.date_from) clauses.push(`c.date_debut >= '${p.date_from}'`);
+  if (p.date_to) clauses.push(`c.date_debut <= '${p.date_to}'`);
+  return clauses.join(' AND ');
+}
+
+function contratsBaseCte(p) {
+  return `with contrats_f as (
+  select c.id, c.mission_id, c.date_debut
+  from contrats c
+  join missions m on m.id = c.mission_id
+  where ${contratsFiltersClause(p)}
+    ${excludeClientsClause('m')}
+)`;
+}
+
+// Taux de fin de période d'essai (rupture du contrat au terme de l'essai,
+// cf. types_avenants.categorie = 'fin_period_essai' — rupture_contrat=true
+// pour ce type), sur le périmètre de contrats filtré, splitté entre
+// initiative employeur et initiative salarié via le libellé de l'avenant
+// ("Fin de période d'essai à l'initiative de l'employeur"/"du salarié" —
+// deux autres libellés legacy de gabarit portent le même sens, d'où le
+// filtre par mot-clé plutôt que par id figé).
+function buildFpeQuery(p) {
+  return `${contratsBaseCte(p)},
+fpe_f as (
+  select av.contrat_id, ta.libelle
+  from avenants av
+  join types_avenants ta on ta.id = av.type_avenant_id
+  join contrats_f cf on cf.id = av.contrat_id
+  where ta.categorie = 'fin_period_essai'
+)
+select
+  count(distinct cf.id) as nb_contrats,
+  count(distinct fpe_f.contrat_id) filter (where fpe_f.libelle ilike '%employeur%') as nb_fpe_employeur,
+  count(distinct fpe_f.contrat_id) filter (where fpe_f.libelle ilike '%salarié%') as nb_fpe_salarie
+from contrats_f cf
+left join fpe_f on fpe_f.contrat_id = cf.id;`;
+}
+
+// Nombre de recrutements (contrats signés) par jour / semaine / mois
+// calendaires réels, sur la base de la date de début de contrat.
+function recrutementsBucketSql(granularity) {
+  if (granularity === 'semaine') return `date_trunc('week', date_debut)::date`;
+  if (granularity === 'mois') return `date_trunc('month', date_debut)::date`;
+  return 'date_debut'; // 'jour'
+}
+function buildRecrutementsQuery(p, granularity) {
+  return `${contratsBaseCte(p)}
+select ${recrutementsBucketSql(granularity)} as periode, count(distinct id) as nb_recrutements
+from contrats_f
+group by 1
+order by 1;`;
+}
+
+// Délai de complétion d'équipe par mission : nombre de jours entre le
+// début de la mission et l'arrivée du DERNIER recruteur qui l'a rejointe
+// (date de début de son contrat) — après cette date, l'équipe n'a plus
+// grandi. Il n'existe aucun champ d'effectif cible en base (vérifié :
+// missions n'a que des objectifs de bulletins, pas de taille d'équipe
+// visée), donc ce délai n'est pas mesuré contre un objectif mais reflète
+// combien de temps la constitution de l'équipe a mis à se stabiliser —
+// l'indicateur le plus proche de "complétion d'équipe" que les données
+// permettent. Utilisé pour la moyenne globale (calculée côté front à
+// partir de ces lignes) comme pour la colonne par mission.
+function buildCompletionEquipeQuery(p) {
+  return `${contratsBaseCte(p)},
+par_mission as (
+  select cf.mission_id, max(cf.date_debut) as derniere_arrivee, count(distinct cf.id) as nb_recrues
+  from contrats_f cf
+  group by 1
+)
+select pm.mission_id, m.code_mission, cl.nom as client_nom,
+  m.date_debut as debut_mission, pm.derniere_arrivee, pm.nb_recrues,
+  (pm.derniere_arrivee - m.date_debut) as jours_completion_equipe
+from par_mission pm
+join missions m on m.id = pm.mission_id
+left join clients cl on cl.id = m.client_id
+where m.date_debut is not null
+order by pm.derniere_arrivee desc;`;
+}
+
 // Détail par recruteur pour UNE mission (id_mission déjà validé en UUID et
 // vérifié non exclu côté appelant, comme /rd.html) : une ligne par
 // recruteur ayant au moins un lot sur la mission (dans la plage de dates
@@ -231,6 +325,11 @@ function buildRhQueries(p) {
   return {
     globalStats: buildGlobalStatsQuery(p),
     missionsOverview: buildMissionsOverviewQuery(p),
+    fpe: buildFpeQuery(p),
+    recrutementsParJour: buildRecrutementsQuery(p, 'jour'),
+    recrutementsParSemaine: buildRecrutementsQuery(p, 'semaine'),
+    recrutementsParMois: buildRecrutementsQuery(p, 'mois'),
+    completionEquipe: buildCompletionEquipeQuery(p),
   };
 }
 

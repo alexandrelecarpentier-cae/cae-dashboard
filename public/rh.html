@@ -90,7 +90,8 @@
 
   .kpi-scroll{display:grid; grid-template-columns:repeat(2,1fr); gap:10px;}
   @media (min-width:480px){ .kpi-scroll{grid-template-columns:repeat(3,1fr);} }
-  @media (min-width:720px){ .kpi-scroll{grid-template-columns:repeat(7,1fr);} }
+  @media (min-width:720px){ .kpi-scroll{grid-template-columns:repeat(4,1fr);} }
+  @media (min-width:960px){ .kpi-scroll{grid-template-columns:repeat(8,1fr);} }
   .kpi{background:var(--surface-2);
     border:1px solid var(--line); border-left:2px solid var(--red); border-radius:var(--sharp); padding:12px 14px;}
   .kpi .val{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:19px; font-weight:700; line-height:1;}
@@ -100,6 +101,8 @@
     position:relative; overflow:hidden; box-shadow:0 1px 2px rgba(15,15,17,.03);}
   .card::before{content:""; position:absolute; top:0; left:0; width:3px; height:100%; background:var(--red);}
   .card-inner{padding-left:6px;}
+  .chart-box{position:relative; height:260px;}
+  .chart-empty{display:flex; align-items:center; justify-content:center; height:260px; color:var(--muted); font-size:13px;}
 
   .table-scroll{max-height:460px; overflow-y:auto;}
   .table-wrap{overflow-x:auto;}
@@ -183,6 +186,25 @@
   <div class="section-label"><span class="diamond"></span>Indicateurs globaux</div>
   <div class="kpi-scroll" id="kpiGlobal"></div>
 
+  <div class="section-label"><span class="diamond"></span>Fin de période d'essai
+    <span class="note">Part des contrats du périmètre filtré (date de contrat), par initiative</span>
+  </div>
+  <div class="card"><div class="card-inner">
+    <div class="chart-box" id="fpeChartBox"><canvas id="chart-fpe"></canvas></div>
+  </div></div>
+
+  <div class="section-label"><span class="diamond"></span>Recrutements
+    <span class="note">Contrats signés, par date de début de contrat</span>
+  </div>
+  <div class="card"><div class="card-inner">
+    <div class="quick-tags" id="recrutGranularityTags" style="margin-bottom:12px;">
+      <span class="quick-tag" data-g="jour">Jour</span>
+      <span class="quick-tag active" data-g="semaine">Semaine</span>
+      <span class="quick-tag" data-g="mois">Mois</span>
+    </div>
+    <div class="chart-box" id="recrutChartBox"><canvas id="chart-recrutements"></canvas></div>
+  </div></div>
+
   <div class="section-label"><span class="diamond"></span>Missions
     <span class="note">Cliquer une ligne pour voir le détail par recruteur</span>
   </div>
@@ -196,6 +218,7 @@
               <th class="num">Recruteurs</th><th class="num">Heures rue</th><th class="num">BS réel</th>
               <th class="num">Taux réel</th><th class="num">Taux absence</th>
               <th class="num">Compl. présence</th><th class="num">Compl. emplacement</th>
+              <th class="num">Jours compl. équipe</th>
             </tr>
           </thead>
           <tbody id="tbl-missions"></tbody>
@@ -272,6 +295,43 @@
   }
   const STATUT_LABELS = { en_cours: 'En cours', terminee: 'Terminée', en_attente: 'En attente', annulee: 'Annulée' };
   function statutLabel(s) { return STATUT_LABELS[s] || (s || '—'); }
+  // Formatage de l'axe X des graphes recrutements (jour/semaine/mois),
+  // identique à site-prive.html (courbe de taux réel).
+  function fmtPeriodeLabel(iso, granularity) {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    if (granularity === 'mois') {
+      return d.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' }).replace('.', '');
+    }
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    if (granularity === 'semaine') return `Sem. ${dd}/${mm}`;
+    const yy = String(d.getFullYear()).slice(-2);
+    return `${dd}/${mm}/${yy}`;
+  }
+
+  // ---------------------------------------------------------------
+  // Chargement résilient de Chart.js (cdnjs d'abord, jsdelivr en repli) —
+  // même pattern que site-prive.html.
+  // ---------------------------------------------------------------
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = src; s.onload = resolve; s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+  async function ensureChartJs() {
+    if (window.Chart) return true;
+    const urls = [
+      'https://cdnjs.cloudflare.com/ajax/libs/chart.js/4.4.4/chart.umd.min.js',
+      'https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js',
+    ];
+    for (const url of urls) {
+      try { await loadScript(url); if (window.Chart) return true; } catch (e) { /* essaie le suivant */ }
+    }
+    return false;
+  }
 
   // ---------------------------------------------------------------
   // Filtre mission : recherche typeahead (comme site-prive.html) —
@@ -411,6 +471,20 @@
   // ---------------------------------------------------------------
   let liveMode = false;
   let listsBuilt = false;
+  let fpeChart = null;
+  let recrutChart = null;
+  let recrutData = { jour: [], semaine: [], mois: [] };
+  let recrutGranularity = 'semaine';
+  let completionEquipeByMission = {};
+
+  const recrutGranularityTagsEl = document.getElementById('recrutGranularityTags');
+  recrutGranularityTagsEl.querySelectorAll('.quick-tag').forEach((tag) => {
+    tag.addEventListener('click', () => {
+      recrutGranularity = tag.dataset.g;
+      recrutGranularityTagsEl.querySelectorAll('.quick-tag').forEach((t) => t.classList.toggle('active', t === tag));
+      renderRecrutChart();
+    });
+  });
 
   function buildQuery() {
     const p = new URLSearchParams();
@@ -456,7 +530,25 @@
       listsBuilt = true;
     }
 
-    renderKpis(data.globalStats || {});
+    // Jours avant complétion de l'équipe : date du dernier recrutement -
+    // date de début de mission (cf. commentaire dans sql-rh.js — pas de
+    // champ d'effectif cible en base, donc proxy le plus proche des données
+    // disponibles). Calculé sur le périmètre "contrats" (date de contrat),
+    // séparé du périmètre "lots" du tableau missions ci-dessous ; jointure
+    // par mission_id, uniquement pour affichage.
+    const completionEquipeRows = data.completionEquipe || [];
+    completionEquipeByMission = {};
+    completionEquipeRows.forEach((r) => { completionEquipeByMission[r.mission_id] = r.jours_completion_equipe; });
+
+    recrutData = {
+      jour: data.recrutementsParJour || [],
+      semaine: data.recrutementsParSemaine || [],
+      mois: data.recrutementsParMois || [],
+    };
+
+    renderKpis(data.globalStats || {}, completionEquipeRows);
+    renderFpeChart(data.fpe || {});
+    renderRecrutChart();
     renderMissionsTable(data.missionsOverview || []);
 
     const section = document.getElementById('recruteurSection');
@@ -473,7 +565,16 @@
     }
   }
 
-  function renderKpis(s) {
+  // Moyenne (non pondérée, une valeur par mission) des jours de complétion
+  // d'équipe sur le périmètre "contrats" filtré — indicateur global demandé
+  // en complément de la colonne par mission.
+  function avgCompletionEquipe(rows) {
+    const vals = (rows || []).map((r) => r.jours_completion_equipe).filter((v) => v != null);
+    if (!vals.length) return null;
+    return vals.reduce((a, b) => a + Number(b), 0) / vals.length;
+  }
+
+  function renderKpis(s, completionEquipeRows) {
     const kpis = [
       { v: fmtNum(s.nb_missions), l: 'Missions' },
       { v: s.heures_rue != null ? fmtNum(s.heures_rue) : '—', l: 'Heures rue' },
@@ -482,20 +583,82 @@
       { v: fmtPct(s.taux_absence), l: 'Taux absence' },
       { v: fmtPct(s.taux_completion_presence), l: 'Compl. présence' },
       { v: fmtPct(s.taux_completion_emplacement), l: 'Compl. emplacement' },
+      { v: (() => { const a = avgCompletionEquipe(completionEquipeRows); return a != null ? fmtNum(a, 1) + ' j' : '—'; })(), l: 'Jours compl. équipe (moy.)' },
     ];
     document.getElementById('kpiGlobal').innerHTML = kpis.map((k) => `
       <div class="kpi"><div class="val">${k.v}</div><div class="lbl">${k.l}</div></div>`).join('');
   }
 
+  // Taux de FPE (fin de période d'essai) = nb de contrats clôturés en FPE /
+  // nb total de contrats du périmètre, splitté employeur/salarié — cf.
+  // sql-rh.js pour le détail du matching des libellés d'avenant.
+  function renderFpeChart(fpe) {
+    if (fpeChart) { fpeChart.destroy(); fpeChart = null; }
+    const box = document.getElementById('fpeChartBox');
+    if (typeof Chart === 'undefined') { box.innerHTML = '<div class="chart-empty">Graphique indisponible</div>'; return; }
+    const nbContrats = fpe.nb_contrats || 0;
+    if (!nbContrats) { box.innerHTML = '<div class="chart-empty">Aucune donnée</div>'; return; }
+    const tauxEmployeur = (fpe.nb_fpe_employeur || 0) / nbContrats;
+    const tauxSalarie = (fpe.nb_fpe_salarie || 0) / nbContrats;
+    if (!box.querySelector('canvas')) box.innerHTML = '<canvas id="chart-fpe"></canvas>';
+    fpeChart = new Chart(document.getElementById('chart-fpe'), {
+      type: 'bar',
+      data: {
+        labels: ['Initiative employeur', 'Initiative salarié'],
+        datasets: [{ label: 'Taux de FPE', data: [tauxEmployeur, tauxSalarie], backgroundColor: '#E2173B', borderRadius: 0, maxBarThickness: 90 }],
+      },
+      options: {
+        maintainAspectRatio: false,
+        indexAxis: 'x',
+        scales: {
+          y: { beginAtZero: true, ticks: { color: '#75757C', font: { family: 'ui-monospace, monospace', size: 11 }, callback: (v) => fmtNum(v * 100, 1) + ' %' }, grid: { color: '#E4E4E8' } },
+          x: { ticks: { color: '#75757C', font: { family: 'ui-monospace, monospace', size: 11 } }, grid: { display: false } },
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: (ctx) => 'Taux de FPE : ' + fmtPct(ctx.parsed.y) } },
+        },
+      },
+    });
+  }
+
+  function renderRecrutChart() {
+    const rows = recrutData[recrutGranularity] || [];
+    if (recrutChart) { recrutChart.destroy(); recrutChart = null; }
+    const box = document.getElementById('recrutChartBox');
+    if (typeof Chart === 'undefined') { box.innerHTML = '<div class="chart-empty">Graphique indisponible</div>'; return; }
+    if (!rows.length) { box.innerHTML = '<div class="chart-empty">Aucune donnée</div>'; return; }
+    if (!box.querySelector('canvas')) box.innerHTML = '<canvas id="chart-recrutements"></canvas>';
+    recrutChart = new Chart(document.getElementById('chart-recrutements'), {
+      type: 'bar',
+      data: {
+        labels: rows.map((r) => fmtPeriodeLabel(r.periode, recrutGranularity)),
+        datasets: [{ label: 'Recrutements', data: rows.map((r) => r.nb_recrutements), backgroundColor: '#E2173B', borderRadius: 0 }],
+      },
+      options: {
+        maintainAspectRatio: false,
+        scales: {
+          y: { beginAtZero: true, ticks: { color: '#75757C', font: { family: 'ui-monospace, monospace', size: 11 }, precision: 0 }, grid: { color: '#E4E4E8' } },
+          x: { ticks: { color: '#75757C', font: { family: 'ui-monospace, monospace', size: 10 }, maxRotation: 0, autoSkip: true }, grid: { display: false } },
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: (ctx) => 'Recrutements : ' + fmtNum(ctx.parsed.y) } },
+        },
+      },
+    });
+  }
+
   function renderMissionsTable(rows) {
     const el = document.getElementById('tbl-missions');
     if (!rows.length) {
-      el.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--muted);">Aucune mission pour ces filtres</td></tr>';
+      el.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--muted);">Aucune mission pour ces filtres</td></tr>';
       return;
     }
     el.innerHTML = rows.map((m) => {
       const sub = [m.code_mission, m.code_mission_client].filter(Boolean).join(' / ') || 'Mission';
       const selected = m.mission_id === selectedMissionId;
+      const joursCompletion = completionEquipeByMission[m.mission_id];
       return `
       <tr class="clickable${selected ? ' selected' : ''}" data-id="${m.mission_id}" data-label="${esc(sub)}">
         <td>${esc(sub)}</td>
@@ -508,6 +671,7 @@
         <td class="num">${fmtPct(m.taux_absence)}</td>
         <td class="num">${fmtPct(m.taux_completion_presence)}</td>
         <td class="num">${fmtPct(m.taux_completion_emplacement)}</td>
+        <td class="num">${joursCompletion != null ? fmtNum(joursCompletion) + ' j' : '—'}</td>
       </tr>`;
     }).join('');
     el.querySelectorAll('tr.clickable').forEach((tr) => {
@@ -567,7 +731,10 @@
   setInterval(tickCountdown, 1000);
 
   // INIT
-  refreshData();
+  ensureChartJs().then((ok) => {
+    if (!ok) console.warn('Chart.js indisponible (2 CDN testés) — les graphiques resteront vides, le reste du dashboard fonctionne normalement.');
+    refreshData();
+  });
 })();
 </script>
 

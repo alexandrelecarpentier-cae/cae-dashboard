@@ -684,11 +684,19 @@ async function handleRh(url, env) {
   });
 
   try {
-    const [globalStats, missionsOverview, clientList, missionList] = await Promise.all([
+    const [
+      globalStats, missionsOverview, clientList, missionList,
+      fpe, recrutementsParJour, recrutementsParSemaine, recrutementsParMois, completionEquipe,
+    ] = await Promise.all([
       runQuery(env, queries.globalStats),
       runQuery(env, queries.missionsOverview),
       runQuery(env, buildRhClientListQuery()),
       runQuery(env, buildRhMissionListQuery()),
+      runQuery(env, queries.fpe),
+      runQuery(env, queries.recrutementsParJour),
+      runQuery(env, queries.recrutementsParSemaine),
+      runQuery(env, queries.recrutementsParMois),
+      runQuery(env, queries.completionEquipe),
     ]);
 
     let recruteurs = null;
@@ -706,6 +714,11 @@ async function handleRh(url, env) {
       clientList,
       missionList,
       recruteurs,
+      fpe: fpe[0] || null,
+      recrutementsParJour,
+      recrutementsParSemaine,
+      recrutementsParMois,
+      completionEquipe,
     });
   } catch (e) {
     return jsonResponse({ error: String(e.message || e) }, 502);
