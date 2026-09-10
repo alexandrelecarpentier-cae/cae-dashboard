@@ -604,10 +604,18 @@ async function handleSitePrive(url, env) {
   });
 
   try {
-    const [globalStats, parTypologie, parEnseigne, missionList, clientList, emplacementList] = await Promise.all([
+    const [
+      globalStats, parTypologie, parEnseigne, emplacementsActivite,
+      tauxParJour, tauxParSemaine, tauxParMois,
+      missionList, clientList, emplacementList,
+    ] = await Promise.all([
       runQuery(env, queries.globalStats),
       runQuery(env, queries.parTypologie),
       runQuery(env, queries.parEnseigne),
+      runQuery(env, queries.emplacementsActivite),
+      runQuery(env, queries.tauxParJour),
+      runQuery(env, queries.tauxParSemaine),
+      runQuery(env, queries.tauxParMois),
       runQuery(env, buildSitePriveMissionListQuery()),
       runQuery(env, buildSitePriveClientListQuery()),
       runQuery(env, buildSitePriveEmplacementListQuery()),
@@ -617,6 +625,10 @@ async function handleSitePrive(url, env) {
       globalStats: globalStats[0] || null,
       parTypologie,
       parEnseigne,
+      emplacementsActivite,
+      tauxParJour,
+      tauxParSemaine,
+      tauxParMois,
       missionList,
       clientList,
       emplacementList,

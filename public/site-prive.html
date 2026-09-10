@@ -174,21 +174,19 @@
   <div class="section-label"><span class="diamond"></span>Indicateurs globaux</div>
   <div class="kpi-scroll" id="kpiGlobal"></div>
 
+  <div class="section-label"><span class="diamond"></span>Évolution du taux réel</div>
+  <div class="card"><div class="card-inner">
+    <div class="quick-tags" id="granularityTags" style="margin-bottom:12px;">
+      <span class="quick-tag" data-g="jour">Jour</span>
+      <span class="quick-tag active" data-g="semaine">Semaine</span>
+      <span class="quick-tag" data-g="mois">Mois</span>
+    </div>
+    <div class="chart-box" id="evolutionChartBox"><canvas id="chart-evolution"></canvas></div>
+  </div></div>
+
   <div class="section-label"><span class="diamond"></span>Taux réel par typologie d'emplacement</div>
   <div class="card"><div class="card-inner">
     <div class="chart-box" id="typoChartBox"><canvas id="chart-typologie"></canvas></div>
-  </div></div>
-
-  <div class="section-label"><span class="diamond"></span>Par typologie d'emplacement</div>
-  <div class="card"><div class="card-inner">
-    <div class="table-scroll">
-      <table>
-        <thead>
-          <tr><th>Typologie</th><th class="num">Emplacements</th><th class="num">BS réel</th><th class="num">Taux réel</th><th class="num">Don moyen</th></tr>
-        </thead>
-        <tbody id="tbl-typologie"></tbody>
-      </table>
-    </div>
   </div></div>
 
   <div class="section-label"><span class="diamond"></span>Par enseigne
@@ -201,6 +199,20 @@
           <tr><th>Enseigne</th><th class="num">Emplacements</th><th class="num">BS réel</th><th class="num">Taux réel</th><th class="num">Don moyen</th></tr>
         </thead>
         <tbody id="tbl-enseigne"></tbody>
+      </table>
+    </div>
+  </div></div>
+
+  <div class="section-label"><span class="diamond"></span>Emplacements
+    <span class="note">300 dernières activités — date, site, mission</span>
+  </div>
+  <div class="card"><div class="card-inner">
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>Date</th><th>Emplacement</th><th>Mission</th><th class="num">BS réel</th><th class="num">Taux réel</th></tr>
+        </thead>
+        <tbody id="tbl-emplacements"></tbody>
       </table>
     </div>
   </div></div>
@@ -234,6 +246,29 @@
   function fmtEuro(n) {
     if (n === null || n === undefined) return '—';
     return fmtNum(n, 2) + '€';
+  }
+  function fmtDateShort(iso) {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yy = String(d.getFullYear()).slice(-2);
+    return `${dd}/${mm}/${yy}`;
+  }
+  // Formatage de l'axe X du graphe d'évolution, adapté à la granularité :
+  // "période" est le jour lui-même (jour), le lundi de la semaine ISO
+  // (semaine, via date_trunc('week', ...) côté SQL) ou le 1er du mois (mois).
+  function fmtPeriodeLabel(iso, granularity) {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    if (granularity === 'mois') {
+      return d.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' }).replace('.', '');
+    }
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    if (granularity === 'semaine') return `Sem. ${dd}/${mm}`;
+    const yy = String(d.getFullYear()).slice(-2);
+    return `${dd}/${mm}/${yy}`;
   }
 
   // ---------------------------------------------------------------
@@ -425,6 +460,18 @@
   let liveMode = false;
   let listsBuilt = false;
   let typoChart = null;
+  let evolutionChart = null;
+  let evolutionData = { jour: [], semaine: [], mois: [] };
+  let currentGranularity = 'semaine';
+
+  const granularityTagsEl = document.getElementById('granularityTags');
+  granularityTagsEl.querySelectorAll('.quick-tag').forEach((tag) => {
+    tag.addEventListener('click', () => {
+      currentGranularity = tag.dataset.g;
+      granularityTagsEl.querySelectorAll('.quick-tag').forEach((t) => t.classList.toggle('active', t === tag));
+      renderEvolutionChart();
+    });
+  });
 
   function buildQuery() {
     const p = new URLSearchParams();
@@ -476,10 +523,17 @@
     // "—"/null résiduel côté données.
     const parTypologie = (data.parTypologie || []).filter((r) => r.categorie && r.categorie !== '—');
 
+    evolutionData = {
+      jour: data.tauxParJour || [],
+      semaine: data.tauxParSemaine || [],
+      mois: data.tauxParMois || [],
+    };
+
     renderKpis(data.globalStats || {});
+    renderEvolutionChart();
     renderTypoChart(parTypologie);
-    renderTypoTable(parTypologie);
     renderEnseigneTable(data.parEnseigne || []);
+    renderEmplacementsTable(data.emplacementsActivite || []);
   }
 
   function renderKpis(s) {
@@ -522,17 +576,50 @@
     });
   }
 
-  function renderTypoTable(rows) {
-    const sorted = rows.slice().sort((a, b) => (b.bs_reel || 0) - (a.bs_reel || 0));
-    document.getElementById('tbl-typologie').innerHTML = sorted.map((r) => `
+  function renderEvolutionChart() {
+    const rows = evolutionData[currentGranularity] || [];
+    if (evolutionChart) { evolutionChart.destroy(); evolutionChart = null; }
+    const box = document.getElementById('evolutionChartBox');
+    if (typeof Chart === 'undefined') { box.innerHTML = '<div class="chart-empty">Graphique indisponible</div>'; return; }
+    if (!rows.length) { box.innerHTML = '<div class="chart-empty">Aucune donnée</div>'; return; }
+    if (!box.querySelector('canvas')) box.innerHTML = '<canvas id="chart-evolution"></canvas>';
+    evolutionChart = new Chart(document.getElementById('chart-evolution'), {
+      type: 'line',
+      data: {
+        labels: rows.map((r) => fmtPeriodeLabel(r.periode, currentGranularity)),
+        datasets: [{
+          label: 'Taux réel', data: rows.map((r) => r.taux_reel),
+          borderColor: '#E2173B', backgroundColor: 'rgba(226,23,59,.08)',
+          borderWidth: 2, pointRadius: 2, pointBackgroundColor: '#E2173B', tension: 0.15, fill: true,
+        }],
+      },
+      options: {
+        maintainAspectRatio: false,
+        scales: {
+          y: { beginAtZero: true, ticks: { color: '#75757C', font: { family: 'ui-monospace, monospace', size: 11 }, callback: (v) => fmtNum(v, 2) }, grid: { color: '#E4E4E8' } },
+          x: { ticks: { color: '#75757C', font: { family: 'ui-monospace, monospace', size: 10 }, maxRotation: 0, autoSkip: true }, grid: { display: false } },
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: (ctx) => 'Taux réel : ' + fmtNum(ctx.parsed.y, 3) } },
+        },
+      },
+    });
+  }
+
+  function renderEmplacementsTable(rows) {
+    document.getElementById('tbl-emplacements').innerHTML = rows.map((r) => {
+      const site = [r.emplacement_nom, r.ville].filter(Boolean).join(' — ');
+      const mission = [r.code_mission, r.client_nom].filter(Boolean).join(' — ');
+      return `
       <tr>
-        <td>${esc(categorieLabel(r.categorie))}</td>
-        <td class="num">${fmtNum(r.nb_emplacements)}</td>
+        <td>${esc(fmtDateShort(r.date))}</td>
+        <td>${esc(site)}</td>
+        <td>${esc(mission)}</td>
         <td class="num">${fmtNum(r.bs_reel)}</td>
         <td class="num">${r.taux_reel != null ? fmtNum(r.taux_reel, 3) : '—'}</td>
-        <td class="num">${r.don_moyen != null ? fmtEuro(r.don_moyen) : '—'}</td>
-      </tr>
-    `).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Aucune donnée</td></tr>';
+      </tr>`;
+    }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Aucune donnée</td></tr>';
   }
 
   function renderEnseigneTable(rows) {

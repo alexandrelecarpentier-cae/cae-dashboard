@@ -31,7 +31,7 @@ function filtersClause(p) {
 // mission/client/emplacement/période si demandé, hors clients exclus.
 function baseCte(p) {
   return `with lots_f as (
-  select l.id, l.mission_id, l.emplacement_id, l.nombre_horaires_rue, l.presence_recruteur,
+  select l.id, l.mission_id, l.emplacement_id, l.date, l.nombre_horaires_rue, l.presence_recruteur,
     e.categorie, e.nom as emplacement_nom
   from lots l
   join emplacements e on e.id = l.emplacement_id
@@ -98,6 +98,72 @@ select pc.categorie, pc.nb_emplacements, pc.heures_rue,
 from par_cat pc
 left join dons_cat dc on dc.categorie = pc.categorie
 order by bs_reel desc nulls last;`;
+}
+
+// Liste d'activité : un jour de présence donné, sur un emplacement donné,
+// pour une mission donnée (regroupement lots -> jour/emplacement/mission,
+// plusieurs lots pouvant exister le même jour pour plusieurs recruteurs).
+// Remplace l'ancienne table "par typologie" par une vue plus opérationnelle
+// (quoi s'est passé, où, quand, pour quelle mission), triée par date
+// décroissante et plafonnée à 300 lignes — combinée aux filtres de la page
+// (mission/asso/site/période), largement suffisant pour naviguer l'activité
+// récente sans surcharger la page.
+function buildEmplacementsActiviteQuery(p) {
+  return `${baseCte(p)},
+jours_ei as (
+  select l.date, l.emplacement_id, l.mission_id, l.emplacement_nom, l.categorie,
+    sum(l.nombre_horaires_rue) filter (where coalesce(l.presence_recruteur,true)) as heures_rue
+  from lots_f l
+  group by 1,2,3,4,5
+),
+dons_ei as (
+  select l.date, l.emplacement_id, l.mission_id, count(distinct d.id) as bs_reel
+  from dons_f d
+  join lots_f l on l.id = d.lot_id
+  group by 1,2,3
+)
+select j.date, j.emplacement_nom, e.ville, j.categorie, m.code_mission, cl.nom as client_nom,
+  j.heures_rue, coalesce(dj.bs_reel, 0) as bs_reel,
+  case when coalesce(j.heures_rue,0) > 0 then coalesce(dj.bs_reel,0)::float / j.heures_rue else null end as taux_reel
+from jours_ei j
+join emplacements e on e.id = j.emplacement_id
+join missions m on m.id = j.mission_id
+left join clients cl on cl.id = m.client_id
+left join dons_ei dj on dj.date = j.date and dj.emplacement_id = j.emplacement_id and dj.mission_id = j.mission_id
+order by j.date desc
+limit 300;`;
+}
+
+// Évolution du taux réel dans le temps (jour / semaine / mois calendaires
+// réels, pas jour-de-semaine ni mois-de-l'année comme sur /emplacement) —
+// périmètre déjà limité aux emplacements privés par baseCte, donc "filtré
+// uniquement sur les sites privés" par construction. Même moyenne pondérée
+// (somme BS réel / somme heures rue par période) que partout ailleurs dans
+// ce projet.
+function bucketSql(granularity, colRef) {
+  if (granularity === 'semaine') return `date_trunc('week', ${colRef})::date`;
+  if (granularity === 'mois') return `date_trunc('month', ${colRef})::date`;
+  return colRef; // 'jour'
+}
+function buildTauxEvolutionQuery(p, granularity) {
+  return `${baseCte(p)},
+jours as (
+  select ${bucketSql(granularity, 'date')} as periode,
+    sum(nombre_horaires_rue) filter (where coalesce(presence_recruteur,true)) as heures_rue
+  from lots_f
+  group by 1
+),
+dons_jours as (
+  select ${bucketSql(granularity, 'l.date')} as periode, count(distinct d.id) as bs_reel
+  from dons_f d
+  join lots_f l on l.id = d.lot_id
+  group by 1
+)
+select j.periode, j.heures_rue, coalesce(dj.bs_reel, 0) as bs_reel,
+  case when coalesce(j.heures_rue,0) > 0 then coalesce(dj.bs_reel,0)::float / j.heures_rue else null end as taux_reel
+from jours j
+left join dons_jours dj on dj.periode = j.periode
+order by j.periode;`;
 }
 
 // Taux réel + don moyen par enseigne (déduite du nom, cf. commentaire en
@@ -177,6 +243,10 @@ function buildSitePriveQueries(p) {
     globalStats: buildGlobalStatsQuery(p),
     parTypologie: buildParTypologieQuery(p),
     parEnseigne: buildParEnseigneQuery(p),
+    emplacementsActivite: buildEmplacementsActiviteQuery(p),
+    tauxParJour: buildTauxEvolutionQuery(p, 'jour'),
+    tauxParSemaine: buildTauxEvolutionQuery(p, 'semaine'),
+    tauxParMois: buildTauxEvolutionQuery(p, 'mois'),
   };
 }
 
