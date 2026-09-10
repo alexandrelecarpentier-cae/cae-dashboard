@@ -22,8 +22,6 @@ import {
 import { buildQueries, buildFacetsQuery, buildMissionsListQuery } from './lib/sql-client.js';
 import {
   buildMissionDaysQuery,
-  buildMissionPerformanceQueries,
-  buildRecruteurPerformanceQueries,
   buildResolveMissionIdQuery,
 } from './lib/sql-mission.js';
 import { buildChallengeQueries } from './lib/sql-challenge.js';
@@ -56,8 +54,6 @@ export default {
       if (url.pathname === '/api/facets') return await handleFacets(url, env);
       if (url.pathname === '/api/client-missions') return await handleClientMissions(url, env);
       if (url.pathname === '/api/mission-days') return await handleMissionDays(url, env);
-      if (url.pathname === '/api/mission-performance') return await handleMissionPerformance(url, env);
-      if (url.pathname === '/api/recruteur-performance') return await handleRecruteurPerformance(url, env);
       if (url.pathname === '/api/rd') return await handleRdDashboard(url, env);
       if (url.pathname === '/api/mission-suivi') return await handleMissionSuivi(url, env);
       if (url.pathname === '/api/re-collecte') return await handleReCollecte(url, env);
@@ -204,7 +200,7 @@ async function handleClientMissions(url, env) {
 }
 
 // ---------------------------------------------------------------
-// /api/mission-days, /api/mission-performance, /api/recruteur-performance
+// /api/mission-days
 // ---------------------------------------------------------------
 
 // Vrai si la mission appartient à un client exclu (cf. excluded-clients.js).
@@ -256,79 +252,6 @@ async function handleMissionDays(url, env) {
   try {
     const rows = await runQuery(env, buildMissionDaysQuery(id_mission));
     return jsonResponse(rows.map((r) => r.date));
-  } catch (e) {
-    return jsonResponse({ error: String(e.message || e) }, 502);
-  }
-}
-
-function readDatesParam(url) {
-  const datesParam = url.searchParams.get('dates') || url.searchParams.get('date') || '';
-  let dates = [];
-  if (datesParam) {
-    dates = [...new Set(datesParam.split(',').map((d) => d.trim()).filter(Boolean))];
-    for (const d of dates) {
-      if (!RE_DATE.test(d)) return { error: 'date invalide (format attendu AAAA-MM-JJ)' };
-    }
-  }
-  return { dates };
-}
-
-async function handleMissionPerformance(url, env) {
-  const configError = requireConfig(env);
-  if (configError) return jsonResponse({ error: configError }, 500);
-
-  const resolved = await resolveMissionId(url, env);
-  if (resolved.error) return jsonResponse({ error: resolved.error }, resolved.upstream ? 502 : resolved.notFound ? 404 : 400);
-  const { id_mission } = resolved;
-
-  const { dates, error } = readDatesParam(url);
-  if (error) return jsonResponse({ error }, 400);
-
-  const queries = buildMissionPerformanceQueries(id_mission, dates);
-
-  try {
-    const [info, recruteurs] = await Promise.all([
-      runQuery(env, queries.info),
-      runQuery(env, queries.recruteurs),
-    ]);
-    return jsonResponse({ info: info[0] || null, recruteurs });
-  } catch (e) {
-    return jsonResponse({ error: String(e.message || e) }, 502);
-  }
-}
-
-async function handleRecruteurPerformance(url, env) {
-  const id_mission = url.searchParams.get('id_mission') || '';
-  const id_utilisateur = url.searchParams.get('id_utilisateur') || '';
-
-  if (!RE_UUID.test(id_mission)) {
-    return jsonResponse({ error: 'id_mission manquant ou invalide' }, 400);
-  }
-  if (!RE_UUID.test(id_utilisateur)) {
-    return jsonResponse({ error: 'id_utilisateur manquant ou invalide' }, 400);
-  }
-
-  const { dates, error } = readDatesParam(url);
-  if (error) return jsonResponse({ error }, 400);
-
-  const configError = requireConfig(env);
-  if (configError) return jsonResponse({ error: configError }, 500);
-
-  try {
-    if (await missionIsExcluded(env, id_mission)) return jsonResponse({ error: 'mission introuvable' }, 404);
-  } catch (e) {
-    return jsonResponse({ error: String(e.message || e) }, 502);
-  }
-
-  const queries = buildRecruteurPerformanceQueries(id_mission, id_utilisateur, dates);
-
-  try {
-    const [info, kpis, daily] = await Promise.all([
-      runQuery(env, queries.info),
-      runQuery(env, queries.kpis),
-      runQuery(env, queries.daily),
-    ]);
-    return jsonResponse({ info: info[0] || null, kpis: kpis[0] || null, daily });
   } catch (e) {
     return jsonResponse({ error: String(e.message || e) }, 502);
   }
