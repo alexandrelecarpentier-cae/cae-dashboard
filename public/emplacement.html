@@ -118,10 +118,6 @@
     if (n === null || n === undefined) return '—';
     return fmtNum(n, 2) + '€';
   }
-  function fmtDate(d) {
-    if (!d) return '—';
-    return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  }
   // Format "lundi 12/04/26" à partir d'une date AAAA-MM-JJ (jour de lot =
   // présence réelle des recruteurs à cet emplacement).
   const DAYS_FR = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
@@ -357,12 +353,8 @@
     }
     el.innerHTML = missions.map((m) => {
       const missionLabel = m.code_mission || m.code_mission_client || 'Mission';
-      const sub = [m.client_nom, fmtDate(m.premiere_date) + ' → ' + fmtDate(m.derniere_date), fmtNum(m.nb_jours) + ' j']
-        .filter(Boolean).join(' · ');
+      const sub = [m.client_nom, fmtNum(m.nb_jours) + ' j'].filter(Boolean).join(' · ');
       const dates = (m.dates_lots || '').split(',').filter(Boolean);
-      const compareVal = (siteTaux != null && m.taux_reel != null)
-        ? `${fmtNum(siteTaux, 3)} / ${fmtNum(m.taux_reel, 3)}`
-        : '—';
       return `
       <div class="mission-card">
         <div class="mission-head">
@@ -373,8 +365,8 @@
           </div>
         </div>
         <div class="mission-stats">
-          <div class="stat"><div class="stat-val">${m.taux_reel != null ? fmtNum(m.taux_reel, 3) : '—'}</div><div class="stat-lbl">Taux réel</div></div>
-          <div class="stat"><div class="stat-val">${compareVal}</div><div class="stat-lbl">Taux réel site / mission</div></div>
+          <div class="stat"><div class="stat-val">${m.taux_reel != null ? fmtNum(m.taux_reel, 3) : '—'}</div><div class="stat-lbl">Taux réel mission</div></div>
+          <div class="stat"><div class="stat-val">${siteTaux != null ? fmtNum(siteTaux, 3) : '—'}</div><div class="stat-lbl">Taux réel site</div></div>
           <div class="stat"><div class="stat-val">${m.don_moyen != null ? fmtEuro(m.don_moyen) : '—'}</div><div class="stat-lbl">Don moyen</div></div>
           <div class="stat"><div class="stat-val">${fmtNum(m.bs_reel)}</div><div class="stat-lbl">BS réel</div></div>
         </div>
