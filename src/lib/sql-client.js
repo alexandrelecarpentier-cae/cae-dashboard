@@ -25,8 +25,31 @@ function lotFilters(p) {
   return clauses.join(' AND ');
 }
 
-function donFilters() {
-  return "d.statut in ('en_attente','nouveau','transmis')";
+// Bornes de tranche d'âge identiques à celles utilisées pour le calcul de
+// la répartition (tranche_age ci-dessous) — un clic sur une barre du
+// graphe "Tranche d'âge" doit filtrer exactement le même sous-ensemble de
+// dons que celui affiché sur cette barre.
+function trancheAgeSqlClause(tranche) {
+  const clauses = {
+    '18-20': 'd.age_donateur between 18 and 20.999',
+    '21-25': 'd.age_donateur between 21 and 25.999',
+    '26-35': 'd.age_donateur between 26 and 35.999',
+    '36-50': 'd.age_donateur between 36 and 50.999',
+    '50 et +': 'd.age_donateur >= 51',
+    Autre: 'd.age_donateur is null',
+  };
+  return clauses[tranche] || '1=0';
+}
+
+// civilite et tranche_age sont les deux filtres de "croisement" activés en
+// cliquant respectivement sur le camembert genre et le graphe tranche
+// d'âge (cf. client.html) — validés en amont par une whitelist dans
+// index.js, donc sûrs à interpoler directement.
+function donFilters(p) {
+  const clauses = ["d.statut in ('en_attente','nouveau','transmis')"];
+  if (p.civilite) clauses.push(`d.civilite = '${p.civilite}'`);
+  if (p.tranche_age) clauses.push(trancheAgeSqlClause(p.tranche_age));
+  return clauses.join(' AND ');
 }
 
 function ctePrefix(p) {
@@ -111,8 +134,18 @@ select
   count(distinct id) as nb
 from scoped_dons group by 1;`,
 
+    bulletins_jour: `${cte}
+select created_at::date as periode, statut, count(distinct id) as nb
+from scoped_dons
+group by 1,2 order by 1;`,
+
     bulletins_semaine: `${cte}
-select date_trunc('week', created_at)::date as semaine, statut, count(distinct id) as nb
+select date_trunc('week', created_at)::date as periode, statut, count(distinct id) as nb
+from scoped_dons
+group by 1,2 order by 1;`,
+
+    bulletins_mois: `${cte}
+select date_trunc('month', created_at)::date as periode, statut, count(distinct id) as nb
 from scoped_dons
 group by 1,2 order by 1;`,
 

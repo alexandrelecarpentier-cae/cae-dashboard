@@ -77,6 +77,15 @@
     text-transform:uppercase; letter-spacing:.03em; align-self:flex-end;
   }
 
+  .chip-row{display:none; flex-wrap:wrap; gap:6px; margin-top:10px;}
+  .chip-row.show{display:flex;}
+  .chip{
+    display:flex; align-items:center; gap:6px; background:var(--accent-tint); color:var(--accent-tint-text);
+    border:1px solid var(--red); border-radius:var(--sharp); padding:5px 6px 5px 10px; font-size:12px; font-weight:600;
+  }
+  .chip .chip-x{cursor:pointer; font-weight:800; line-height:1; padding:2px 4px;}
+  .chip .chip-x:hover{opacity:.65;}
+
   .error-banner{
     margin-top:12px; padding:10px 12px; border:1px solid var(--line); border-left:3px solid var(--red);
     background:var(--accent-tint); font-size:12px; color:var(--accent-tint-text); display:none; line-height:1.5;
@@ -170,6 +179,8 @@
     </div>
   </div>
 
+  <div class="chip-row" id="crossFilterRow"></div>
+
   <div class="error-banner" id="errorBanner">
     <b>Connexion impossible.</b> <span id="errorDetail"></span> La page réessaiera automatiquement.
   </div>
@@ -180,8 +191,13 @@
 <main id="content" class="hidden">
   <div class="kpi-scroll" id="kpiRow"></div>
 
-  <div class="section-label"><span class="diamond"></span>Bulletins par semaine</div>
+  <div class="section-label"><span class="diamond"></span>Bulletins</div>
   <div class="card"><div class="card-inner">
+    <div class="day-tags" id="bulletinsGranularityTags" style="margin-bottom:12px;">
+      <span class="day-tag" data-g="jour">Jour</span>
+      <span class="day-tag active" data-g="semaine">Semaine</span>
+      <span class="day-tag" data-g="mois">Mois</span>
+    </div>
     <div class="chart-box" id="box-chart-semaine"><canvas id="chart-semaine"></canvas></div>
   </div></div>
 
@@ -237,7 +253,11 @@
   // JS de la page — jamais dans l'URL — comme demandé.
   let selectedMissionId = ''; // vide = toutes les missions (passées/en cours)
   let selectedMissionLabel = '';
-  let filters = { date_min: '', date_max: '', statut_mission: '' };
+  // civilite / tranche_age : filtres de "croisement" activés en cliquant
+  // sur un élément d'un graphe (camembert genre, barres tranche d'âge) —
+  // recalculent tous les autres éléments du dashboard (KPIs, autres
+  // graphes, table), pas seulement l'affichage local du graphe cliqué.
+  let filters = { date_min: '', date_max: '', statut_mission: '', civilite: '', tranche_age: '' };
 
   const charts = {}; // instances Chart.js en cours, pour les détruire avant de les recréer
   const DEFAULT_ACCENT = '#E2173B';
@@ -458,12 +478,21 @@
     const lastMonday = new Date(monday); lastMonday.setDate(lastMonday.getDate() - 7);
     const lastSunday = new Date(monday); lastSunday.setDate(lastSunday.getDate() - 1);
     const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    const prevMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const prevMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+    const yearStart = new Date(today.getFullYear(), 0, 1);
+    const yearEnd = new Date(today.getFullYear(), 11, 31);
     const tags = [
       { key: 'total', label: 'Total', from: '', to: '' },
       { key: 'today', label: "Aujourd'hui", from: isoDate(today), to: isoDate(today) },
       { key: 'yesterday', label: 'Hier', from: isoDate(yesterday), to: isoDate(yesterday) },
       { key: 'week', label: 'Cette semaine', from: isoDate(monday), to: isoDate(sunday) },
       { key: 'lastweek', label: 'Semaine dernière', from: isoDate(lastMonday), to: isoDate(lastSunday) },
+      { key: 'month', label: 'Ce mois-ci', from: isoDate(monthStart), to: isoDate(monthEnd) },
+      { key: 'lastmonth', label: 'Mois précédent', from: isoDate(prevMonthStart), to: isoDate(prevMonthEnd) },
+      { key: 'year', label: 'Cette année', from: isoDate(yearStart), to: isoDate(yearEnd) },
     ];
     periodTagsEl.innerHTML = tags.map((t) =>
       `<span class="day-tag" data-key="${t.key}" data-from="${t.from}" data-to="${t.to}">${t.label}</span>`
@@ -501,6 +530,23 @@
     });
   });
 
+  // ---------------------------------------------------------------
+  // Granularité du graphe "Bulletins" (jour/semaine/mois) — les 3
+  // agrégats sont renvoyés par /api/client à chaque appel (comme sur
+  // /rh, /site-prive), donc le changement de granularité est un simple
+  // re-rendu local, sans nouvel appel réseau.
+  // ---------------------------------------------------------------
+  let bulletinsData = { jour: [], semaine: [], mois: [] };
+  let bulletinsGranularity = 'semaine';
+  const bulletinsGranularityTagsEl = document.getElementById('bulletinsGranularityTags');
+  bulletinsGranularityTagsEl.querySelectorAll('.day-tag').forEach((tag) => {
+    tag.addEventListener('click', () => {
+      bulletinsGranularity = tag.dataset.g;
+      bulletinsGranularityTagsEl.querySelectorAll('.day-tag').forEach((t) => t.classList.toggle('active', t === tag));
+      renderChartBulletins();
+    });
+  });
+
   function missionQueryParams() {
     return selectedMissionId ? { mission_ids: selectedMissionId } : {};
   }
@@ -512,7 +558,8 @@
     selectedMissionId = '';
     selectedMissionLabel = '';
     missionSearchEl.value = '';
-    filters = { date_min: '', date_max: '', statut_mission: '' };
+    filters = { date_min: '', date_max: '', statut_mission: '', civilite: '', tranche_age: '' };
+    renderCrossFilterChips();
     refreshData(true);
   });
 
@@ -573,10 +620,44 @@
     document.getElementById('kpiRow').innerHTML = kpis.map((kp) => `
       <div class="kpi"><div class="val">${kp.v}</div><div class="lbl">${kp.l}</div></div>`).join('');
 
-    renderChartSemaine(data.bulletins_semaine || []);
+    bulletinsData = {
+      jour: data.bulletins_jour || [],
+      semaine: data.bulletins_semaine || [],
+      mois: data.bulletins_mois || [],
+    };
+    renderChartBulletins();
     renderChartGenre(data.genre || []);
     renderChartAge(data.tranche_age || []);
     renderTable(data.bulletins_transmis || []);
+    renderCrossFilterChips();
+  }
+
+  // ---------------------------------------------------------------
+  // Filtres de croisement actifs (civilite / tranche_age), activés en
+  // cliquant sur un élément des graphes genre/tranche d'âge — affichés en
+  // chips sous la barre de filtres, avec un × pour les retirer un par un
+  // (le bouton "Réinitialiser" les efface tous, comme les autres filtres).
+  // ---------------------------------------------------------------
+  const CIVILITE_LABELS = { monsieur: 'Homme', madame: 'Femme' };
+  function renderCrossFilterChips() {
+    const el = document.getElementById('crossFilterRow');
+    const chips = [];
+    if (filters.civilite) {
+      chips.push({ key: 'civilite', label: `Genre : ${CIVILITE_LABELS[filters.civilite] || filters.civilite}` });
+    }
+    if (filters.tranche_age) {
+      chips.push({ key: 'tranche_age', label: `Âge : ${filters.tranche_age}` });
+    }
+    el.classList.toggle('show', chips.length > 0);
+    el.innerHTML = chips.map((c) => `
+      <span class="chip" data-key="${c.key}">${c.label}<span class="chip-x" data-key="${c.key}">×</span></span>`).join('');
+    el.querySelectorAll('.chip-x').forEach((x) => {
+      x.addEventListener('click', () => {
+        filters[x.dataset.key] = '';
+        renderCrossFilterChips();
+        refreshData(true);
+      });
+    });
   }
 
   function destroyChart(key) {
@@ -594,29 +675,82 @@
     };
   }
 
-  function renderChartSemaine(rows) {
+  // Formatage de l'axe X selon la granularité — même convention que
+  // rh.html/site-prive.html pour les graphes jour/semaine/mois.
+  function fmtPeriodeLabel(iso, granularity) {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    if (granularity === 'mois') {
+      return d.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' }).replace('.', '');
+    }
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    if (granularity === 'semaine') return `Sem. ${dd}/${mm}`;
+    const yy = String(d.getFullYear()).slice(-2);
+    return `${dd}/${mm}/${yy}`;
+  }
+
+  // Un clic sur une barre (quel que soit le statut cliqué dans la pile)
+  // filtre la période exacte correspondante : le jour cliqué, la semaine
+  // (lundi→dimanche, date_trunc('week',...) renvoie déjà le lundi côté
+  // SQL) ou le mois calendaire cliqué — et recalcule tout le dashboard
+  // (KPIs, camemberts, table) sur cette période, comme n'importe quel
+  // autre filtre de date.
+  function periodRangeFor(periodeIso, granularity) {
+    const d = new Date(periodeIso);
+    if (granularity === 'jour') {
+      const iso = isoDate(d);
+      return { from: iso, to: iso };
+    }
+    if (granularity === 'semaine') {
+      const from = new Date(d);
+      const to = new Date(d); to.setDate(to.getDate() + 6);
+      return { from: isoDate(from), to: isoDate(to) };
+    }
+    const from = new Date(d.getFullYear(), d.getMonth(), 1);
+    const to = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+    return { from: isoDate(from), to: isoDate(to) };
+  }
+
+  function renderChartBulletins() {
     destroyChart('semaine');
+    const rows = bulletinsData[bulletinsGranularity] || [];
     const box = document.getElementById('box-chart-semaine');
     if (typeof Chart === 'undefined') { box.innerHTML = '<div class="chart-empty">Graphique indisponible (Chart.js non chargé)</div>'; return; }
     if (!rows.length) { box.innerHTML = '<div class="chart-empty">Aucune donnée sur la période</div>'; return; }
     if (!box.querySelector('canvas')) box.innerHTML = '<canvas id="chart-semaine"></canvas>';
-    const weeks = [...new Set(rows.map((r) => r.semaine))].sort();
+    const periodes = [...new Set(rows.map((r) => r.periode))].sort();
     const statuts = [...new Set(rows.map((r) => r.statut))];
     const palette = { transmis: accentColor, en_attente: '#0F0F11', nouveau: '#75757C' };
+    const granularity = bulletinsGranularity;
     charts.semaine = new Chart(document.getElementById('chart-semaine'), {
       type: 'bar',
       data: {
-        labels: weeks.map((w) => fmtDate(w)),
+        labels: periodes.map((p) => fmtPeriodeLabel(p, granularity)),
         datasets: statuts.map((s) => ({
           label: s,
           backgroundColor: palette[s] || '#B0B0B6',
-          data: weeks.map((w) => (rows.find((r) => r.semaine === w && r.statut === s) || {}).nb || 0),
+          data: periodes.map((p) => (rows.find((r) => r.periode === p && r.statut === s) || {}).nb || 0),
         })),
       },
-      options: chartOpts(true),
+      options: Object.assign(chartOpts(true), {
+        onHover: (evt, elements) => { evt.native.target.style.cursor = elements.length ? 'pointer' : 'default'; },
+        onClick: (evt, elements) => {
+          if (!elements.length) return;
+          const periode = periodes[elements[0].index];
+          const range = periodRangeFor(periode, granularity);
+          filters.date_min = range.from; filters.date_max = range.to;
+          dateMinEl.value = range.from; dateMaxEl.value = range.to;
+          setActivePeriodTag(null);
+          refreshData(true);
+        },
+      }),
     });
   }
 
+  // Seuls "monsieur"/"madame" sont cliquables (valeur exploitable pour
+  // filtrer côté SQL, cf. donFilters) — les civilités "Autre/NC" restent
+  // affichées mais ne déclenchent pas de filtre au clic.
   function renderChartGenre(rows) {
     destroyChart('genre');
     const box = document.getElementById('box-chart-genre');
@@ -624,14 +758,31 @@
     if (!rows.length) { box.innerHTML = '<div class="chart-empty">Aucune donnée</div>'; return; }
     if (!box.querySelector('canvas')) box.innerHTML = '<canvas id="chart-genre"></canvas>';
     const genreLabels = { monsieur: 'Homme', madame: 'Femme' };
+    const baseColors = rows.map((r, i) => [accentColor, '#0F0F11', '#B0B0B6'][i % 3]);
+    const colors = filters.civilite
+      ? rows.map((r, i) => (r.civilite === filters.civilite ? baseColors[i] : '#E4E4E8'))
+      : baseColors;
     charts.genre = new Chart(document.getElementById('chart-genre'), {
       type: 'doughnut',
       data: {
         labels: rows.map((r) => genreLabels[r.civilite] || r.civilite),
-        datasets: [{ data: rows.map((r) => r.nb), backgroundColor: [accentColor, '#0F0F11', '#B0B0B6'] }],
+        datasets: [{ data: rows.map((r) => r.nb), backgroundColor: colors }],
       },
       options: {
         maintainAspectRatio: false,
+        onHover: (evt, elements) => {
+          const idx = elements[0] && elements[0].index;
+          const clickable = idx != null && ['monsieur', 'madame'].includes((rows[idx] || {}).civilite);
+          evt.native.target.style.cursor = clickable ? 'pointer' : 'default';
+        },
+        onClick: (evt, elements) => {
+          if (!elements.length) return;
+          const row = rows[elements[0].index];
+          if (!row || !['monsieur', 'madame'].includes(row.civilite)) return;
+          filters.civilite = filters.civilite === row.civilite ? '' : row.civilite;
+          renderCrossFilterChips();
+          refreshData(true);
+        },
         plugins: {
           title: { display: true, text: 'Répartition par genre', color: '#0F0F11', font: { size: 12, weight: '700' } },
           legend: { position: 'bottom', labels: { color: '#0F0F11', font: { size: 11, weight: '600' } } },
@@ -646,18 +797,30 @@
     if (typeof Chart === 'undefined') { box.innerHTML = '<div class="chart-empty">Graphique indisponible (Chart.js non chargé)</div>'; return; }
     if (!rows.length) { box.innerHTML = '<div class="chart-empty">Aucune donnée</div>'; return; }
     if (!box.querySelector('canvas')) box.innerHTML = '<canvas id="chart-age"></canvas>';
-    const order = ['18-20', '21-25', '26-35', '36-50', '50 et +'];
+    const order = ['18-20', '21-25', '26-35', '36-50', '50 et +', 'Autre'];
     const sorted = rows.slice().sort((a, b) => order.indexOf(a.tranche) - order.indexOf(b.tranche));
+    const colors = filters.tranche_age
+      ? sorted.map((r) => (r.tranche === filters.tranche_age ? accentColor : '#E4E4E8'))
+      : sorted.map(() => accentColor);
     const opts = chartOpts(false);
     opts.plugins.title = { display: true, text: 'Répartition par tranche d\'âge', color: '#0F0F11', font: { size: 12, weight: '700' } };
     opts.plugins.legend = { display: true, position: 'bottom', labels: { color: '#0F0F11', font: { size: 11, weight: '600' } } };
     opts.scales.x.title = { display: true, text: "Tranche d'âge", color: '#75757C', font: { size: 10.5, weight: '600' } };
     opts.scales.y.title = { display: true, text: 'Nombre de bulletins', color: '#75757C', font: { size: 10.5, weight: '600' } };
+    opts.onHover = (evt, elements) => { evt.native.target.style.cursor = elements.length ? 'pointer' : 'default'; };
+    opts.onClick = (evt, elements) => {
+      if (!elements.length) return;
+      const row = sorted[elements[0].index];
+      if (!row) return;
+      filters.tranche_age = filters.tranche_age === row.tranche ? '' : row.tranche;
+      renderCrossFilterChips();
+      refreshData(true);
+    };
     charts.age = new Chart(document.getElementById('chart-age'), {
       type: 'bar',
       data: {
         labels: sorted.map((r) => r.tranche),
-        datasets: [{ label: 'Bulletins par tranche d\'âge', data: sorted.map((r) => r.nb), backgroundColor: accentColor }],
+        datasets: [{ label: 'Bulletins par tranche d\'âge', data: sorted.map((r) => r.nb), backgroundColor: colors }],
       },
       options: opts,
     });

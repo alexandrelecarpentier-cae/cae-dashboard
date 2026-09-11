@@ -79,6 +79,8 @@ export default {
 // ---------------------------------------------------------------
 // /api/client — dashboard client (client.html)
 // ---------------------------------------------------------------
+const CLIENT_TRANCHES_AGE = ['18-20', '21-25', '26-35', '36-50', '50 et +', 'Autre'];
+
 function readClientParams(url) {
   const { id_client, error } = readClientId(url);
   if (error) return { error };
@@ -125,6 +127,22 @@ function readClientParams(url) {
       if (!RE_UUID.test(id)) return { error: 'mission_ids invalide' };
     }
     p.mission_ids = ids;
+  }
+
+  // civilite / tranche_age : filtres de "croisement" activés en cliquant
+  // respectivement sur le camembert genre et le graphe tranche d'âge
+  // (cf. client.html) — whitelist stricte, les valeurs alimentent
+  // directement du SQL interpolé côté sql-client.js.
+  const civilite = q.get('civilite');
+  if (civilite) {
+    if (!['monsieur', 'madame'].includes(civilite)) return { error: 'civilite invalide' };
+    p.civilite = civilite;
+  }
+
+  const trancheAge = q.get('tranche_age');
+  if (trancheAge) {
+    if (!CLIENT_TRANCHES_AGE.includes(trancheAge)) return { error: 'tranche_age invalide' };
+    p.tranche_age = trancheAge;
   }
 
   return { params: p };
