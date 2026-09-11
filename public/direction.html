@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Direction — Dashboard CAE</title>
+<style>
+  :root{
+    --bg:#FFFFFF; --surface:#FFFFFF; --surface-2:#F5F5F6; --line:#E4E4E8;
+    --red:#E2173B; --text:#0F0F11; --muted:#75757C;
+    --sharp:2px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;}
+  @media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important; transition-duration:.001ms !important;}}
+
+  header{
+    position:sticky; top:0; z-index:20;
+    background:rgba(255,255,255,.92); backdrop-filter:blur(8px);
+    padding:calc(env(safe-area-inset-top) + 14px) 16px 12px;
+    border-bottom:1px solid var(--line);
+  }
+  h1{margin:0 0 10px; font-size:21px; font-weight:800; letter-spacing:-.01em; line-height:1.15; text-transform:uppercase;}
+  h1 em{color:var(--red); font-style:normal;}
+
+  .meta-row{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px;}
+  .sync{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:11.5px; color:var(--muted); display:flex; align-items:center; gap:6px;}
+  .sync b{color:var(--text); font-weight:600;}
+  .live-diamond{width:7px; height:7px; background:var(--red); transform:rotate(45deg); flex:0 0 auto;
+    animation:pulse 2.2s infinite;}
+  .live-diamond.off{background:#C7C7CC; animation:none;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(226,23,59,.45);}70%{box-shadow:0 0 0 7px rgba(226,23,59,0);}100%{box-shadow:0 0 0 0 rgba(226,23,59,0);}}
+  #refreshBar{height:2px; width:100%; background:var(--line); overflow:hidden; margin-bottom:12px;}
+  #refreshFill{height:100%; width:0%; background:var(--red); transition:width 1s linear;}
+
+  .filters{margin-top:0;}
+  .filter-row{display:flex; flex-wrap:nowrap; gap:10px; align-items:flex-end; overflow-x:auto; padding-bottom:2px;}
+  .filter-field{display:flex; flex-direction:column; gap:6px; flex:0 0 auto; width:200px;}
+  .filter-label{font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); font-weight:700; line-height:1; white-space:nowrap;}
+  .control{
+    background:var(--surface-2); color:var(--text); border:1px solid var(--line); border-radius:var(--sharp);
+    padding:8px 10px; font-size:13px; width:100%; height:34px; box-sizing:border-box; font-family:inherit; font-weight:600;
+  }
+  select.control{ font-family:inherit; }
+  .quick-tags{display:flex; flex-wrap:nowrap; gap:6px;}
+  .quick-tag{
+    background:var(--surface-2); color:var(--text); border:1px solid var(--line);
+    border-radius:var(--sharp); padding:0 10px; height:34px; box-sizing:border-box; display:flex; align-items:center;
+    font-size:12.5px; font-weight:600; cursor:pointer; user-select:none; line-height:1.2; white-space:nowrap;
+  }
+  .quick-tag.active{border-color:var(--red); color:#fff; background:var(--red);}
+  .btn-reset{
+    background:#fff; border:1px solid var(--line); border-radius:var(--sharp);
+    padding:0 12px; height:34px; box-sizing:border-box; font-size:12px; font-weight:700; color:var(--muted); cursor:pointer;
+    text-transform:uppercase; letter-spacing:.03em; flex:0 0 auto;
+  }
+
+  .error-banner{
+    margin-top:12px; padding:10px 12px; border:1px solid var(--line); border-left:3px solid var(--red);
+    background:#FFF6F7; font-size:12px; color:#7A1225; display:none; line-height:1.5;
+  }
+  .error-banner.show{display:block;}
+  .error-banner b{color:var(--red);}
+
+  main{padding:4px 16px 40px; max-width:1200px; margin:0 auto;}
+
+  .section-label{display:flex; align-items:center; gap:6px; font-size:10px; text-transform:uppercase;
+    letter-spacing:.08em; color:var(--muted); font-weight:700; margin:22px 2px 8px;}
+  .section-label .diamond{width:6px; height:6px; background:var(--red); transform:rotate(45deg); flex:0 0 auto;}
+  .section-label .note{margin-left:auto; font-weight:600; text-transform:none; letter-spacing:0; font-size:11px;}
+
+  .kpi-scroll{display:grid; grid-template-columns:repeat(2,1fr); gap:10px;}
+  @media (min-width:480px){ .kpi-scroll{grid-template-columns:repeat(3,1fr);} }
+  @media (min-width:720px){ .kpi-scroll{grid-template-columns:repeat(4,1fr);} }
+  @media (min-width:960px){ .kpi-scroll{grid-template-columns:repeat(6,1fr);} }
+  .kpi{background:var(--surface-2);
+    border:1px solid var(--line); border-left:2px solid var(--red); border-radius:var(--sharp); padding:12px 14px;}
+  .kpi .val{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:19px; font-weight:700; line-height:1;}
+  .kpi .lbl{font-size:10px; color:var(--muted); margin-top:6px; text-transform:uppercase; letter-spacing:.05em;}
+  .kpi .sub{font-size:10px; color:var(--muted); margin-top:3px;}
+
+  .card{background:#fff; border:1px solid var(--line); border-radius:var(--sharp); padding:14px 14px 12px; margin-bottom:10px;
+    position:relative; overflow:hidden; box-shadow:0 1px 2px rgba(15,15,17,.03);}
+  .card::before{content:""; position:absolute; top:0; left:0; width:3px; height:100%; background:var(--red);}
+  .card-inner{padding-left:6px;}
+
+  .table-scroll{max-height:460px; overflow-y:auto;}
+  .table-wrap{overflow-x:auto;}
+  table{width:100%; border-collapse:collapse; font-size:12.5px; white-space:nowrap;}
+  thead th{text-align:left; color:var(--muted); font-weight:700; font-size:10px;
+    text-transform:uppercase; letter-spacing:.05em; border-bottom:1px solid var(--line); padding:8px 10px;
+    position:sticky; top:0; background:#fff;}
+  thead th.num, tbody td.num{text-align:right; font-family:ui-monospace,SFMono-Regular,Consolas,monospace;}
+  tbody td{padding:8px 10px; border-bottom:1px solid var(--line);}
+
+  .bar-wrap{display:flex; align-items:center; gap:8px; justify-content:flex-end;}
+  .bar-track{width:70px; height:6px; background:var(--surface-2); border:1px solid var(--line); position:relative; flex:0 0 auto;}
+  .bar-fill{position:absolute; top:0; left:0; height:100%; background:var(--red);}
+  .bar-fill.over{background:#0F0F11;}
+
+  .na-grid{display:grid; grid-template-columns:repeat(1,1fr); gap:8px;}
+  @media (min-width:640px){ .na-grid{grid-template-columns:repeat(2,1fr);} }
+  @media (min-width:960px){ .na-grid{grid-template-columns:repeat(3,1fr);} }
+  .na-card{background:var(--surface-2); border:1px dashed var(--line); border-radius:var(--sharp); padding:12px 14px; opacity:.72;}
+  .na-card .na-title{font-size:12.5px; font-weight:700; line-height:1.3; margin-bottom:5px;}
+  .na-card .na-badge{display:inline-block; font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.04em;
+    color:var(--muted); border:1px solid var(--line); border-radius:var(--sharp); padding:2px 6px; margin-bottom:6px;}
+  .na-card .na-reason{font-size:11.5px; color:var(--muted); line-height:1.4;}
+
+  #state{padding:60px 16px; text-align:center; color:var(--muted); font-size:14px;}
+  #state.error{color:var(--red);}
+  .hidden{display:none;}
+  .empty{padding:24px 16px; text-align:center; color:var(--muted); font-size:13px;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Dashboard <em>Direction</em></h1>
+  <div class="meta-row">
+    <div class="sync"><span class="live-diamond off" id="liveDiamond"></span>Synchro <b id="syncTime">—</b></div>
+    <div class="sync" id="countdown">5:00</div>
+  </div>
+  <div id="refreshBar"><div id="refreshFill"></div></div>
+
+  <div class="filters">
+    <div class="filter-row">
+      <div class="filter-field">
+        <div class="filter-label">Association</div>
+        <select class="control" id="clientSelect"><option value="">Toutes les associations</option></select>
+      </div>
+      <div class="filter-field" style="width:auto;">
+        <div class="filter-label">Statut mission</div>
+        <div class="quick-tags" id="statutTags">
+          <span class="quick-tag" data-statut="">Toutes</span>
+          <span class="quick-tag active" data-statut="en_cours">En cours</span>
+          <span class="quick-tag" data-statut="terminee">Passées</span>
+        </div>
+      </div>
+      <div class="filter-field" style="width:auto;">
+        <div class="filter-label">Période</div>
+        <div class="quick-tags" id="quickTags">
+          <span class="quick-tag active" data-key="total" data-from="" data-to="">Total</span>
+          <span class="quick-tag" data-key="today">Aujourd'hui</span>
+          <span class="quick-tag" data-key="month_current">Mois en cours</span>
+          <span class="quick-tag" data-key="month_previous">Mois précédent</span>
+        </div>
+      </div>
+      <div class="filter-field" style="width:150px;">
+        <div class="filter-label">Du</div>
+        <input class="control" type="date" id="dateFrom">
+      </div>
+      <div class="filter-field" style="width:150px;">
+        <div class="filter-label">Au</div>
+        <input class="control" type="date" id="dateTo">
+      </div>
+      <button class="btn-reset" id="filtersReset" type="button">Réinitialiser</button>
+    </div>
+  </div>
+
+  <div class="error-banner" id="errorBanner">
+    <b>Connexion impossible.</b> <span id="errorDetail"></span> La page réessaiera automatiquement.
+  </div>
+</header>
+
+<div id="state">Chargement des données depuis Metabase…</div>
+
+<main id="content" class="hidden">
+  <div class="section-label"><span class="diamond"></span>Activité &amp; qualité
+    <span class="note">Périmètre filtré (association / statut / période)</span>
+  </div>
+  <div class="kpi-scroll" id="kpiActivite"></div>
+
+  <div class="section-label"><span class="diamond"></span>Effectif
+    <span class="note">Recruteurs actifs sur le périmètre — classement carrière entière</span>
+  </div>
+  <div class="kpi-scroll" id="kpiEffectif"></div>
+
+  <div class="section-label"><span class="diamond"></span>Avancement objectif BS
+    <span class="note">BS réel cumulé / objectif théorique de la mission — missions avec objectif renseigné</span>
+  </div>
+  <div class="card"><div class="card-inner">
+    <div class="table-scroll">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Mission</th><th>Association</th><th>Statut</th>
+              <th class="num">Objectif</th><th class="num">BS réel</th><th class="num">Avancement</th>
+            </tr>
+          </thead>
+          <tbody id="tbl-objectif"></tbody>
+        </table>
+      </div>
+    </div>
+  </div></div>
+
+  <div class="section-label"><span class="diamond"></span>Indicateurs non disponibles
+    <span class="note">KPI du fichier source sans donnée exploitable dans cette base</span>
+  </div>
+  <div class="na-grid" id="naGrid"></div>
+</main>
+
+<script>
+(function () {
+  // ---------------------------------------------------------------
+  // Cette page ne contient AUCUNE clé d'accès. Les données viennent de
+  // /api/direction, qui interroge Metabase côté serveur. Sous-ensemble
+  // calculable des KPI COMEX du fichier "KPIs Direction" fourni par
+  // l'utilisateur — les KPI reposant sur des données absentes de cette
+  // base (objectifs financiers, seuils "idéal"/"besoin", grille de
+  // lancement, outils non connectés) sont listés ci-dessous en local,
+  // sans appel réseau, dans NA_INDICATEURS.
+  // ---------------------------------------------------------------
+  const stateEl = document.getElementById('state');
+  const contentEl = document.getElementById('content');
+
+  function esc(s) { return String(s == null ? '' : s).replace(/</g, '&lt;'); }
+  function fmtNum(n, digits = 0) {
+    if (n === null || n === undefined) return '—';
+    return Number(n).toLocaleString('fr-FR', { maximumFractionDigits: digits, minimumFractionDigits: digits });
+  }
+  function fmtEuro(n) {
+    if (n === null || n === undefined) return '—';
+    return fmtNum(n, 2) + '€';
+  }
+  function fmtRatio(n, digits = 3) {
+    if (n === null || n === undefined) return '—';
+    return fmtNum(n, digits);
+  }
+  function fmtPct(n, digits = 1) {
+    if (n === null || n === undefined) return '—';
+    return fmtNum(Number(n) * 100, digits) + ' %';
+  }
+  const STATUT_LABELS = { en_cours: 'En cours', terminee: 'Terminée', en_attente: 'En attente', annulee: 'Annulée' };
+  function statutLabel(s) { return STATUT_LABELS[s] || (s || '—'); }
+
+  // ---------------------------------------------------------------
+  // Indicateurs non disponibles : reprend un à un les KPI COMEX du
+  // fichier source ("KPIs Direction") non couverts par /api/direction,
+  // avec la raison (donnée absente de la base, règle non tranchée dans
+  // le fichier source, ou outil externe non connecté à ce projet).
+  // ---------------------------------------------------------------
+  const NA_INDICATEURS = [
+    { titre: 'Résultat prévisionnel vs objectif', badge: 'Donnée absente', raison: "CA prév. − marge prév. / Obj. prév. : aucune donnée de chiffre d'affaires ou de marge en base." },
+    { titre: 'CA prévisionnel vs objectif', badge: 'Donnée absente', raison: "Aucune donnée de chiffre d'affaires prévisionnel en base." },
+    { titre: '% missions rentables', badge: 'Donnée absente', raison: "Pas de notion de coût / rentabilité par mission en base." },
+    { titre: '% missions non rattrapables', badge: 'Règle non définie', raison: "\"Indice de rattrapabilité à définir\" — non tranché dans le fichier source." },
+    { titre: 'Taux de remplissage', badge: 'Donnée absente', raison: "Pas de référentiel \"nombre idéal de candidats\" en base." },
+    { titre: 'Missions Renta / Vivier / Pas le choix / No Go', badge: 'Donnée absente', raison: "Grille de lancement non numérisée." },
+    { titre: 'Nouveaux recrutés vs besoin', badge: 'Donnée absente', raison: "\"Besoin en nouveaux\" (dimensionnement J-8) non stocké en base." },
+    { titre: 'Staffing vs dimensionnement initial', badge: 'Donnée absente', raison: "\"Besoin en personnes\" par mission non stocké en base." },
+    { titre: 'Nombre de RD vs RDD', badge: 'Donnée absente', raison: "Le grade \"RDD\" cité dans le fichier source n'existe pas dans la base (contrats.statut)." },
+    { titre: 'Nombre de RE vs objectif', badge: 'Donnée absente', raison: "L'objectif de RE n'est pas stocké en base (le nombre de RE actif l'est, mais pas sa cible)." },
+    { titre: 'LTV (durée de vie du salarié)', badge: 'Règle non définie', raison: "\"À partir de quand ? Post FPE ?\" — règle de calcul non tranchée dans le fichier source." },
+    { titre: 'Nombre de missions sans incident', badge: 'Outil non connecté', raison: "Source INCIDENTATOR non connectée à ce projet." },
+  ];
+  document.getElementById('naGrid').innerHTML = NA_INDICATEURS.map((k) => `
+    <div class="na-card">
+      <div class="na-badge">${esc(k.badge)}</div>
+      <div class="na-title">${esc(k.titre)}</div>
+      <div class="na-reason">${esc(k.raison)}</div>
+    </div>`).join('');
+
+  // ---------------------------------------------------------------
+  // Filtres : association (select), statut mission (tags), période
+  // (quick-tags + Du/Au) — même pattern que rh.html.
+  // ---------------------------------------------------------------
+  let selectedClientId = '';
+  let selectedStatut = 'en_cours';
+  let dateFrom = '', dateTo = '';
+
+  const clientSelectEl = document.getElementById('clientSelect');
+  clientSelectEl.addEventListener('change', () => {
+    selectedClientId = clientSelectEl.value;
+    refreshData();
+  });
+
+  const statutTagsEl = document.getElementById('statutTags');
+  statutTagsEl.querySelectorAll('.quick-tag').forEach((tag) => {
+    tag.addEventListener('click', () => {
+      selectedStatut = tag.dataset.statut;
+      statutTagsEl.querySelectorAll('.quick-tag').forEach((t) => t.classList.toggle('active', t === tag));
+      refreshData();
+    });
+  });
+
+  function isoDate(d) {
+    const tz = d.getTimezoneOffset();
+    const local = new Date(d.getTime() - tz * 60000);
+    return local.toISOString().slice(0, 10);
+  }
+  const dateFromEl = document.getElementById('dateFrom');
+  const dateToEl = document.getElementById('dateTo');
+  const quickTagsEl = document.getElementById('quickTags');
+  function setActiveQuickTag(key) {
+    quickTagsEl.querySelectorAll('.quick-tag').forEach((t) => t.classList.toggle('active', t.dataset.key === key));
+  }
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  quickTagsEl.querySelector('[data-key="today"]').dataset.from = isoDate(today);
+  quickTagsEl.querySelector('[data-key="today"]').dataset.to = isoDate(today);
+  const monthCurrentStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  const monthCurrentEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  const monthPrevStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  const monthPrevEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+  quickTagsEl.querySelector('[data-key="month_current"]').dataset.from = isoDate(monthCurrentStart);
+  quickTagsEl.querySelector('[data-key="month_current"]').dataset.to = isoDate(monthCurrentEnd);
+  quickTagsEl.querySelector('[data-key="month_previous"]').dataset.from = isoDate(monthPrevStart);
+  quickTagsEl.querySelector('[data-key="month_previous"]').dataset.to = isoDate(monthPrevEnd);
+  quickTagsEl.querySelectorAll('.quick-tag').forEach((tag) => {
+    tag.addEventListener('click', () => {
+      dateFrom = tag.dataset.from || ''; dateTo = tag.dataset.to || '';
+      dateFromEl.value = dateFrom; dateToEl.value = dateTo;
+      setActiveQuickTag(tag.dataset.key);
+      refreshData();
+    });
+  });
+  dateFromEl.addEventListener('change', () => { dateFrom = dateFromEl.value; dateTo = dateToEl.value; setActiveQuickTag(null); refreshData(); });
+  dateToEl.addEventListener('change', () => { dateFrom = dateFromEl.value; dateTo = dateToEl.value; setActiveQuickTag(null); refreshData(); });
+
+  document.getElementById('filtersReset').addEventListener('click', () => {
+    selectedClientId = ''; clientSelectEl.value = '';
+    selectedStatut = 'en_cours';
+    statutTagsEl.querySelectorAll('.quick-tag').forEach((t) => t.classList.toggle('active', t.dataset.statut === 'en_cours'));
+    dateFrom = ''; dateTo = ''; dateFromEl.value = ''; dateToEl.value = '';
+    setActiveQuickTag('total');
+    refreshData();
+  });
+
+  // ---------------------------------------------------------------
+  // Données
+  // ---------------------------------------------------------------
+  let liveMode = false;
+  let listsBuilt = false;
+
+  function buildQuery() {
+    const p = new URLSearchParams();
+    if (selectedClientId) p.set('id_client', selectedClientId);
+    if (selectedStatut) p.set('statut_mission', selectedStatut);
+    if (dateFrom && dateTo) { p.set('date_from', dateFrom); p.set('date_to', dateTo); }
+    return p.toString();
+  }
+
+  async function refreshData() {
+    try {
+      const res = await fetch('/api/direction?' + buildQuery(), { cache: 'no-store' });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.message || data.error || 'Erreur inconnue');
+      render(data);
+      liveMode = true;
+      document.getElementById('errorBanner').classList.remove('show');
+    } catch (err) {
+      liveMode = false;
+      document.getElementById('errorDetail').textContent = err.message;
+      document.getElementById('errorBanner').classList.add('show');
+      console.warn('Fetch /api/direction failed:', err);
+    }
+    renderSyncLabel();
+  }
+
+  function renderSyncLabel() {
+    document.getElementById('syncTime').textContent =
+      new Date().toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    document.getElementById('liveDiamond').classList.toggle('off', !liveMode);
+  }
+
+  function render(data) {
+    stateEl.classList.add('hidden');
+    contentEl.classList.remove('hidden');
+
+    if (!listsBuilt) {
+      const clientList = data.clientList || [];
+      clientSelectEl.innerHTML = '<option value="">Toutes les associations</option>' +
+        clientList.map((c) => `<option value="${c.id}">${esc(c.nom)}</option>`).join('');
+      listsBuilt = true;
+    }
+
+    renderKpiActivite(data.globalStats || {}, data.fpe || {});
+    renderKpiEffectif(data.effectif || {});
+    renderObjectifTable(data.objectifMissions || []);
+  }
+
+  // taux_reel_point_mort = BS réel / heures rémunérées (formule du fichier
+  // source, différente du "taux réel" = BS/heures rue utilisé ailleurs
+  // dans le projet — 0,28 = point mort selon le fichier).
+  function renderKpiActivite(s, fpe) {
+    const kpis = [
+      { v: fmtNum(s.nb_missions), l: 'Missions' },
+      { v: s.heures_rue != null ? fmtNum(s.heures_rue) : '—', l: 'Heures rue' },
+      { v: s.heures_remuneration != null ? fmtNum(s.heures_remuneration) : '—', l: 'Heures rémunérées' },
+      { v: fmtNum(s.bs_reel), l: 'BS réel' },
+      { v: fmtRatio(s.taux_reel_point_mort), l: 'Taux réel', sub: 'BS / heures rém. — point mort 0,28' },
+      { v: fmtRatio(s.ratio_h, 2), l: 'Ratio heures rue/rém.' },
+      { v: s.don_moyen != null ? fmtEuro(s.don_moyen) : '—', l: 'Don moyen' },
+      { v: s.age_median != null ? fmtNum(s.age_median, 1) + ' ans' : '—', l: 'Âge médian donateur' },
+      { v: fmtPct(s.pct_plus_25), l: 'Donateurs +25 ans' },
+      { v: fmtPct(s.absenteisme), l: 'Absentéisme', sub: 'Hors arrêt maladie' },
+      { v: fmtPct(fpe.taux_fpe), l: 'Taux de FPE' },
+    ];
+    document.getElementById('kpiActivite').innerHTML = kpis.map((k) => `
+      <div class="kpi"><div class="val">${k.v}</div><div class="lbl">${k.l}</div>${k.sub ? `<div class="sub">${esc(k.sub)}</div>` : ''}</div>`).join('');
+  }
+
+  function renderKpiEffectif(e) {
+    const kpis = [
+      { v: fmtNum(e.nb_recruteurs_actifs), l: 'Recruteurs actifs' },
+      { v: fmtNum(e.nb_anciens), l: 'Anciens (≥3 missions)' },
+      { v: fmtNum(e.nb_nouveaux), l: 'Nouveaux (<3 missions)' },
+      { v: fmtRatio(e.ratio_anciens_nouveaux, 2), l: 'Ratio anciens/nouveaux' },
+      { v: fmtNum(e.nb_rd), l: 'Grade RD' },
+      { v: fmtNum(e.nb_rdc), l: 'Grade RDC' },
+      { v: fmtNum(e.nb_rde), l: 'Grade RDE' },
+      { v: fmtRatio(e.ratio_rdc_rd, 2), l: 'Ratio RDC/RD' },
+      { v: fmtRatio(e.ratio_rde_rdc, 2), l: 'Ratio RDE/RDC' },
+    ];
+    document.getElementById('kpiEffectif').innerHTML = kpis.map((k) => `
+      <div class="kpi"><div class="val">${k.v}</div><div class="lbl">${k.l}</div></div>`).join('');
+  }
+
+  function renderObjectifTable(rows) {
+    const el = document.getElementById('tbl-objectif');
+    if (!rows.length) {
+      el.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);">Aucune mission avec objectif renseigné pour ces filtres</td></tr>';
+      return;
+    }
+    el.innerHTML = rows.map((m) => {
+      const pct = m.avancement != null ? Math.max(0, Math.min(100, Number(m.avancement) * 100)) : 0;
+      const over = m.avancement != null && Number(m.avancement) >= 1;
+      return `
+      <tr>
+        <td>${esc(m.code_mission || 'Mission')}</td>
+        <td>${esc(m.client_nom || '—')}</td>
+        <td>${esc(statutLabel(m.statut_mission))}</td>
+        <td class="num">${fmtNum(m.objectif_bulletin_theorique)}</td>
+        <td class="num">${fmtNum(m.bs_reel)}</td>
+        <td class="num">
+          <div class="bar-wrap">
+            <span>${fmtPct(m.avancement)}</span>
+            <div class="bar-track"><div class="bar-fill${over ? ' over' : ''}" style="width:${pct}%;"></div></div>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ---------------------------------------------------------------
+  // AUTO-REFRESH toutes les 5 min
+  // ---------------------------------------------------------------
+  const REFRESH_MS = 5 * 60 * 1000;
+  let remaining = REFRESH_MS;
+  function tickCountdown() {
+    remaining -= 1000;
+    if (remaining <= 0) { remaining = REFRESH_MS; refreshData(); return; }
+    const s = Math.floor(remaining / 1000);
+    const mm = Math.floor(s / 60), ss = s % 60;
+    document.getElementById('countdown').textContent = `${mm}:${ss.toString().padStart(2, '0')}`;
+    document.getElementById('refreshFill').style.width = (100 - (remaining / REFRESH_MS) * 100) + '%';
+  }
+  setInterval(tickCountdown, 1000);
+
+  // INIT
+  refreshData();
+})();
+</script>
+
+</body>
+</html>

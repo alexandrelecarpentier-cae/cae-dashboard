@@ -96,7 +96,7 @@ limit 5;`;
 // dons pour éviter qu'une mission avec 1 seul don pilote le classement.
 function buildAgeMoyenQuery() {
   return `select m.id as mission_id, m.code_mission, m.code_mission_client, c.nom as client_nom,
-  round(avg(extract(year from age(don.date_de_naissance)))::numeric,1) as age_moyen,
+  round(avg((d.created_at::date - don.date_de_naissance)::numeric / 365.0),1) as age_moyen,
   count(distinct d.id) as nb_dons
 from missions m
 join lots l on l.mission_id = m.id

@@ -39,13 +39,10 @@ order by m.date_debut desc nulls last;`;
 
 // Performance par mission, incluant :
 // - taux_h = heures de rue / heures rémunérées
-// - taux_absence = jours d'absence / (jours de présence + jours d'absence),
-//   basé sur lots.presence_recruteur (TRUE/FALSE, les lots NULL sont
-//   exclus du calcul) — même formule que sql-rd.js/sql-rh.js. Aligné le
-//   9/2026 : cet indicateur utilisait auparavant heures_remuneration /
-//   (nb_lots * 7), une métrique différente (proche d'un taux de présence,
-//   pas d'absence) qui portait à confusion sous le même libellé affiché
-//   "Taux d'absence" que sur /rd et /rh — cf. note méthodologique.
+// - taux_absence = heures rémunérées / (nombre de lots * 7) — formule
+//   canonique du projet (alignée le 9/2026 sur sql-rd.js et sql-rh.js, qui
+//   utilisaient auparavant jours_absence/(jours_presence+jours_absence) ;
+//   heures_remuneration/(nb_lots*7) est désormais la même formule partout).
 // - don_moyen et pct_plus_25 = % de dons dont le donateur avait plus de
 //   25 ans au moment du don (date du don - date de naissance, pas l'âge
 //   actuel — même convention que sql-mission.js pour bs_moins_25)
@@ -68,9 +65,7 @@ heures as (
   select mission_id,
     sum(nombre_horaires_rue) filter (where coalesce(presence_recruteur,true)) as heures_rue,
     sum(nombre_horaires_remuneration) filter (where coalesce(presence_recruteur,true) and coalesce(heures_remuneration_completes,true)) as heures_remuneration,
-    count(*) as nb_lots,
-    count(*) filter (where presence_recruteur = true) as jours_presence,
-    count(*) filter (where presence_recruteur = false) as jours_absence
+    count(*) as nb_lots
   from lots_u group by 1
 ),
 dons_u as (
@@ -98,7 +93,7 @@ select h.mission_id,
   h.nb_lots,
   case when coalesce(h.heures_rue,0) > 0 then coalesce(d.bs_reel,0)::float / h.heures_rue else null end as taux_reel,
   case when coalesce(h.heures_remuneration,0) > 0 then coalesce(h.heures_rue,0)::float / h.heures_remuneration else null end as taux_h,
-  case when (h.jours_presence + h.jours_absence) > 0 then h.jours_absence::float / (h.jours_presence + h.jours_absence) else null end as taux_absence,
+  case when h.nb_lots > 0 then coalesce(h.heures_remuneration,0)::float / (h.nb_lots * 7) else null end as taux_absence,
   d.don_moyen,
   case when coalesce(d.nb_dons_avec_naissance,0) > 0 then coalesce(d.nb_dons_plus_25,0)::float / d.nb_dons_avec_naissance else null end as pct_plus_25,
   case when coalesce(d.nb_dons_avec_naissance,0) > 0 and d.don_moyen is not null
@@ -128,9 +123,7 @@ heures as (
   select
     sum(nombre_horaires_rue) filter (where coalesce(presence_recruteur,true)) as heures_rue_total,
     sum(nombre_horaires_remuneration) filter (where coalesce(presence_recruteur,true) and coalesce(heures_remuneration_completes,true)) as heures_remuneration_total,
-    count(*) as nb_lots_total,
-    count(*) filter (where presence_recruteur = true) as jours_presence_total,
-    count(*) filter (where presence_recruteur = false) as jours_absence_total
+    count(*) as nb_lots_total
   from lots_u
 ),
 dons_u as (
@@ -143,7 +136,7 @@ select
   (select count(distinct mission_id) from contrats c join u on c.utilisateur_id = u.id join missions m on m.id = c.mission_id where 1=1 ${excludeClientsClause('m')}) as nb_missions,
   h.heures_rue_total, h.heures_remuneration_total, h.nb_lots_total,
   case when coalesce(h.heures_remuneration_total,0) > 0 then coalesce(h.heures_rue_total,0)::float / h.heures_remuneration_total else null end as taux_h_total,
-  case when (h.jours_presence_total + h.jours_absence_total) > 0 then h.jours_absence_total::float / (h.jours_presence_total + h.jours_absence_total) else null end as taux_absence_total,
+  case when h.nb_lots_total > 0 then coalesce(h.heures_remuneration_total,0)::float / (h.nb_lots_total * 7) else null end as taux_absence_total,
   d.bs_reel as bs_reel_total
 from heures h cross join dons_u d;`;
 }

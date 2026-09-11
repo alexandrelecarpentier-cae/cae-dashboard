@@ -110,7 +110,7 @@ rd_rows AS (
     round((a.heures_rue::numeric / NULLIF(a.heures_rem, 0))::numeric, 2) AS ratio_h,
     round(a.heures_rue::numeric, 2) AS heures_rue,
     round(a.heures_rem::numeric, 2) AS heures_rem,
-    round((100.0 * a.jours_absence / NULLIF(a.jours_presence + a.jours_absence, 0))::numeric, 1) AS taux_absence,
+    round((100.0 * a.heures_rem / NULLIF(a.nb_jours * 7, 0))::numeric, 1) AS taux_absence,
     round((100.0 * coalesce(aa.jours_absence_injustifiee, 0) / NULLIF(a.jours_presence + a.jours_absence, 0))::numeric, 1) AS taux_absence_injustifiee,
     CASE WHEN cr.grade = 'RE' THEN 1 WHEN cr.grade='RDE' THEN 2 WHEN cr.grade='RDC' THEN 3 WHEN cr.grade='RD' THEN 4 ELSE 5 END AS grade_order
   FROM agg a
@@ -122,7 +122,7 @@ rd_rows AS (
   LEFT JOIN utilisateur_informations_personnelles uip ON uip.utilisateur_id = a.utilisateur_id
 ),
 total_agg AS (
-  SELECT sum(heures_rue) AS heures_rue, sum(heures_rem) AS heures_rem,
+  SELECT count(*) AS nb_lots, sum(heures_rue) AS heures_rue, sum(heures_rem) AS heures_rem,
     sum(CASE WHEN presence_recruteur = TRUE THEN 1 ELSE 0 END) AS jours_presence,
     sum(CASE WHEN presence_recruteur = FALSE THEN 1 ELSE 0 END) AS jours_absence
   FROM lots_mission
@@ -159,7 +159,7 @@ total_row AS (
     round((ta.heures_rue::numeric / NULLIF(ta.heures_rem, 0))::numeric, 2) AS ratio_h,
     round(ta.heures_rue::numeric, 2) AS heures_rue,
     round(ta.heures_rem::numeric, 2) AS heures_rem,
-    round((100.0 * ta.jours_absence / NULLIF(ta.jours_presence + ta.jours_absence, 0))::numeric, 1) AS taux_absence,
+    round((100.0 * ta.heures_rem / NULLIF(ta.nb_lots * 7, 0))::numeric, 1) AS taux_absence,
     round((100.0 * coalesce(taa.jours_absence_injustifiee, 0) / NULLIF(ta.jours_presence + ta.jours_absence, 0))::numeric, 1) AS taux_absence_injustifiee,
     0 AS grade_order
   FROM total_agg ta, total_dons td, total_absence_agg taa
@@ -181,8 +181,11 @@ function buildRdAgePieQuery(id_mission, id_utilisateur, dateRange) {
     ${dateFilter}
 ),
 ages AS (
+  -- Âge au moment du don (date de signature), pas l'âge actuel — même
+  -- convention que partout ailleurs dans le projet (age_median de la
+  -- table RD, /mission-suivi, /salarie, /rm-collecte).
   SELECT
-    (CURRENT_DATE - don.date_de_naissance)::float / 365.25 AS age
+    (d.created_at::date - don.date_de_naissance)::float / 365.0 AS age
   FROM lots_f lf
   JOIN dons d ON d.lot_id = lf.id
   JOIN donateurs don ON don.id = d.donateur_id
@@ -259,7 +262,7 @@ ORDER BY 1 DESC, 2;`;
 function donMotifCase(dfAlias, donAlias, upActuelAlias, ucActuelAlias, rcTiersAlias, dtsAlias) {
   return `CASE
       WHEN ${donAlias}.email ILIKE '%test%' OR ${donAlias}.prenom ILIKE '%test%' OR ${donAlias}.nom ILIKE '%test%' THEN '🧪 Test'
-      WHEN ${donAlias}.date_de_naissance > CURRENT_DATE - INTERVAL '18 years' THEN '🚨 Donateur mineur'
+      WHEN ${donAlias}.date_de_naissance > ${dfAlias}.created_at::date - INTERVAL '18 years' THEN '🚨 Donateur mineur'
       WHEN LOWER(${donAlias}.nom) = LOWER(${upActuelAlias}.nom) THEN '🚩 Suspicion fraude'
       WHEN (LOWER(${donAlias}.email) = LOWER(${ucActuelAlias}.email) OR NULLIF(${donAlias}.telephone_mobile,'') = ${ucActuelAlias}.telephone OR NULLIF(${donAlias}.telephone_fixe,'') = ${ucActuelAlias}.telephone)
            THEN '🆔 Coordonnées du recruteur'

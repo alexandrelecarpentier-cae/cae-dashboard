@@ -173,8 +173,10 @@ lots_f AS (
     ${dateFilter}
 ),
 ages AS (
+  -- Âge au moment du don (date de signature), pas l'âge actuel — même
+  -- convention que partout ailleurs dans le projet.
   SELECT
-    (CURRENT_DATE - don.date_de_naissance)::float / 365.25 AS age
+    (d.created_at::date - don.date_de_naissance)::float / 365.0 AS age
   FROM lots_f lf
   JOIN dons d ON d.lot_id = lf.id
   JOIN donateurs don ON don.id = d.donateur_id

@@ -7,11 +7,8 @@
 // - taux_reel = BS réel / heures de rue (moyenne pondérée : somme des BS
 //   réels / somme des heures rue, jamais une moyenne de taux journaliers),
 //   comme partout ailleurs dans ce projet.
-// - taux_absence = jours d'absence / (jours de présence + jours d'absence),
-//   où présence/absence sont déterminés par lots.presence_recruteur
-//   (TRUE/FALSE) ; les lots où ce champ n'est pas renseigné (NULL) sont
-//   exclus de ce calcul (ni présence ni absence connue) — même logique que
-//   /rd.html (Suivi Qualité).
+// - taux_absence = heures rémunérées / (nombre de lots * 7) — formule
+//   canonique du projet (identique à /rd.html et /salarie.html).
 // - taux_completion_presence = part des lots où presence_recruteur EST
 //   renseigné (non NULL) parmi tous les lots. Vérifié en base : sur les 12
 //   derniers mois, environ 15% des lots n'ont pas ce champ rempli — un vrai
@@ -40,7 +37,7 @@ function filtersClause(p) {
 // associés, hors clients exclus.
 function baseCte(p) {
   return `with lots_f as (
-  select l.id, l.mission_id, l.utilisateur_id, l.presence_recruteur, l.emplacement_id, l.nombre_horaires_rue
+  select l.id, l.mission_id, l.utilisateur_id, l.presence_recruteur, l.emplacement_id, l.nombre_horaires_rue, l.nombre_horaires_remuneration
   from lots l
   join missions m on m.id = l.mission_id
   where ${filtersClause(p)}
@@ -64,9 +61,8 @@ agg as (
     count(*) as nb_lots,
     count(distinct mission_id) as nb_missions,
     sum(nombre_horaires_rue) filter (where coalesce(presence_recruteur,true)) as heures_rue,
+    sum(nombre_horaires_remuneration) filter (where coalesce(presence_recruteur,true)) as heures_remuneration,
     count(*) filter (where presence_recruteur is not null) as lots_presence_renseignee,
-    count(*) filter (where presence_recruteur = true) as jours_presence,
-    count(*) filter (where presence_recruteur = false) as jours_absence,
     count(*) filter (where emplacement_id is not null) as lots_emplacement_renseigne
   from lots_f
 ),
@@ -77,7 +73,7 @@ select
   a.nb_missions, a.heures_rue,
   coalesce(da.bs_reel, 0) as bs_reel,
   case when coalesce(a.heures_rue,0) > 0 then coalesce(da.bs_reel,0)::float / a.heures_rue else null end as taux_reel,
-  case when (a.jours_presence + a.jours_absence) > 0 then a.jours_absence::float / (a.jours_presence + a.jours_absence) else null end as taux_absence,
+  case when a.nb_lots > 0 then coalesce(a.heures_remuneration,0)::float / (a.nb_lots * 7) else null end as taux_absence,
   case when a.nb_lots > 0 then a.lots_presence_renseignee::float / a.nb_lots else null end as taux_completion_presence,
   case when a.nb_lots > 0 then a.lots_emplacement_renseigne::float / a.nb_lots else null end as taux_completion_emplacement
 from agg a, dons_agg da;`;
@@ -92,9 +88,8 @@ par_mission as (
     count(*) as nb_lots,
     count(distinct utilisateur_id) as nb_recruteurs,
     sum(nombre_horaires_rue) filter (where coalesce(presence_recruteur,true)) as heures_rue,
+    sum(nombre_horaires_remuneration) filter (where coalesce(presence_recruteur,true)) as heures_remuneration,
     count(*) filter (where presence_recruteur is not null) as lots_presence_renseignee,
-    count(*) filter (where presence_recruteur = true) as jours_presence,
-    count(*) filter (where presence_recruteur = false) as jours_absence,
     count(*) filter (where emplacement_id is not null) as lots_emplacement_renseigne
   from lots_f
   group by 1
@@ -109,7 +104,7 @@ select m.id as mission_id, m.code_mission, m.code_mission_client, m.statut_missi
   pm.nb_recruteurs, pm.heures_rue,
   coalesce(dm.bs_reel, 0) as bs_reel,
   case when coalesce(pm.heures_rue,0) > 0 then coalesce(dm.bs_reel,0)::float / pm.heures_rue else null end as taux_reel,
-  case when (pm.jours_presence + pm.jours_absence) > 0 then pm.jours_absence::float / (pm.jours_presence + pm.jours_absence) else null end as taux_absence,
+  case when pm.nb_lots > 0 then coalesce(pm.heures_remuneration,0)::float / (pm.nb_lots * 7) else null end as taux_absence,
   case when pm.nb_lots > 0 then pm.lots_presence_renseignee::float / pm.nb_lots else null end as taux_completion_presence,
   case when pm.nb_lots > 0 then pm.lots_emplacement_renseigne::float / pm.nb_lots else null end as taux_completion_emplacement
 from par_mission pm
@@ -286,7 +281,7 @@ order by pm.derniere_arrivee desc;`;
 function buildRecruteursParMissionQuery(id_mission, dateRange) {
   const dateFilter = dateFilterClause('l.date', dateRange);
   return `with lots_f as (
-  select l.id, l.utilisateur_id, l.presence_recruteur, l.emplacement_id, l.nombre_horaires_rue
+  select l.id, l.utilisateur_id, l.presence_recruteur, l.emplacement_id, l.nombre_horaires_rue, l.nombre_horaires_remuneration
   from lots l
   where l.mission_id = '${id_mission}'
     ${dateFilter}
@@ -301,9 +296,8 @@ par_recruteur as (
   select utilisateur_id,
     count(*) as nb_lots,
     sum(nombre_horaires_rue) filter (where coalesce(presence_recruteur,true)) as heures_rue,
+    sum(nombre_horaires_remuneration) filter (where coalesce(presence_recruteur,true)) as heures_remuneration,
     count(*) filter (where presence_recruteur is not null) as lots_presence_renseignee,
-    count(*) filter (where presence_recruteur = true) as jours_presence,
-    count(*) filter (where presence_recruteur = false) as jours_absence,
     count(*) filter (where emplacement_id is not null) as lots_emplacement_renseigne
   from lots_f
   group by 1
@@ -342,7 +336,7 @@ recruteur_rows as (
     pr.nb_lots, pr.heures_rue,
     coalesce(dr.bs_reel, 0) as bs_reel,
     case when coalesce(pr.heures_rue,0) > 0 then coalesce(dr.bs_reel,0)::float / pr.heures_rue else null end as taux_reel,
-    case when (pr.jours_presence + pr.jours_absence) > 0 then pr.jours_absence::float / (pr.jours_presence + pr.jours_absence) else null end as taux_absence,
+    case when pr.nb_lots > 0 then coalesce(pr.heures_remuneration,0)::float / (pr.nb_lots * 7) else null end as taux_absence,
     case when pr.nb_lots > 0 then pr.lots_presence_renseignee::float / pr.nb_lots else null end as taux_completion_presence,
     case when pr.nb_lots > 0 then pr.lots_emplacement_renseigne::float / pr.nb_lots else null end as taux_completion_emplacement,
     dr.don_moyen,
@@ -357,9 +351,8 @@ total_agg as (
   select
     count(*) as nb_lots,
     sum(nombre_horaires_rue) filter (where coalesce(presence_recruteur,true)) as heures_rue,
+    sum(nombre_horaires_remuneration) filter (where coalesce(presence_recruteur,true)) as heures_remuneration,
     count(*) filter (where presence_recruteur is not null) as lots_presence_renseignee,
-    count(*) filter (where presence_recruteur = true) as jours_presence,
-    count(*) filter (where presence_recruteur = false) as jours_absence,
     count(*) filter (where emplacement_id is not null) as lots_emplacement_renseigne
   from lots_f
 ),
@@ -372,7 +365,7 @@ total_row as (
     ta.nb_lots, ta.heures_rue,
     coalesce(td.bs_reel, 0) as bs_reel,
     case when coalesce(ta.heures_rue,0) > 0 then coalesce(td.bs_reel,0)::float / ta.heures_rue else null end as taux_reel,
-    case when (ta.jours_presence + ta.jours_absence) > 0 then ta.jours_absence::float / (ta.jours_presence + ta.jours_absence) else null end as taux_absence,
+    case when ta.nb_lots > 0 then coalesce(ta.heures_remuneration,0)::float / (ta.nb_lots * 7) else null end as taux_absence,
     case when ta.nb_lots > 0 then ta.lots_presence_renseignee::float / ta.nb_lots else null end as taux_completion_presence,
     case when ta.nb_lots > 0 then ta.lots_emplacement_renseigne::float / ta.nb_lots else null end as taux_completion_emplacement,
     td.don_moyen,

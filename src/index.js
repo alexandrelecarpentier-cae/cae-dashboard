@@ -44,6 +44,7 @@ import {
   buildClientListQuery as buildRhClientListQuery,
   buildMissionListQuery as buildRhMissionListQuery,
 } from './lib/sql-rh.js';
+import { buildDirectionQueries, buildClientListQuery as buildDirectionClientListQuery } from './lib/sql-direction.js';
 import { isExcludedClient, buildMissionClientQuery, EXCLUDED_CLIENT_NAMES } from './lib/excluded-clients.js';
 
 export default {
@@ -63,6 +64,7 @@ export default {
       if (url.pathname === '/api/emplacement') return await handleEmplacement(url, env);
       if (url.pathname === '/api/site-prive') return await handleSitePrive(url, env);
       if (url.pathname === '/api/rh') return await handleRh(url, env);
+      if (url.pathname === '/api/direction') return await handleDirection(url, env);
       if (url.pathname === '/api/re-mobilisation') return await handleReMobilisation(url, env);
       if (url.pathname === '/api/rd-mobilisation') return await handleRdMobilisation(url, env);
       if (url.pathname === '/api/rm-missions') return await handleRmMissions(env);
@@ -656,6 +658,61 @@ async function handleRh(url, env) {
       candidaturesParJour,
       candidaturesParSemaine,
       candidaturesParMois,
+    });
+  } catch (e) {
+    return jsonResponse({ error: String(e.message || e) }, 502);
+  }
+}
+
+// ---------------------------------------------------------------
+// /api/direction — dashboard "Direction" (direction.html) : sous-ensemble
+// calculable des KPI COMEX du fichier "KPIs Direction" fourni par
+// l'utilisateur (le reste — objectifs financiers, seuils "idéal"/"besoin",
+// grille de lancement, outils non connectés — est affiché côté front comme
+// "non disponible", sans requête associée ici). Mêmes filtres que /rh
+// (association / statut mission / période), pas de mission cible fixe.
+// ---------------------------------------------------------------
+const DIRECTION_STATUTS_MISSION = ['en_cours', 'terminee', 'en_attente', 'annulee'];
+
+async function handleDirection(url, env) {
+  const configError = requireConfig(env);
+  if (configError) return jsonResponse({ error: configError }, 500);
+
+  const id_client = url.searchParams.get('id_client') || '';
+  if (id_client && !RE_UUID.test(id_client)) return jsonResponse({ error: 'id_client invalide' }, 400);
+
+  const statut_mission = url.searchParams.get('statut_mission') || '';
+  if (statut_mission && !DIRECTION_STATUTS_MISSION.includes(statut_mission)) {
+    return jsonResponse({ error: 'statut_mission invalide' }, 400);
+  }
+
+  const date_from = url.searchParams.get('date_from') || '';
+  const date_to = url.searchParams.get('date_to') || '';
+  if (date_from && !RE_DATE.test(date_from)) return jsonResponse({ error: 'date_from invalide' }, 400);
+  if (date_to && !RE_DATE.test(date_to)) return jsonResponse({ error: 'date_to invalide' }, 400);
+
+  const queries = buildDirectionQueries({
+    id_client: id_client || null,
+    statut_mission: statut_mission || null,
+    date_from: date_from || null,
+    date_to: date_to || null,
+  });
+
+  try {
+    const [globalStats, effectif, fpe, objectifMissions, clientList] = await Promise.all([
+      runQuery(env, queries.globalStats),
+      runQuery(env, queries.effectif),
+      runQuery(env, queries.fpe),
+      runQuery(env, queries.objectifMissions),
+      runQuery(env, buildDirectionClientListQuery()),
+    ]);
+
+    return jsonResponse({
+      globalStats: globalStats[0] || null,
+      effectif: effectif[0] || null,
+      fpe: fpe[0] || null,
+      objectifMissions,
+      clientList,
     });
   } catch (e) {
     return jsonResponse({ error: String(e.message || e) }, 502);

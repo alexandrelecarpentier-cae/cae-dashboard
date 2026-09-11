@@ -43,8 +43,10 @@ scoped_lots as (
   where ${lotFilters(p)}
 ),
 scoped_dons_all as (
+  -- Âge au moment du don (date de signature), pas l'âge actuel — même
+  -- convention que partout ailleurs dans le projet.
   select d.*, don.civilite,
-         extract(year from age(now(), don.date_de_naissance)) as age_donateur
+         (d.created_at::date - don.date_de_naissance)::float / 365.0 as age_donateur
   from dons d
   join scoped_lots l on l.id = d.lot_id
   left join donateurs don on don.id = d.donateur_id
@@ -100,9 +102,12 @@ group by civilite;`,
 
     tranche_age: `${cte}
 select
-  case when age_donateur <= 20 then '18-20' when age_donateur between 21 and 25 then '21-25'
-       when age_donateur between 26 and 35 then '26-35' when age_donateur between 36 and 50 then '36-50'
-       else '50 et +' end as tranche,
+  case when age_donateur between 18 and 20.999 then '18-20'
+       when age_donateur between 21 and 25.999 then '21-25'
+       when age_donateur between 26 and 35.999 then '26-35'
+       when age_donateur between 36 and 50.999 then '36-50'
+       when age_donateur >= 51 then '50 et +'
+       else 'Autre' end as tranche,
   count(distinct id) as nb
 from scoped_dons group by 1;`,
 
