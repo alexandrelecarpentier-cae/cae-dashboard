@@ -82,6 +82,8 @@
     letter-spacing:.08em; color:var(--muted); font-weight:700; margin:22px 2px 8px;}
   .section-label .diamond{width:6px; height:6px; background:var(--red); transform:rotate(45deg); flex:0 0 auto;}
   .section-label .note{margin-left:auto; font-weight:600; text-transform:none; letter-spacing:0; font-size:11px;}
+  .section-sub{font-size:11px; color:var(--muted); text-transform:none; letter-spacing:0; font-weight:500;
+    margin:-4px 2px 8px; line-height:1.4;}
 
   .kpi-scroll{display:grid; grid-template-columns:repeat(2,1fr); gap:10px;}
   @media (min-width:480px){ .kpi-scroll{grid-template-columns:repeat(3,1fr);} }
@@ -172,9 +174,11 @@
 
 <main id="content" class="hidden">
   <div class="section-label"><span class="diamond"></span>Indicateurs globaux</div>
+  <div class="section-sub">Basé sur la date de collecte (date du lot).</div>
   <div class="kpi-scroll" id="kpiGlobal"></div>
 
   <div class="section-label"><span class="diamond"></span>Évolution du taux réel</div>
+  <div class="section-sub">Basé sur la date de collecte (date du lot).</div>
   <div class="card"><div class="card-inner">
     <div class="quick-tags" id="granularityTags" style="margin-bottom:12px;">
       <span class="quick-tag" data-g="jour">Jour</span>
@@ -185,12 +189,13 @@
   </div></div>
 
   <div class="section-label"><span class="diamond"></span>Taux réel par typologie d'emplacement</div>
+  <div class="section-sub">Basé sur la date de collecte (date du lot).</div>
   <div class="card"><div class="card-inner">
     <div class="chart-box" id="typoChartBox"><canvas id="chart-typologie"></canvas></div>
   </div></div>
 
   <div class="section-label"><span class="diamond"></span>Par enseigne
-    <span class="note">Top 40 — déduite du nom de l'emplacement, approximatif</span>
+    <span class="note">Top 40 — déduite du nom de l'emplacement, approximatif — basé sur la date de collecte (date du lot)</span>
   </div>
   <div class="card"><div class="card-inner">
     <div class="table-scroll">
@@ -204,7 +209,7 @@
   </div></div>
 
   <div class="section-label"><span class="diamond"></span>Emplacements
-    <span class="note">300 dernières activités — date, site, mission</span>
+    <span class="note">300 dernières activités dans la période — date, site, mission</span>
   </div>
   <div class="card"><div class="card-inner">
     <div class="table-scroll">

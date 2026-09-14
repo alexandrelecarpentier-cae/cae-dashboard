@@ -64,6 +64,8 @@
   .section-label{display:flex; align-items:center; gap:6px; font-size:10px; text-transform:uppercase;
     letter-spacing:.08em; color:var(--muted); font-weight:700; margin:18px 2px 8px;}
   .section-label .diamond{width:6px; height:6px; background:var(--red); transform:rotate(45deg); flex:0 0 auto;}
+  .section-sub{font-size:11px; color:var(--muted); text-transform:none; letter-spacing:0; font-weight:500;
+    margin:-4px 2px 8px; line-height:1.4;}
   .section-label .info-btn{
     margin-left:auto; width:16px; height:16px; border-radius:50%; border:1px solid var(--muted);
     color:var(--muted); background:none; font-size:10px; font-weight:800; line-height:14px;
@@ -174,6 +176,7 @@
 
 <main id="content" class="hidden">
   <div class="section-label"><span class="diamond"></span>Performance des missions</div>
+  <div class="section-sub">Missions dont la durée chevauche la période sélectionnée ; bulletins comptés sur leur date de collecte (lot).</div>
   <div class="kpi-scroll" id="kpiPerf"></div>
 
   <div class="section-label info-wrap">
@@ -189,9 +192,11 @@
       </ul>
     </div>
   </div>
+  <div class="section-sub">Basé sur les bulletins collectés dans la période sélectionnée (date du lot).</div>
   <div class="kpi-scroll" id="kpiQualite"></div>
 
   <div class="section-label"><span class="diamond"></span>Profil des donateurs</div>
+  <div class="section-sub">Basé sur la date de collecte du bulletin (date du lot).</div>
   <div class="pie-grid">
     <div class="card"><div class="card-inner">
       <div style="font-size:11px; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px;">Âge</div>
@@ -206,6 +211,7 @@
   </div>
 
   <div class="section-label"><span class="diamond"></span>Suivi des missions</div>
+  <div class="section-sub">Missions dont la durée chevauche la période sélectionnée ; indicateurs calculés sur les bulletins collectés dans cette même période (date du lot).</div>
   <div class="card"><div class="card-inner">
     <div class="table-wrap">
       <table id="missionsTable">
@@ -224,6 +230,7 @@
   </div></div>
 
   <div class="section-label"><span class="diamond"></span>Bulletins suspects</div>
+  <div class="section-sub">Basé sur la date de collecte du bulletin (date du lot) — sans période sélectionnée, limité aux bulletins jusqu'à aujourd'hui.</div>
   <div class="card"><div class="card-inner">
     <div class="table-wrap">
       <table id="suspectsTable">

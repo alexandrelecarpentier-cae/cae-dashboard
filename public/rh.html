@@ -84,6 +84,8 @@
     letter-spacing:.08em; color:var(--muted); font-weight:700; margin:22px 2px 8px;}
   .section-label .diamond{width:6px; height:6px; background:var(--red); transform:rotate(45deg); flex:0 0 auto;}
   .section-label .note{margin-left:auto; font-weight:600; text-transform:none; letter-spacing:0; font-size:11px;}
+  .section-sub{font-size:11px; color:var(--muted); text-transform:none; letter-spacing:0; font-weight:500;
+    margin:-4px 2px 8px; line-height:1.4;}
   .section-label .btn-close{
     margin-left:auto; background:none; border:1px solid var(--line); border-radius:var(--sharp);
     color:var(--muted); font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.03em;
@@ -188,6 +190,7 @@
 
 <main id="content" class="hidden">
   <div class="section-label"><span class="diamond"></span>Indicateurs globaux</div>
+  <div class="section-sub">Basé sur la date de collecte des bulletins (date du lot).</div>
   <div class="kpi-scroll" id="kpiGlobal"></div>
 
   <div class="section-label"><span class="diamond"></span>Recrutements
@@ -215,7 +218,7 @@
   </div></div>
 
   <div class="section-label"><span class="diamond"></span>Candidatures
-    <span class="note">Nouveaux candidats créés via TeamTailor (webhook)</span>
+    <span class="note">Nouveaux candidats créés via TeamTailor (webhook), par date de création</span>
   </div>
   <div class="card"><div class="card-inner">
     <div class="quick-tags" id="candidGranularityTags" style="margin-bottom:12px;">
@@ -229,6 +232,7 @@
   <div class="section-label"><span class="diamond"></span>Missions
     <span class="note">Cliquer une ligne pour voir le détail par recruteur</span>
   </div>
+  <div class="section-sub">Missions actives sur la période (au moins un lot dans la période sélectionnée), indicateurs basés sur la date de collecte des bulletins (date du lot) ; jours de complétion d'équipe basés sur la date de début de contrat.</div>
   <div class="card"><div class="card-inner">
     <div class="table-scroll">
       <div class="table-wrap">
@@ -252,6 +256,7 @@
     <div class="section-label"><span class="diamond"></span><span id="recruteurTitle">Performance par recruteur</span>
       <button class="btn-close" id="recruteurClose" type="button">Fermer</button>
     </div>
+    <div class="section-sub">Basé sur la date de collecte des bulletins (date du lot).</div>
     <div class="card"><div class="card-inner">
       <div class="table-scroll">
         <div class="table-wrap">

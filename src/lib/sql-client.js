@@ -16,6 +16,19 @@ function missionFilters(p) {
   return clauses.join(' AND ');
 }
 
+// Chevauchement de la période sélectionnée (date_min/date_max) avec la
+// durée de vie de la mission (date_debut → date_fin) : une mission est
+// incluse dès lors qu'une partie de sa durée tombe dans la période, pas
+// seulement si elle y est entièrement contenue. date_fin peut être vide
+// (mission encore en cours) — dans ce cas elle ne peut jamais être exclue
+// par la borne basse (date_min) de la période.
+function missionDateOverlapClause(p) {
+  const clauses = [];
+  if (p.date_min) clauses.push(`(date_fin is null or date_fin >= '${p.date_min}')`);
+  if (p.date_max) clauses.push(`date_debut <= '${p.date_max}'`);
+  return clauses.length ? ` and ${clauses.join(' and ')}` : '';
+}
+
 function lotFilters(p) {
   const clauses = ['1=1'];
   if (p.date_min) clauses.push(`l.date >= '${p.date_min}'`);
@@ -165,7 +178,7 @@ group by 1,2 order by 1;`,
 eligible_missions as (
   select id, code_mission, code_mission_client, statut_mission, date_debut, date_fin
   from scoped_missions
-  where statut_mission in ('en_cours','terminee')
+  where statut_mission in ('en_cours','terminee')${missionDateOverlapClause(p)}
 ),
 heures_par_mission as (
   select l.mission_id,
