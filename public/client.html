@@ -152,10 +152,18 @@
   @media print{
     header .filters, header .chip-row, header .meta-row, #refreshBar, .error-banner, .btn-reset, .btn-export,
     .mission-search-wrap .mission-suggestions, #countdown { display:none !important; }
+    /* Export PDF = uniquement infos mission, KPIs et graphes (+légendes) —
+       les listes détaillées (tableaux) n'ont pas leur place sur une vue
+       imprimée/exportée, demande explicite. */
+    .no-print { display:none !important; }
     body{ background:#fff; }
     header{ position:static; }
     .card{ break-inside:avoid; box-shadow:none; }
-    .chart-box{ height:200px; }
+    /* Hauteur inchangée par rapport à l'écran (230px, cf. .chart-box de
+       base) : la réduire écrasait les légendes des camemberts genre/âge.
+       grid-2 repasse en 2 colonnes fixes quel que soit le format papier,
+       Chart.js redimensionne les canvas sur "beforeprint" (cf. script). */
+    .grid-2{ grid-template-columns:1fr 1fr !important; }
     main{ max-width:100%; }
   }
 </style>
@@ -243,10 +251,25 @@
     </div></div>
   </div>
 
-  <div class="section-label"><span class="diamond"></span>Bulletins transmis
+  <div class="section-label no-print"><span class="diamond"></span>Suivi des missions</div>
+  <div class="card no-print"><div class="card-inner">
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Mission</th><th>Asso</th><th>Statut</th><th>Début</th><th>Fin</th>
+            <th>H rue</th><th>H rém.</th><th>Bulletins</th><th>Taux réel</th><th>Don moyen</th><th>Âge moyen</th>
+          </tr>
+        </thead>
+        <tbody id="tbl-missions"></tbody>
+      </table>
+    </div>
+  </div></div>
+
+  <div class="section-label no-print"><span class="diamond"></span>Bulletins transmis
     <button class="btn-export" id="btnExportTransmisCsv" type="button" style="margin-left:auto;">Exporter CSV</button>
   </div>
-  <div class="card"><div class="card-inner">
+  <div class="card no-print"><div class="card-inner">
     <div class="table-scroll">
       <table>
         <thead>
@@ -667,7 +690,44 @@
     renderChartAge(data.tranche_age || []);
     transmisRowsCache = data.bulletins_transmis || [];
     renderTable(transmisRowsCache);
+    renderMissionsIndicateursTable(data.missionsIndicateurs || []);
     renderCrossFilterChips();
+  }
+
+  // ---------------------------------------------------------------
+  // Table "Suivi des missions" — une ligne par mission du périmètre
+  // filtré (+ une ligne TOTAL), avec exactement les indicateurs des KPIs
+  // globaux ci-dessus (comparable au tableau "Suivi des missions" de
+  // /rm-collecte.html, mais avec le jeu d'indicateurs de ce dashboard).
+  // Exclue de l'export PDF (cf. .no-print, demande explicite).
+  // ---------------------------------------------------------------
+  const MISSION_STATUT_LABELS = { en_cours: 'En cours', terminee: 'Terminée', en_attente: 'En attente' };
+  function renderMissionsIndicateursTable(rows) {
+    const body = rows.map((r) => {
+      const isTotal = r.code_mission === 'TOTAL';
+      const label = isTotal
+        ? 'TOTAL'
+        : (r.code_mission_client || r.code_mission || '—');
+      const asso = isTotal ? '' : (r.code_mission || '—');
+      const statut = isTotal ? '' : (MISSION_STATUT_LABELS[r.statut_mission] || r.statut_mission || '—');
+      const style = isTotal ? ' style="font-weight:700;background:var(--surface-2);"' : '';
+      return `
+      <tr${style}>
+        <td>${String(label).replace(/</g, '&lt;')}</td>
+        <td>${String(asso).replace(/</g, '&lt;')}</td>
+        <td>${statut}</td>
+        <td>${isTotal ? '' : fmtDate(r.date_debut)}</td>
+        <td>${isTotal ? '' : fmtDate(r.date_fin)}</td>
+        <td>${fmtNum(r.heures_rue, 0)}</td>
+        <td>${fmtNum(r.heures_rem, 0)}</td>
+        <td>${fmtNum(r.nb_dons, 0)}</td>
+        <td>${r.taux_reel != null ? fmtNum(r.taux_reel, 3) : '—'}</td>
+        <td>${r.don_moyen != null ? fmtNum(r.don_moyen, 2) + '€' : '—'}</td>
+        <td>${r.age_moyen != null ? fmtNum(r.age_moyen, 0) : '—'}</td>
+      </tr>`;
+    }).join('');
+    document.getElementById('tbl-missions').innerHTML = body ||
+      '<tr><td colspan="11" style="text-align:center;color:var(--muted);">Aucune mission sur la période</td></tr>';
   }
 
   // ---------------------------------------------------------------
@@ -738,6 +798,21 @@
   // s'impriment nativement.
   // ---------------------------------------------------------------
   document.getElementById('btnExportPdf').addEventListener('click', () => window.print());
+
+  // Les canvas Chart.js gardent les dimensions calculées pour l'écran tant
+  // qu'on ne les force pas à se redimensionner : sans ça, à l'impression,
+  // les graphes (et surtout leurs légendes, camemberts genre/âge) restent
+  // cadrés pour la largeur écran et débordent ou se retrouvent coupés sur
+  // la page imprimée. window.print() est bloquant sur certains navigateurs
+  // desktop (Chrome ne déclenche pas toujours "afterprint" avant que
+  // l'utilisateur ferme la boîte de dialogue), d'où l'écoute sur
+  // beforeprint/afterprint plutôt qu'un simple appel avant window.print().
+  window.addEventListener('beforeprint', () => {
+    Object.values(charts).forEach((c) => { if (c) c.resize(); });
+  });
+  window.addEventListener('afterprint', () => {
+    Object.values(charts).forEach((c) => { if (c) c.resize(); });
+  });
 
   // ---------------------------------------------------------------
   // Filtres de croisement actifs (civilite / tranche_age), activés en

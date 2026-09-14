@@ -150,6 +150,70 @@ select date_trunc('month', created_at)::date as periode, statut, count(distinct 
 from scoped_dons
 group by 1,2 order by 1;`,
 
+    // Suivi des missions : une ligne par mission du périmètre filtré (+
+    // une ligne TOTAL), avec exactement les mêmes indicateurs que les
+    // KPIs globaux ci-dessus (bulletins, taux réel, don moyen, âge moyen,
+    // heures rue/rém) — comparable dans l'esprit au tableau "Suivi des
+    // missions" de /rm-collecte.html, mais avec le jeu d'indicateurs de
+    // CE dashboard plutôt que celui de rm-collecte (tx_transfo, score
+    // qualité, etc., qui n'existent pas ici).
+    missionsIndicateurs: `${cte},
+heures_par_mission as (
+  select mission_id,
+    sum(nombre_horaires_rue) filter (where coalesce(presence_recruteur,true)) as heures_rue,
+    sum(nombre_horaires_remuneration) filter (where coalesce(presence_recruteur,true)) as heures_rem
+  from scoped_lots
+  group by 1
+),
+dons_par_mission as (
+  select l.mission_id,
+    count(distinct d.id) as nb_dons,
+    avg(d.montant) as don_moyen,
+    avg(d.age_donateur) as age_moyen
+  from scoped_dons d
+  join scoped_lots l on l.id = d.lot_id
+  group by 1
+),
+mission_rows as (
+  select
+    0 as sort_order,
+    sm.id as mission_id, sm.code_mission, sm.code_mission_client, sm.statut_mission,
+    sm.date_debut, sm.date_fin,
+    coalesce(hm.heures_rue,0) as heures_rue,
+    coalesce(hm.heures_rem,0) as heures_rem,
+    coalesce(dm.nb_dons,0) as nb_dons,
+    dm.don_moyen,
+    dm.age_moyen,
+    case when coalesce(hm.heures_rue,0) > 0 then coalesce(dm.nb_dons,0)::float / hm.heures_rue else null end as taux_reel
+  from scoped_missions sm
+  left join heures_par_mission hm on hm.mission_id = sm.id
+  left join dons_par_mission dm on dm.mission_id = sm.id
+),
+total_heures as (
+  select sum(heures_rue) as heures_rue, sum(heures_rem) as heures_rem from heures_par_mission
+),
+total_dons as (
+  select count(distinct id) as nb_dons, avg(montant) as don_moyen, avg(age_donateur) as age_moyen from scoped_dons
+),
+total_row as (
+  select
+    1 as sort_order,
+    null::uuid as mission_id, 'TOTAL' as code_mission, null::text as code_mission_client, null::text as statut_mission,
+    null::date as date_debut, null::date as date_fin,
+    coalesce((select heures_rue from total_heures),0) as heures_rue,
+    coalesce((select heures_rem from total_heures),0) as heures_rem,
+    coalesce((select nb_dons from total_dons),0) as nb_dons,
+    (select don_moyen from total_dons) as don_moyen,
+    (select age_moyen from total_dons) as age_moyen,
+    case when coalesce((select heures_rue from total_heures),0) > 0
+      then coalesce((select nb_dons from total_dons),0)::float / (select heures_rue from total_heures)
+      else null end as taux_reel
+)
+select * from mission_rows
+union all
+select * from total_row
+order by sort_order, date_debut desc nulls last;`,
+
     bulletins_transmis: `${cte}
 select d.date_transmission, d.rum, d.montant, m.code_mission_client,
        don.nom, don.prenom, m.code_mission, l.ville_emplacement, l.nom_emplacement
