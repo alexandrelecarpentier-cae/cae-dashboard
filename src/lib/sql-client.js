@@ -158,11 +158,21 @@ group by 1,2 order by 1;`,
     // CE dashboard plutôt que celui de rm-collecte (tx_transfo, score
     // qualité, etc., qui n'existent pas ici).
     missionsIndicateurs: `${cte},
+-- Liste "Suivi des missions" restreinte aux missions en cours/terminées
+-- (demande explicite) : les brouillons/annulées n'ont pas leur place dans
+-- ce suivi. Les totaux ci-dessous sont recalculés sur ce même périmètre
+-- restreint, pour rester cohérents avec les lignes affichées.
+eligible_missions as (
+  select id, code_mission, code_mission_client, statut_mission, date_debut, date_fin
+  from scoped_missions
+  where statut_mission in ('en_cours','terminee')
+),
 heures_par_mission as (
-  select mission_id,
-    sum(nombre_horaires_rue) filter (where coalesce(presence_recruteur,true)) as heures_rue,
-    sum(nombre_horaires_remuneration) filter (where coalesce(presence_recruteur,true)) as heures_rem
-  from scoped_lots
+  select l.mission_id,
+    sum(l.nombre_horaires_rue) filter (where coalesce(l.presence_recruteur,true)) as heures_rue,
+    sum(l.nombre_horaires_remuneration) filter (where coalesce(l.presence_recruteur,true)) as heures_rem
+  from scoped_lots l
+  join eligible_missions em on em.id = l.mission_id
   group by 1
 ),
 dons_par_mission as (
@@ -172,28 +182,32 @@ dons_par_mission as (
     avg(d.age_donateur) as age_moyen
   from scoped_dons d
   join scoped_lots l on l.id = d.lot_id
+  join eligible_missions em on em.id = l.mission_id
   group by 1
 ),
 mission_rows as (
   select
     0 as sort_order,
-    sm.id as mission_id, sm.code_mission, sm.code_mission_client, sm.statut_mission,
-    sm.date_debut, sm.date_fin,
+    em.id as mission_id, em.code_mission, em.code_mission_client, em.statut_mission,
+    em.date_debut, em.date_fin,
     coalesce(hm.heures_rue,0) as heures_rue,
     coalesce(hm.heures_rem,0) as heures_rem,
     coalesce(dm.nb_dons,0) as nb_dons,
     dm.don_moyen,
     dm.age_moyen,
     case when coalesce(hm.heures_rue,0) > 0 then coalesce(dm.nb_dons,0)::float / hm.heures_rue else null end as taux_reel
-  from scoped_missions sm
-  left join heures_par_mission hm on hm.mission_id = sm.id
-  left join dons_par_mission dm on dm.mission_id = sm.id
+  from eligible_missions em
+  left join heures_par_mission hm on hm.mission_id = em.id
+  left join dons_par_mission dm on dm.mission_id = em.id
 ),
 total_heures as (
   select sum(heures_rue) as heures_rue, sum(heures_rem) as heures_rem from heures_par_mission
 ),
 total_dons as (
-  select count(distinct id) as nb_dons, avg(montant) as don_moyen, avg(age_donateur) as age_moyen from scoped_dons
+  select count(distinct d.id) as nb_dons, avg(d.montant) as don_moyen, avg(d.age_donateur) as age_moyen
+  from scoped_dons d
+  join scoped_lots l on l.id = d.lot_id
+  join eligible_missions em on em.id = l.mission_id
 ),
 total_row as (
   select

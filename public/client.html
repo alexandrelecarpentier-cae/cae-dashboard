@@ -251,13 +251,15 @@
     </div></div>
   </div>
 
-  <div class="section-label no-print"><span class="diamond"></span>Suivi des missions</div>
+  <div class="section-label no-print"><span class="diamond"></span>Suivi des missions
+    <button class="btn-export" id="btnExportMissionsCsv" type="button" style="margin-left:auto;">Exporter CSV</button>
+  </div>
   <div class="card no-print"><div class="card-inner">
     <div class="table-scroll">
       <table>
         <thead>
           <tr>
-            <th>Mission</th><th>Asso</th><th>Statut</th><th>Début</th><th>Fin</th>
+            <th>Code mission client</th><th>Code mission CAE</th><th>Statut</th><th>Début</th><th>Fin</th>
             <th>H rue</th><th>H rém.</th><th>Bulletins</th><th>Taux réel</th><th>Don moyen</th><th>Âge moyen</th>
           </tr>
         </thead>
@@ -702,19 +704,19 @@
   // Exclue de l'export PDF (cf. .no-print, demande explicite).
   // ---------------------------------------------------------------
   const MISSION_STATUT_LABELS = { en_cours: 'En cours', terminee: 'Terminée', en_attente: 'En attente' };
+  let missionsIndicateursCache = [];
   function renderMissionsIndicateursTable(rows) {
+    missionsIndicateursCache = rows;
     const body = rows.map((r) => {
       const isTotal = r.code_mission === 'TOTAL';
-      const label = isTotal
-        ? 'TOTAL'
-        : (r.code_mission_client || r.code_mission || '—');
-      const asso = isTotal ? '' : (r.code_mission || '—');
+      const codeClient = isTotal ? 'TOTAL' : (r.code_mission_client || '—');
+      const codeCae = isTotal ? '' : (r.code_mission || '—');
       const statut = isTotal ? '' : (MISSION_STATUT_LABELS[r.statut_mission] || r.statut_mission || '—');
       const style = isTotal ? ' style="font-weight:700;background:var(--surface-2);"' : '';
       return `
       <tr${style}>
-        <td>${String(label).replace(/</g, '&lt;')}</td>
-        <td>${String(asso).replace(/</g, '&lt;')}</td>
+        <td>${String(codeClient).replace(/</g, '&lt;')}</td>
+        <td>${String(codeCae).replace(/</g, '&lt;')}</td>
         <td>${statut}</td>
         <td>${isTotal ? '' : fmtDate(r.date_debut)}</td>
         <td>${isTotal ? '' : fmtDate(r.date_fin)}</td>
@@ -729,6 +731,24 @@
     document.getElementById('tbl-missions').innerHTML = body ||
       '<tr><td colspan="11" style="text-align:center;color:var(--muted);">Aucune mission sur la période</td></tr>';
   }
+  // Le TOTAL (ligne récapitulative affichée dans la table) est exclu de
+  // l'export CSV : c'est une liste de missions qu'on exporte, pas un
+  // rapport agrégé — même logique que l'export "Bulletins transmis".
+  document.getElementById('btnExportMissionsCsv').addEventListener('click', () => {
+    exportCsv(missionsIndicateursCache.filter((r) => r.code_mission !== 'TOTAL'), [
+      { label: 'Code mission client', get: (r) => r.code_mission_client || '' },
+      { label: 'Code mission CAE', get: (r) => r.code_mission || '' },
+      { label: 'Statut', get: (r) => MISSION_STATUT_LABELS[r.statut_mission] || r.statut_mission || '' },
+      { label: 'Début', get: (r) => fmtDate(r.date_debut) },
+      { label: 'Fin', get: (r) => fmtDate(r.date_fin) },
+      { label: 'H rue', get: (r) => r.heures_rue != null ? Number(r.heures_rue).toFixed(1) : '' },
+      { label: 'H rém.', get: (r) => r.heures_rem != null ? Number(r.heures_rem).toFixed(1) : '' },
+      { label: 'Bulletins', get: (r) => r.nb_dons != null ? r.nb_dons : '' },
+      { label: 'Taux réel', get: (r) => r.taux_reel != null ? Number(r.taux_reel).toFixed(3) : '' },
+      { label: 'Don moyen', get: (r) => r.don_moyen != null ? Number(r.don_moyen).toFixed(2) : '' },
+      { label: 'Âge moyen', get: (r) => r.age_moyen != null ? Number(r.age_moyen).toFixed(0) : '' },
+    ], 'suivi-missions.csv');
+  });
 
   // ---------------------------------------------------------------
   // Panneau "informations mission" : affiché uniquement quand une mission
