@@ -124,6 +124,7 @@
     position:sticky; top:0; background:#fff;}
   tbody td{padding:8px 8px; border-bottom:1px solid var(--line); font-family:ui-monospace,SFMono-Regular,Consolas,monospace;}
   tbody tr:hover{background:var(--surface-2);}
+  #tbl-missions tr.mission-row{cursor:pointer;}
   .table-scroll{max-height:360px; overflow-y:auto;}
 
   #state{padding:60px 16px; text-align:center; color:var(--muted); font-size:14px;}
@@ -718,9 +719,17 @@
       const codeClient = isTotal ? 'TOTAL' : (r.code_mission_client || '—');
       const codeCae = isTotal ? '' : (r.code_mission || '—');
       const statut = isTotal ? '' : (MISSION_STATUT_LABELS[r.statut_mission] || r.statut_mission || '—');
-      const style = isTotal ? ' style="font-weight:700;background:var(--surface-2);"' : '';
+      // Ligne TOTAL non cliquable (pas de mission précise à sélectionner) ;
+      // les lignes mission sont cliquables pour filtrer tout le dashboard
+      // (dont Bulletins transmis) sur cette seule mission — même mécanique
+      // que la sélection via le champ de recherche "Mission" en en-tête.
+      const isActive = !isTotal && selectedMissionId === r.mission_id;
+      const style = isTotal
+        ? ' style="font-weight:700;background:var(--surface-2);"'
+        : (isActive ? ' style="background:var(--accent-tint);"' : '');
+      const attrs = isTotal ? '' : ` data-mission-id="${r.mission_id}" class="mission-row"`;
       return `
-      <tr${style}>
+      <tr${style}${attrs}>
         <td>${String(codeClient).replace(/</g, '&lt;')}</td>
         <td>${String(codeCae).replace(/</g, '&lt;')}</td>
         <td>${statut}</td>
@@ -736,6 +745,25 @@
     }).join('');
     document.getElementById('tbl-missions').innerHTML = body ||
       '<tr><td colspan="11" style="text-align:center;color:var(--muted);">Aucune mission sur la période</td></tr>';
+
+    document.querySelectorAll('#tbl-missions tr.mission-row').forEach((tr) => {
+      tr.addEventListener('click', () => {
+        const id = tr.dataset.missionId;
+        const row = missionsIndicateursCache.find((r) => r.mission_id === id);
+        if (!row) return;
+        if (selectedMissionId === id) {
+          // Reclique sur la mission déjà sélectionnée : désélectionne (retour
+          // à la vue toutes missions), comme un filtre de croisement classique.
+          selectedMissionId = '';
+          selectedMissionLabel = '';
+        } else {
+          selectedMissionId = id;
+          selectedMissionLabel = missionLabel(row);
+        }
+        missionSearchEl.value = selectedMissionLabel;
+        refreshData(true);
+      });
+    });
   }
   // Le TOTAL (ligne récapitulative affichée dans la table) est exclu de
   // l'export CSV : c'est une liste de missions qu'on exporte, pas un
