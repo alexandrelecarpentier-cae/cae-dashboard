@@ -132,6 +132,32 @@
     border-left:2px solid var(--red); color:#fff; padding:10px 16px;
     border-radius:var(--sharp); font-size:13px; z-index:50; opacity:0; transition:opacity .25s; pointer-events:none;}
   .toast.show{opacity:1;}
+
+  .btn-export{
+    background:#fff; border:1px solid var(--line); border-radius:var(--sharp);
+    padding:0 12px; height:30px; box-sizing:border-box; font-size:11.5px; font-weight:700; color:var(--text); cursor:pointer;
+    text-transform:uppercase; letter-spacing:.03em; flex:0 0 auto; display:inline-flex; align-items:center; gap:5px;
+  }
+  .btn-export:hover{border-color:var(--red); color:var(--red);}
+  #btnExportPdf{height:34px; padding:0 14px; font-size:12px; align-self:flex-end;}
+
+  .mission-info-title{font-size:13px; font-weight:800; margin-bottom:10px;}
+  .mission-info-title .sub{font-weight:600; color:var(--muted); font-size:11.5px; margin-left:6px;}
+  .mission-info-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:10px;}
+  @media (min-width:600px){ .mission-info-grid{grid-template-columns:repeat(3,1fr);} }
+  @media (min-width:900px){ .mission-info-grid{grid-template-columns:repeat(5,1fr);} }
+  .mission-info-item .lbl{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px; font-weight:700;}
+  .mission-info-item .val{font-size:14px; font-weight:700;}
+
+  @media print{
+    header .filters, header .chip-row, header .meta-row, #refreshBar, .error-banner, .btn-reset, .btn-export,
+    .mission-search-wrap .mission-suggestions, #countdown { display:none !important; }
+    body{ background:#fff; }
+    header{ position:static; }
+    .card{ break-inside:avoid; box-shadow:none; }
+    .chart-box{ height:200px; }
+    main{ max-width:100%; }
+  }
 </style>
 </head>
 <body>
@@ -139,6 +165,7 @@
 <header>
   <div class="head-row">
     <h1 id="pageTitle">Dashboard <em>Client</em></h1>
+    <button class="btn-export" id="btnExportPdf" type="button">Exporter PDF</button>
   </div>
   <div class="meta-row">
     <div class="sync"><span class="live-diamond off" id="liveDiamond"></span>Synchro <b id="syncTime">—</b></div>
@@ -189,6 +216,11 @@
 <div id="state">Chargement des données depuis Metabase…</div>
 
 <main id="content" class="hidden">
+  <div class="card hidden" id="missionInfoCard"><div class="card-inner">
+    <div class="mission-info-title" id="missionInfoTitle"></div>
+    <div class="mission-info-grid" id="missionInfoGrid"></div>
+  </div></div>
+
   <div class="kpi-scroll" id="kpiRow"></div>
 
   <div class="section-label"><span class="diamond"></span>Bulletins</div>
@@ -211,7 +243,9 @@
     </div></div>
   </div>
 
-  <div class="section-label"><span class="diamond"></span>Bulletins transmis</div>
+  <div class="section-label"><span class="diamond"></span>Bulletins transmis
+    <button class="btn-export" id="btnExportTransmisCsv" type="button" style="margin-left:auto;">Exporter CSV</button>
+  </div>
   <div class="card"><div class="card-inner">
     <div class="table-scroll">
       <table>
@@ -607,13 +641,16 @@
     const clientName = info.client_nom || info.raison_sociale;
     if (clientName) document.getElementById('pageTitle').innerHTML = clientName.replace(/</g, '&lt;');
     applyClientColor(info.couleur);
+    renderMissionInfo(info);
 
     const k = data.kpis || {};
     const kpis = [
       { v: k.taux_reel != null ? fmtNum(k.taux_reel, 3) : '—', l: 'Taux réel' },
       { v: fmtNum(k.nb_dons), l: 'Bulletins' },
       { v: k.don_moyen != null ? fmtNum(k.don_moyen, 2) + '€' : '—', l: 'Don moyen' },
-      { v: k.age_moyen != null ? fmtNum(k.age_moyen, 1) : '—', l: 'Âge moyen' },
+      // Arrondi au plus proche (0 décimale) — demande explicite, un âge
+      // moyen à la décimale près n'apporte rien de plus lisible ici.
+      { v: k.age_moyen != null ? fmtNum(k.age_moyen, 0) : '—', l: 'Âge moyen' },
       { v: k.heures_rue != null ? fmtNum(k.heures_rue, 0) : '—', l: 'Heures rue' },
       { v: k.heures_rem != null ? fmtNum(k.heures_rem, 0) : '—', l: 'Heures rém.' },
     ];
@@ -628,9 +665,79 @@
     renderChartBulletins();
     renderChartGenre(data.genre || []);
     renderChartAge(data.tranche_age || []);
-    renderTable(data.bulletins_transmis || []);
+    transmisRowsCache = data.bulletins_transmis || [];
+    renderTable(transmisRowsCache);
     renderCrossFilterChips();
   }
+
+  // ---------------------------------------------------------------
+  // Panneau "informations mission" : affiché uniquement quand une mission
+  // précise est sélectionnée (sinon `info` mélangerait potentiellement les
+  // champs de plusieurs missions du client — cf. sql-client.js, la CTE
+  // scoped_missions n'est réduite à une seule ligne que si mission_ids est
+  // fourni). Rien n'est affiché tant qu'aucune mission n'est choisie.
+  // ---------------------------------------------------------------
+  const MISSION_FORMAT_LABELS = { street: 'Rue', hybride: 'Hybride', sitesprives: 'Sites privés' };
+  const MISSION_TYPE_LABELS = { paris: 'Paris', province: 'Province' };
+  function renderMissionInfo(info) {
+    const card = document.getElementById('missionInfoCard');
+    if (!selectedMissionId) { card.classList.add('hidden'); return; }
+    card.classList.remove('hidden');
+    document.getElementById('missionInfoTitle').innerHTML =
+      `Mission <span class="sub">${[info.code_mission_client, info.code_mission].filter(Boolean).map((s) => s.replace(/</g, '&lt;')).join(' / ')}</span>`;
+    const fields = [
+      { l: 'Date de début', v: fmtDate(info.date_debut) },
+      { l: 'Date de fin', v: fmtDate(info.date_fin) },
+      { l: 'Type', v: MISSION_TYPE_LABELS[info.type_mission] || info.type_mission || '—' },
+      { l: 'Format', v: MISSION_FORMAT_LABELS[info.format] || info.format || '—' },
+      { l: 'Ville', v: info.ville_principale || '—' },
+    ];
+    document.getElementById('missionInfoGrid').innerHTML = fields.map((f) => `
+      <div class="mission-info-item"><div class="lbl">${f.l}</div><div class="val">${f.v}</div></div>`).join('');
+  }
+
+  // ---------------------------------------------------------------
+  // Export CSV (table Bulletins transmis) — génération 100% côté navigateur
+  // à partir des lignes déjà chargées, pas de nouvel appel réseau.
+  // ---------------------------------------------------------------
+  let transmisRowsCache = [];
+  function csvEscape(v) {
+    const s = v == null ? '' : String(v);
+    return /[",;\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
+  function exportCsv(rows, columns, filename) {
+    if (!rows.length) { showToastMsg('Rien à exporter'); return; }
+    const header = columns.map((c) => csvEscape(c.label)).join(';');
+    const lines = rows.map((r) => columns.map((c) => csvEscape(c.get(r))).join(';'));
+    // BOM UTF-8 : Excel (FR) interprète correctement les accents sans lui
+    // sinon, comme sur les exports .csv déjà produits ailleurs (skill xlsx).
+    const csv = '﻿' + [header, ...lines].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  }
+  document.getElementById('btnExportTransmisCsv').addEventListener('click', () => {
+    exportCsv(transmisRowsCache, [
+      { label: 'Date', get: (r) => fmtDate(r.date_transmission) },
+      { label: 'RUM', get: (r) => r.rum || '' },
+      { label: 'Montant', get: (r) => r.montant != null ? Number(r.montant).toFixed(2) : '' },
+      { label: 'Donateur', get: (r) => [r.prenom, r.nom].filter(Boolean).join(' ') },
+      { label: 'Ville', get: (r) => r.ville_emplacement || '' },
+      { label: 'Mission', get: (r) => r.code_mission_client || r.code_mission || '' },
+    ], 'bulletins-transmis.csv');
+  });
+
+  // ---------------------------------------------------------------
+  // Export PDF — impression navigateur (CSS @media print masque filtres/
+  // boutons/bandeaux) : l'utilisateur choisit "Enregistrer en PDF" comme
+  // destination dans la boîte de dialogue d'impression. Pas de dépendance
+  // externe (jsPDF/html2canvas), et les graphiques (canvas Chart.js)
+  // s'impriment nativement.
+  // ---------------------------------------------------------------
+  document.getElementById('btnExportPdf').addEventListener('click', () => window.print());
 
   // ---------------------------------------------------------------
   // Filtres de croisement actifs (civilite / tranche_age), activés en

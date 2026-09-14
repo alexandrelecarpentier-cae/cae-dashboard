@@ -54,7 +54,8 @@ function donFilters(p) {
 
 function ctePrefix(p) {
   return `with scoped_missions as (
-  select id, client_id, code_mission, code_mission_client, statut_mission, date_debut, date_fin
+  select id, client_id, code_mission, code_mission_client, statut_mission, date_debut, date_fin,
+         type_mission, format, ville_principale
   from missions m
   where ${missionFilters(p)}
 ),
@@ -84,7 +85,7 @@ function buildQueries(p) {
   return {
     info: `${cte}
 select c.nom as client_nom, c.raison_sociale, c.couleur, sm.code_mission, sm.code_mission_client,
-       sm.statut_mission, sm.date_debut, sm.date_fin
+       sm.statut_mission, sm.date_debut, sm.date_fin, sm.type_mission, sm.format, sm.ville_principale
 from clients c
 left join scoped_missions sm on true
 where c.id = '${p.id_client}'
