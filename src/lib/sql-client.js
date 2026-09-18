@@ -3,6 +3,21 @@
 // soit échappées (escapeSqlString) avant d'arriver ici — voir dashboard.js
 // et metabase.js. Aucune valeur libre n'est jamais concaténée telle quelle.
 
+// "site_prive" / "sites_privees" / "sitesprives" sont 3 valeurs historiques
+// distinctes en base pour le même format réel ("site privé") — demande
+// explicite de les traiter comme un seul et même format, aussi bien au
+// filtrage qu'à l'affichage (cf. MISSION_FORMAT_LABELS côté client.html).
+// Quelle que soit la variante choisie par l'utilisateur (le front n'envoie
+// qu'une seule valeur représentative), le filtre couvre les 3.
+const FORMAT_ALIASES = {
+  site_prive: ['site_prive', 'sites_privees', 'sitesprives'],
+  sites_privees: ['site_prive', 'sites_privees', 'sitesprives'],
+  sitesprives: ['site_prive', 'sites_privees', 'sitesprives'],
+};
+function formatValuesFor(format) {
+  return FORMAT_ALIASES[format] || [format];
+}
+
 function missionFilters(p) {
   const clauses = [`m.client_id = '${p.id_client}'`];
   if (p.code_mission_cae) clauses.push(`m.code_mission = '${p.code_mission_cae}'`);
@@ -11,7 +26,10 @@ function missionFilters(p) {
   if (p.debut_mission) clauses.push(`m.date_debut >= '${p.debut_mission}'`);
   if (p.fin_mission) clauses.push(`m.date_fin <= '${p.fin_mission}'`);
   if (p.type_mission) clauses.push(`m.type_mission = '${p.type_mission}'`);
-  if (p.format) clauses.push(`m.format = '${p.format}'`);
+  if (p.format) {
+    const vals = formatValuesFor(p.format).map((v) => `'${v}'`).join(',');
+    clauses.push(`m.format in (${vals})`);
+  }
   if (p.mission_ids && p.mission_ids.length) {
     clauses.push(`m.id in (${p.mission_ids.map((id) => `'${id}'`).join(',')})`);
   }

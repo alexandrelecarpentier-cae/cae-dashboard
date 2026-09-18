@@ -241,7 +241,6 @@
   </div></div>
 
   <div class="kpi-scroll" id="kpiRow"></div>
-  <div class="section-sub" id="villeJourInfo" style="display:none;"></div>
 
   <div class="section-label"><span class="diamond"></span>Bulletins</div>
   <div class="section-sub">Filtre de période appliqué sur la date de collecte du bulletin.</div>
@@ -461,7 +460,11 @@
     const typeSel = document.getElementById('f-type-mission');
     const formatSel = document.getElementById('f-format');
     const types = [...new Set(missionsCache.map((m) => m.type_mission).filter(Boolean))].sort();
-    const formats = [...new Set(missionsCache.map((m) => m.format).filter(Boolean))].sort();
+    // canonicalFormatValue fusionne les 3 variantes "site privé" en une seule
+    // option de filtre (cf. FORMAT_SITE_PRIVE_VALUES) — sinon un client ayant
+    // utilisé plusieurs variantes verrait plusieurs entrées identiquement
+    // libellées "Site privé" dans la liste déroulante.
+    const formats = [...new Set(missionsCache.map((m) => canonicalFormatValue(m.format)).filter(Boolean))].sort();
     typeSel.innerHTML = '<option value="">Tous</option>' +
       types.map((t) => `<option value="${t}">${(MISSION_TYPE_LABELS[t] || t).replace(/</g, '&lt;')}</option>`).join('');
     formatSel.innerHTML = '<option value="">Tous</option>' +
@@ -713,7 +716,18 @@
     const clientName = info.client_nom || info.raison_sociale;
     if (clientName) document.getElementById('pageTitle').innerHTML = clientName.replace(/</g, '&lt;');
     applyClientColor(info.couleur);
-    renderMissionInfo(info);
+
+    // Ville(s) d'activité du jour — n'a de sens que lorsque la période est
+    // réduite à un seul jour précis (sinon plusieurs villes se mélangeraient
+    // sans distinction). Affichée dans le cadre de détail de la mission.
+    let villesJourField = null;
+    if (filters.date_min && filters.date_min === filters.date_max) {
+      const villes = (data.villesJour || []).map((v) => v.ville_emplacement).filter(Boolean);
+      if (villes.length) {
+        villesJourField = { l: villes.length === 1 ? 'Ville du jour' : 'Villes du jour', v: villes.join(', ') };
+      }
+    }
+    renderMissionInfo(info, villesJourField);
 
     const k = data.kpis || {};
     const kpis = [
@@ -728,23 +742,6 @@
     ];
     document.getElementById('kpiRow').innerHTML = kpis.map((kp) => `
       <div class="kpi"><div class="val">${kp.v}</div><div class="lbl">${kp.l}</div></div>`).join('');
-
-    // Ville(s) d'activité du jour — affichée uniquement quand la période est
-    // réduite à un seul jour précis (sinon plusieurs villes se mélangeraient
-    // sans distinction possible). Calculée côté serveur (data.villesJour),
-    // c'est le front qui décide de l'afficher ou non selon le filtre actif.
-    const villeEl = document.getElementById('villeJourInfo');
-    if (filters.date_min && filters.date_min === filters.date_max) {
-      const villes = (data.villesJour || []).map((v) => v.ville_emplacement).filter(Boolean);
-      if (villes.length) {
-        villeEl.textContent = (villes.length === 1 ? 'Ville du jour : ' : 'Villes du jour : ') + villes.join(', ');
-        villeEl.style.display = '';
-      } else {
-        villeEl.style.display = 'none';
-      }
-    } else {
-      villeEl.style.display = 'none';
-    }
 
     document.getElementById('bsTransmisTotal').textContent =
       k.bs_transmis != null ? `(${fmtNum(k.bs_transmis)} au total)` : '';
@@ -863,9 +860,14 @@
   // Valeurs réelles en base plus nombreuses/hétérogènes que ce que ces libellés
   // couvrent (accents, variantes historiques) — cf. sql-client.js. Les valeurs
   // non listées ici s'affichent telles quelles (fallback), jamais masquées.
+  // "site_prive" / "sites_privees" / "sitesprives" sont 3 variantes historiques
+  // du même format réel — demande explicite de les traiter comme un seul et
+  // même format "Site privé", au filtrage (cf. sql-client.js FORMAT_ALIASES)
+  // comme à l'affichage (même libellé, quelle que soit la variante stockée).
+  const FORMAT_SITE_PRIVE_VALUES = new Set(['site_prive', 'sites_privees', 'sitesprives']);
   const MISSION_FORMAT_LABELS = {
     street: 'Rue', hybride: 'Hybride',
-    site_prive: 'Site privé', sites_privees: 'Sites privés', sitesprives: 'Sites privés',
+    site_prive: 'Site privé', sites_privees: 'Site privé', sitesprives: 'Site privé',
     CDI: 'CDI',
   };
   const MISSION_TYPE_LABELS = {
@@ -873,19 +875,36 @@
     itinerante: 'Itinérante', itinérante: 'Itinérante',
     speciale: 'Spéciale', spéciale: 'Spéciale', CDI: 'CDI',
   };
-  function renderMissionInfo(info) {
+  // Valeur canonique envoyée au filtre pour n'importe quelle variante "site
+  // privé" rencontrée dans les missions du client : le backend l'étend aux 3
+  // variantes réelles (cf. formatValuesFor dans sql-client.js), donc peu
+  // importe laquelle des 3 est choisie ici.
+  function canonicalFormatValue(f) {
+    return FORMAT_SITE_PRIVE_VALUES.has(f) ? 'site_prive' : f;
+  }
+  // Le cadre affiche les infos de la mission sélectionnée (si une mission
+  // précise est choisie) ET/OU la ville du jour (si la période est réduite à
+  // un seul jour) — les deux sont indépendants, le cadre s'affiche dès que
+  // l'un des deux a quelque chose à montrer.
+  function renderMissionInfo(info, villesJourField) {
     const card = document.getElementById('missionInfoCard');
-    if (!selectedMissionId) { card.classList.add('hidden'); return; }
+    const fields = [];
+    if (selectedMissionId) {
+      fields.push(
+        { l: 'Date de début', v: fmtDate(info.date_debut) },
+        { l: 'Date de fin', v: fmtDate(info.date_fin) },
+        { l: 'Type', v: MISSION_TYPE_LABELS[info.type_mission] || info.type_mission || '—' },
+        { l: 'Format', v: MISSION_FORMAT_LABELS[info.format] || info.format || '—' },
+        { l: 'Ville', v: info.ville_principale || '—' },
+      );
+    }
+    if (villesJourField) fields.push(villesJourField);
+
+    if (!fields.length) { card.classList.add('hidden'); return; }
     card.classList.remove('hidden');
-    document.getElementById('missionInfoTitle').innerHTML =
-      `Mission <span class="sub">${[info.code_mission_client, info.code_mission].filter(Boolean).map((s) => s.replace(/</g, '&lt;')).join(' / ')}</span>`;
-    const fields = [
-      { l: 'Date de début', v: fmtDate(info.date_debut) },
-      { l: 'Date de fin', v: fmtDate(info.date_fin) },
-      { l: 'Type', v: MISSION_TYPE_LABELS[info.type_mission] || info.type_mission || '—' },
-      { l: 'Format', v: MISSION_FORMAT_LABELS[info.format] || info.format || '—' },
-      { l: 'Ville', v: info.ville_principale || '—' },
-    ];
+    document.getElementById('missionInfoTitle').innerHTML = selectedMissionId
+      ? `Mission <span class="sub">${[info.code_mission_client, info.code_mission].filter(Boolean).map((s) => s.replace(/</g, '&lt;')).join(' / ')}</span>`
+      : 'Détails';
     document.getElementById('missionInfoGrid').innerHTML = fields.map((f) => `
       <div class="mission-info-item"><div class="lbl">${f.l}</div><div class="val">${f.v}</div></div>`).join('');
   }
