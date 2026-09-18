@@ -59,18 +59,6 @@
     cursor:pointer; user-select:none; line-height:1.2; white-space:nowrap;
   }
   .day-tag.active{border-color:var(--red); color:#fff; background:var(--red);}
-  .mission-search-wrap{position:relative;}
-  .mission-suggestions{
-    display:none; position:fixed; z-index:1000; min-width:260px;
-    background:#fff; border:1px solid var(--line); border-radius:var(--sharp);
-    box-shadow:0 6px 24px rgba(15,15,17,.12); max-height:260px; overflow-y:auto;
-  }
-  .mission-suggestions.show{display:block;}
-  .mission-suggestions .opt{padding:8px 10px; font-size:12.5px; cursor:pointer; border-bottom:1px solid var(--line);}
-  .mission-suggestions .opt:last-child{border-bottom:none;}
-  .mission-suggestions .opt:hover{background:var(--surface-2);}
-  .mission-suggestions .opt.all{color:var(--muted); font-weight:700; text-transform:uppercase; font-size:10.5px; letter-spacing:.04em;}
-  .mission-suggestions .empty{padding:10px; font-size:12px; color:var(--muted); text-align:center;}
   .btn-reset{
     background:#fff; border:1px solid var(--line); border-radius:var(--sharp);
     padding:0 12px; height:34px; box-sizing:border-box; font-size:12px; font-weight:700; color:var(--muted); cursor:pointer;
@@ -154,7 +142,7 @@
 
   @media print{
     header .filters, header .chip-row, header .meta-row, #refreshBar, .error-banner, .btn-reset, .btn-export,
-    .mission-search-wrap .mission-suggestions, #countdown { display:none !important; }
+    #countdown { display:none !important; }
     /* Export PDF = uniquement infos mission, KPIs et graphes (+légendes) —
        les listes détaillées (tableaux) n'ont pas leur place sur une vue
        imprimée/exportée, demande explicite. */
@@ -186,12 +174,9 @@
 
   <div class="filters">
     <div class="filter-row">
-      <div class="filter-field" style="width:170px;">
+      <div class="filter-field" style="width:200px;">
         <div class="filter-label">Mission</div>
-        <div class="mission-search-wrap">
-          <input class="control" type="text" id="f-mission-search" placeholder="Toutes les missions" autocomplete="off">
-          <div class="mission-suggestions" id="missionSuggestions"></div>
-        </div>
+        <select class="control" id="f-mission-select"><option value="">Toutes les missions</option></select>
       </div>
       <div class="filter-field">
         <div class="filter-label">Période</div>
@@ -427,14 +412,16 @@
   }
 
   // ---------------------------------------------------------------
-  // Liste des missions du client (passées/en cours uniquement) → champ
-  // texte avec recherche + suggestions : vide affiche les 20 dernières
-  // missions, la saisie filtre sur l'ensemble des missions du client.
-  // S'applique immédiatement à la sélection.
+  // Liste des missions du client (passées/en cours uniquement) → select
+  // natif dont les options sont restreintes aux missions correspondant aux
+  // AUTRES filtres déjà actifs (statut, type, format, période) — demande
+  // explicite : on ne propose jamais de sélectionner une mission qui serait
+  // de toute façon exclue par les filtres déjà en place. La liste est
+  // recalculée à chaque changement de filtre (cf. populateMissionSelect,
+  // appelée depuis render() après chaque refreshData).
   // ---------------------------------------------------------------
   let missionsCache = [];
-  const missionSearchEl = document.getElementById('f-mission-search');
-  const missionSuggestionsEl = document.getElementById('missionSuggestions');
+  const missionSelectEl = document.getElementById('f-mission-select');
 
   function missionLabel(m) {
     return [m.code_mission_client, m.code_mission].filter(Boolean).join(' / ') || 'Mission';
@@ -447,6 +434,7 @@
       if (!res.ok || rows.error) throw new Error(rows.error || 'Erreur missions');
       missionsCache = rows; // déjà triées par date_debut desc côté serveur
       populateMissionMetaFilters();
+      populateMissionSelect();
     } catch (e) {
       console.warn('Chargement des missions impossible :', e.message);
       // Non bloquant : le dashboard agrégé (toutes missions) reste consultable.
@@ -481,71 +469,51 @@
     refreshData(true);
   });
 
-  function closeMissionSuggestions() {
-    missionSuggestionsEl.classList.remove('show');
+  function toIsoDateOnly(v) {
+    return v ? String(v).slice(0, 10) : '';
   }
 
-  // Le menu de suggestions est en position:fixed (positionné en JS via les
-  // coordonnées écran du champ) plutôt qu'absolute/relatif au champ : la
-  // barre de filtres défile horizontalement (overflow-x:auto) quand tous
-  // les filtres ne tiennent pas sur une ligne, ce qui coupait un menu
-  // positionné normalement. Le fixed échappe à ce découpage et s'affiche
-  // toujours entièrement, par-dessus l'en-tête.
-  function positionMissionSuggestions() {
-    const rect = missionSearchEl.getBoundingClientRect();
-    const width = Math.max(rect.width, 260);
-    missionSuggestionsEl.style.width = width + 'px';
-    missionSuggestionsEl.style.left = Math.min(rect.left, window.innerWidth - width - 8) + 'px';
-    missionSuggestionsEl.style.top = (rect.bottom + 4) + 'px';
+  // Une mission n'apparaît dans le select que si elle correspond à TOUS les
+  // autres filtres actifs — même logique de chevauchement de période que
+  // missionDateOverlapClause côté serveur (sql-client.js), et même fusion
+  // des variantes "site privé" que le filtre Format (canonicalFormatValue).
+  function missionMatchesFilters(m) {
+    if (filters.statut_mission && m.statut_mission !== filters.statut_mission) return false;
+    if (filters.type_mission && m.type_mission !== filters.type_mission) return false;
+    if (filters.format && canonicalFormatValue(m.format) !== canonicalFormatValue(filters.format)) return false;
+    const debut = toIsoDateOnly(m.date_debut);
+    const fin = toIsoDateOnly(m.date_fin);
+    if (filters.date_min && fin && fin < filters.date_min) return false;
+    if (filters.date_max && debut && debut > filters.date_max) return false;
+    return true;
   }
 
-  function renderMissionSuggestions(query) {
-    const q = (query || '').trim().toLowerCase();
-    const list = q
-      ? missionsCache.filter((m) => missionLabel(m).toLowerCase().includes(q)).slice(0, 30)
-      : missionsCache.slice(0, 20); // 20 dernières missions
-
-    const allOpt = '<div class="opt all" data-id="">Toutes les missions</div>';
-    const rows = list.length
-      ? list.map((m) => `<div class="opt" data-id="${m.id}">${missionLabel(m).replace(/</g, '&lt;')}</div>`).join('')
-      : '<div class="empty">Aucune mission trouvée</div>';
-    missionSuggestionsEl.innerHTML = allOpt + rows;
-
-    missionSuggestionsEl.querySelectorAll('.opt').forEach((opt) => {
-      opt.addEventListener('mousedown', (e) => {
-        e.preventDefault(); // empêche le blur du champ de fermer la liste avant le clic
-        const id = opt.dataset.id;
-        if (id) {
-          const m = missionsCache.find((mm) => mm.id === id);
-          selectedMissionId = id;
-          selectedMissionLabel = m ? missionLabel(m) : '';
-        } else {
-          selectedMissionId = '';
-          selectedMissionLabel = '';
-        }
-        missionSearchEl.value = selectedMissionLabel;
-        closeMissionSuggestions();
-        refreshData(true);
-      });
-    });
-    positionMissionSuggestions();
-    missionSuggestionsEl.classList.add('show');
+  function populateMissionSelect() {
+    const list = missionsCache.filter(missionMatchesFilters);
+    // Si la mission actuellement sélectionnée ne correspond plus aux filtres
+    // actifs, on désélectionne — évite un select figé sur une valeur absente
+    // de la liste affichée.
+    if (selectedMissionId && !list.some((m) => m.id === selectedMissionId)) {
+      selectedMissionId = '';
+      selectedMissionLabel = '';
+    }
+    missionSelectEl.innerHTML = '<option value="">Toutes les missions</option>' +
+      list.map((m) => `<option value="${m.id}">${missionLabel(m).replace(/</g, '&lt;')}</option>`).join('');
+    missionSelectEl.value = selectedMissionId;
   }
 
-  missionSearchEl.addEventListener('focus', () => renderMissionSuggestions(''));
-  missionSearchEl.addEventListener('input', () => renderMissionSuggestions(missionSearchEl.value));
-  missionSearchEl.addEventListener('blur', () => {
-    // Laisse le mousedown d'une suggestion s'exécuter avant de refermer/restaurer.
-    setTimeout(() => {
-      closeMissionSuggestions();
-      missionSearchEl.value = selectedMissionLabel;
-    }, 150);
+  missionSelectEl.addEventListener('change', () => {
+    const id = missionSelectEl.value;
+    if (id) {
+      const m = missionsCache.find((mm) => mm.id === id);
+      selectedMissionId = id;
+      selectedMissionLabel = m ? missionLabel(m) : '';
+    } else {
+      selectedMissionId = '';
+      selectedMissionLabel = '';
+    }
+    refreshData(true);
   });
-  // Ferme le menu si la page défile ou change de taille : sa position fixe
-  // ne suit pas le champ (qui peut bouger avec le scroll du header sticky
-  // ou de la barre de filtres), mieux vaut refermer que désynchroniser.
-  window.addEventListener('scroll', closeMissionSuggestions, { passive: true, capture: true });
-  window.addEventListener('resize', closeMissionSuggestions);
 
   // ---------------------------------------------------------------
   // Filtre période — mêmes raccourcis rapides que /rd.html (Total /
@@ -664,7 +632,6 @@
     statutTagsEl.querySelectorAll('.day-tag').forEach((t) => t.classList.toggle('active', t.dataset.statut === ''));
     selectedMissionId = '';
     selectedMissionLabel = '';
-    missionSearchEl.value = '';
     filters = { date_min: '', date_max: '', statut_mission: '', civilite: '', tranche_age: '', type_mission: '', format: '' };
     document.getElementById('f-type-mission').value = '';
     document.getElementById('f-format').value = '';
@@ -760,6 +727,7 @@
     renderTable(transmisRowsCache);
     renderMissionsIndicateursTable(data.missionsIndicateurs || []);
     renderCrossFilterChips();
+    populateMissionSelect();
   }
 
   // ---------------------------------------------------------------
@@ -824,7 +792,6 @@
           selectedMissionId = id;
           selectedMissionLabel = missionLabel(row);
         }
-        missionSearchEl.value = selectedMissionLabel;
         refreshData(true);
       });
     });
