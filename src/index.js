@@ -111,7 +111,12 @@ function readClientParams(url) {
     p.jour_semaine = n;
   }
 
-  for (const key of ['emplacement']) {
+  // type_mission / format : valeurs réelles hétérogènes en base (variantes
+  // accentuées, legacy typos comme "site_prive"/"sites_privees") — pas de
+  // whitelist figée ici, les options du filtre sont peuplées côté front à
+  // partir des missions réelles du client (cf. buildMissionsListQuery) ;
+  // sanitizeFreeText suffit à neutraliser toute valeur malveillante.
+  for (const key of ['emplacement', 'type_mission', 'format']) {
     const v = q.get(key);
     if (v) {
       const r = sanitizeFreeText(v);

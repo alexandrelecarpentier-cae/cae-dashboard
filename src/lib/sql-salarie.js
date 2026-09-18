@@ -131,8 +131,8 @@ dons_u as (
   from lots_u l join dons d on d.lot_id = l.id and d.statut in ${STATUTS_VALIDES}
 )
 select
-  (select min(date_debut) from contrats c join u on c.utilisateur_id = u.id join missions m on m.id = c.mission_id where 1=1 ${excludeClientsClause('m')}) as premiere_mission_le,
-  (select max(date_debut) from contrats c join u on c.utilisateur_id = u.id join missions m on m.id = c.mission_id where 1=1 ${excludeClientsClause('m')}) as derniere_mission_le,
+  (select min(c.date_debut) from contrats c join u on c.utilisateur_id = u.id join missions m on m.id = c.mission_id where 1=1 ${excludeClientsClause('m')}) as premiere_mission_le,
+  (select max(c.date_debut) from contrats c join u on c.utilisateur_id = u.id join missions m on m.id = c.mission_id where 1=1 ${excludeClientsClause('m')}) as derniere_mission_le,
   (select count(distinct mission_id) from contrats c join u on c.utilisateur_id = u.id join missions m on m.id = c.mission_id where 1=1 ${excludeClientsClause('m')}) as nb_missions,
   h.heures_rue_total, h.heures_remuneration_total, h.nb_lots_total,
   case when coalesce(h.heures_remuneration_total,0) > 0 then coalesce(h.heures_rue_total,0)::float / h.heures_remuneration_total else null end as taux_h_total,

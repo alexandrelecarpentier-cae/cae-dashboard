@@ -213,6 +213,14 @@
           <span class="day-tag" data-statut="terminee">Passées</span>
         </div>
       </div>
+      <div class="filter-field" style="width:140px;">
+        <div class="filter-label">Type mission</div>
+        <select class="control" id="f-type-mission"><option value="">Tous</option></select>
+      </div>
+      <div class="filter-field" style="width:140px;">
+        <div class="filter-label">Format</div>
+        <select class="control" id="f-format"><option value="">Tous</option></select>
+      </div>
       <button class="btn-reset" id="filtersReset" type="button">Réinitialiser</button>
     </div>
   </div>
@@ -233,6 +241,7 @@
   </div></div>
 
   <div class="kpi-scroll" id="kpiRow"></div>
+  <div class="section-sub" id="villeJourInfo" style="display:none;"></div>
 
   <div class="section-label"><span class="diamond"></span>Bulletins</div>
   <div class="section-sub">Filtre de période appliqué sur la date de collecte du bulletin.</div>
@@ -245,7 +254,9 @@
     <div class="chart-box" id="box-chart-semaine"><canvas id="chart-semaine"></canvas></div>
   </div></div>
 
-  <div class="section-label"><span class="diamond"></span>Profil des donateurs</div>
+  <div class="section-label"><span class="diamond"></span>Profil des donateurs
+    <button class="btn-export" id="btnExportProfilCsv" type="button" style="margin-left:auto;">Exporter CSV</button>
+  </div>
   <div class="section-sub">Filtre de période appliqué sur la date de collecte du bulletin.</div>
   <div class="grid-2">
     <div class="card"><div class="card-inner">
@@ -266,7 +277,8 @@
         <thead>
           <tr>
             <th>Code mission client</th><th>Code mission CAE</th><th>Statut</th><th>Début</th><th>Fin</th>
-            <th>H rue</th><th>H rém.</th><th>Bulletins</th><th>Taux réel</th><th>Don moyen</th><th>Âge moyen</th>
+            <th>Ville</th><th>Type</th><th>Format</th>
+            <th>H rue</th><th>Bulletins</th><th>Taux réel</th><th>Don moyen</th><th>Âge moyen</th>
           </tr>
         </thead>
         <tbody id="tbl-missions"></tbody>
@@ -275,6 +287,7 @@
   </div></div>
 
   <div class="section-label no-print"><span class="diamond"></span>Bulletins transmis
+    <span class="note" id="bsTransmisTotal" style="margin-left:6px; font-weight:600; text-transform:none; letter-spacing:0; font-size:11px; color:var(--text);"></span>
     <button class="btn-export" id="btnExportTransmisCsv" type="button" style="margin-left:auto;">Exporter CSV</button>
   </div>
   <div class="section-sub no-print">Filtre de période appliqué sur la date de collecte du bulletin (la date affichée dans la liste est la date de transmission).</div>
@@ -283,7 +296,7 @@
       <table>
         <thead>
           <tr>
-            <th>Date</th><th>RUM</th><th>Montant</th>
+            <th>Date de transmission</th><th>RUM</th><th>Montant</th>
             <th>Donateur</th><th>Ville</th><th>Mission</th>
           </tr>
         </thead>
@@ -323,7 +336,7 @@
   // sur un élément d'un graphe (camembert genre, barres tranche d'âge) —
   // recalculent tous les autres éléments du dashboard (KPIs, autres
   // graphes, table), pas seulement l'affichage local du graphe cliqué.
-  let filters = { date_min: '', date_max: '', statut_mission: '', civilite: '', tranche_age: '' };
+  let filters = { date_min: '', date_max: '', statut_mission: '', civilite: '', tranche_age: '', type_mission: '', format: '' };
 
   const charts = {}; // instances Chart.js en cours, pour les détruire avant de les recréer
   const DEFAULT_ACCENT = '#E2173B';
@@ -434,11 +447,36 @@
       const rows = await res.json();
       if (!res.ok || rows.error) throw new Error(rows.error || 'Erreur missions');
       missionsCache = rows; // déjà triées par date_debut desc côté serveur
+      populateMissionMetaFilters();
     } catch (e) {
       console.warn('Chargement des missions impossible :', e.message);
       // Non bloquant : le dashboard agrégé (toutes missions) reste consultable.
     }
   }
+
+  // Options des filtres Type/Format peuplées à partir des seules valeurs
+  // réellement présentes dans les missions de CE client (pas la liste globale,
+  // messy et sans intérêt pour un client qui n'en utilise qu'une poignée).
+  function populateMissionMetaFilters() {
+    const typeSel = document.getElementById('f-type-mission');
+    const formatSel = document.getElementById('f-format');
+    const types = [...new Set(missionsCache.map((m) => m.type_mission).filter(Boolean))].sort();
+    const formats = [...new Set(missionsCache.map((m) => m.format).filter(Boolean))].sort();
+    typeSel.innerHTML = '<option value="">Tous</option>' +
+      types.map((t) => `<option value="${t}">${(MISSION_TYPE_LABELS[t] || t).replace(/</g, '&lt;')}</option>`).join('');
+    formatSel.innerHTML = '<option value="">Tous</option>' +
+      formats.map((f) => `<option value="${f}">${(MISSION_FORMAT_LABELS[f] || f).replace(/</g, '&lt;')}</option>`).join('');
+    typeSel.value = filters.type_mission;
+    formatSel.value = filters.format;
+  }
+  document.getElementById('f-type-mission').addEventListener('change', (e) => {
+    filters.type_mission = e.target.value;
+    refreshData(true);
+  });
+  document.getElementById('f-format').addEventListener('change', (e) => {
+    filters.format = e.target.value;
+    refreshData(true);
+  });
 
   function closeMissionSuggestions() {
     missionSuggestionsEl.classList.remove('show');
@@ -624,7 +662,9 @@
     selectedMissionId = '';
     selectedMissionLabel = '';
     missionSearchEl.value = '';
-    filters = { date_min: '', date_max: '', statut_mission: '', civilite: '', tranche_age: '' };
+    filters = { date_min: '', date_max: '', statut_mission: '', civilite: '', tranche_age: '', type_mission: '', format: '' };
+    document.getElementById('f-type-mission').value = '';
+    document.getElementById('f-format').value = '';
     renderCrossFilterChips();
     refreshData(true);
   });
@@ -678,16 +718,36 @@
     const k = data.kpis || {};
     const kpis = [
       { v: k.taux_reel != null ? fmtNum(k.taux_reel, 3) : '—', l: 'Taux réel' },
-      { v: fmtNum(k.nb_dons), l: 'Bulletins' },
+      { v: fmtNum(k.nb_dons), l: 'BS réalisés' },
+      { v: fmtNum(k.bs_transmis), l: 'BS transmis' },
       { v: k.don_moyen != null ? fmtNum(k.don_moyen, 2) + '€' : '—', l: 'Don moyen' },
       // Arrondi au plus proche (0 décimale) — demande explicite, un âge
       // moyen à la décimale près n'apporte rien de plus lisible ici.
       { v: k.age_moyen != null ? fmtNum(k.age_moyen, 0) : '—', l: 'Âge moyen' },
       { v: k.heures_rue != null ? fmtNum(k.heures_rue, 0) : '—', l: 'Heures rue' },
-      { v: k.heures_rem != null ? fmtNum(k.heures_rem, 0) : '—', l: 'Heures rém.' },
     ];
     document.getElementById('kpiRow').innerHTML = kpis.map((kp) => `
       <div class="kpi"><div class="val">${kp.v}</div><div class="lbl">${kp.l}</div></div>`).join('');
+
+    // Ville(s) d'activité du jour — affichée uniquement quand la période est
+    // réduite à un seul jour précis (sinon plusieurs villes se mélangeraient
+    // sans distinction possible). Calculée côté serveur (data.villesJour),
+    // c'est le front qui décide de l'afficher ou non selon le filtre actif.
+    const villeEl = document.getElementById('villeJourInfo');
+    if (filters.date_min && filters.date_min === filters.date_max) {
+      const villes = (data.villesJour || []).map((v) => v.ville_emplacement).filter(Boolean);
+      if (villes.length) {
+        villeEl.textContent = (villes.length === 1 ? 'Ville du jour : ' : 'Villes du jour : ') + villes.join(', ');
+        villeEl.style.display = '';
+      } else {
+        villeEl.style.display = 'none';
+      }
+    } else {
+      villeEl.style.display = 'none';
+    }
+
+    document.getElementById('bsTransmisTotal').textContent =
+      k.bs_transmis != null ? `(${fmtNum(k.bs_transmis)} au total)` : '';
 
     bulletinsData = {
       jour: data.bulletins_jour || [],
@@ -695,8 +755,10 @@
       mois: data.bulletins_mois || [],
     };
     renderChartBulletins();
-    renderChartGenre(data.genre || []);
-    renderChartAge(data.tranche_age || []);
+    genreRowsCache = data.genre || [];
+    ageRowsCache = data.tranche_age || [];
+    renderChartGenre(genreRowsCache);
+    renderChartAge(ageRowsCache);
     transmisRowsCache = data.bulletins_transmis || [];
     renderTable(transmisRowsCache);
     renderMissionsIndicateursTable(data.missionsIndicateurs || []);
@@ -728,6 +790,9 @@
         ? ' style="font-weight:700;background:var(--surface-2);"'
         : (isActive ? ' style="background:var(--accent-tint);"' : '');
       const attrs = isTotal ? '' : ` data-mission-id="${r.mission_id}" class="mission-row"`;
+      const ville = isTotal ? '' : (r.ville_principale || '—');
+      const type = isTotal ? '' : (MISSION_TYPE_LABELS[r.type_mission] || r.type_mission || '—');
+      const format = isTotal ? '' : (MISSION_FORMAT_LABELS[r.format] || r.format || '—');
       return `
       <tr${style}${attrs}>
         <td>${String(codeClient).replace(/</g, '&lt;')}</td>
@@ -735,8 +800,10 @@
         <td>${statut}</td>
         <td>${isTotal ? '' : fmtDate(r.date_debut)}</td>
         <td>${isTotal ? '' : fmtDate(r.date_fin)}</td>
+        <td>${String(ville).replace(/</g, '&lt;')}</td>
+        <td>${String(type).replace(/</g, '&lt;')}</td>
+        <td>${String(format).replace(/</g, '&lt;')}</td>
         <td>${fmtNum(r.heures_rue, 0)}</td>
-        <td>${fmtNum(r.heures_rem, 0)}</td>
         <td>${fmtNum(r.nb_dons, 0)}</td>
         <td>${r.taux_reel != null ? fmtNum(r.taux_reel, 3) : '—'}</td>
         <td>${r.don_moyen != null ? fmtNum(r.don_moyen, 2) + '€' : '—'}</td>
@@ -744,7 +811,7 @@
       </tr>`;
     }).join('');
     document.getElementById('tbl-missions').innerHTML = body ||
-      '<tr><td colspan="11" style="text-align:center;color:var(--muted);">Aucune mission sur la période</td></tr>';
+      '<tr><td colspan="13" style="text-align:center;color:var(--muted);">Aucune mission sur la période</td></tr>';
 
     document.querySelectorAll('#tbl-missions tr.mission-row').forEach((tr) => {
       tr.addEventListener('click', () => {
@@ -775,8 +842,10 @@
       { label: 'Statut', get: (r) => MISSION_STATUT_LABELS[r.statut_mission] || r.statut_mission || '' },
       { label: 'Début', get: (r) => fmtDate(r.date_debut) },
       { label: 'Fin', get: (r) => fmtDate(r.date_fin) },
+      { label: 'Ville', get: (r) => r.ville_principale || '' },
+      { label: 'Type', get: (r) => MISSION_TYPE_LABELS[r.type_mission] || r.type_mission || '' },
+      { label: 'Format', get: (r) => MISSION_FORMAT_LABELS[r.format] || r.format || '' },
       { label: 'H rue', get: (r) => r.heures_rue != null ? Number(r.heures_rue).toFixed(1) : '' },
-      { label: 'H rém.', get: (r) => r.heures_rem != null ? Number(r.heures_rem).toFixed(1) : '' },
       { label: 'Bulletins', get: (r) => r.nb_dons != null ? r.nb_dons : '' },
       { label: 'Taux réel', get: (r) => r.taux_reel != null ? Number(r.taux_reel).toFixed(3) : '' },
       { label: 'Don moyen', get: (r) => r.don_moyen != null ? Number(r.don_moyen).toFixed(2) : '' },
@@ -791,8 +860,19 @@
   // scoped_missions n'est réduite à une seule ligne que si mission_ids est
   // fourni). Rien n'est affiché tant qu'aucune mission n'est choisie.
   // ---------------------------------------------------------------
-  const MISSION_FORMAT_LABELS = { street: 'Rue', hybride: 'Hybride', sitesprives: 'Sites privés' };
-  const MISSION_TYPE_LABELS = { paris: 'Paris', province: 'Province' };
+  // Valeurs réelles en base plus nombreuses/hétérogènes que ce que ces libellés
+  // couvrent (accents, variantes historiques) — cf. sql-client.js. Les valeurs
+  // non listées ici s'affichent telles quelles (fallback), jamais masquées.
+  const MISSION_FORMAT_LABELS = {
+    street: 'Rue', hybride: 'Hybride',
+    site_prive: 'Site privé', sites_privees: 'Sites privés', sitesprives: 'Sites privés',
+    CDI: 'CDI',
+  };
+  const MISSION_TYPE_LABELS = {
+    paris: 'Paris', province: 'Province', domtom: 'DOM-TOM', lyon: 'Lyon',
+    itinerante: 'Itinérante', itinérante: 'Itinérante',
+    speciale: 'Spéciale', spéciale: 'Spéciale', CDI: 'CDI',
+  };
   function renderMissionInfo(info) {
     const card = document.getElementById('missionInfoCard');
     if (!selectedMissionId) { card.classList.add('hidden'); return; }
@@ -815,6 +895,8 @@
   // à partir des lignes déjà chargées, pas de nouvel appel réseau.
   // ---------------------------------------------------------------
   let transmisRowsCache = [];
+  let genreRowsCache = [];
+  let ageRowsCache = [];
   function csvEscape(v) {
     const s = v == null ? '' : String(v);
     return /[",;\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
@@ -842,6 +924,17 @@
       { label: 'Ville', get: (r) => r.ville_emplacement || '' },
       { label: 'Mission', get: (r) => r.code_mission_client || r.code_mission || '' },
     ], 'bulletins-transmis.csv');
+  });
+  document.getElementById('btnExportProfilCsv').addEventListener('click', () => {
+    const rows = [
+      ...genreRowsCache.map((r) => ({ categorie: 'Genre', valeur: CIVILITE_LABELS[r.civilite] || r.civilite, nb: r.nb })),
+      ...ageRowsCache.map((r) => ({ categorie: "Tranche d'âge", valeur: r.tranche, nb: r.nb })),
+    ];
+    exportCsv(rows, [
+      { label: 'Catégorie', get: (r) => r.categorie },
+      { label: 'Valeur', get: (r) => r.valeur },
+      { label: 'Nombre', get: (r) => r.nb },
+    ], 'profil-donateurs.csv');
   });
 
   // ---------------------------------------------------------------
@@ -1035,30 +1128,33 @@
     if (!box.querySelector('canvas')) box.innerHTML = '<canvas id="chart-age"></canvas>';
     const order = ['18-20', '21-25', '26-35', '36-50', '50 et +', 'Autre'];
     const sorted = rows.slice().sort((a, b) => order.indexOf(a.tranche) - order.indexOf(b.tranche));
+    const palette = [accentColor, '#0F0F11', '#75757C', '#B0B0B6', '#D8A0A9', '#4A4A4E'];
+    const baseColors = sorted.map((r, i) => palette[i % palette.length]);
     const colors = filters.tranche_age
-      ? sorted.map((r) => (r.tranche === filters.tranche_age ? accentColor : '#E4E4E8'))
-      : sorted.map(() => accentColor);
-    const opts = chartOpts(false);
-    opts.plugins.title = { display: true, text: 'Répartition par tranche d\'âge', color: '#0F0F11', font: { size: 12, weight: '700' } };
-    opts.plugins.legend = { display: true, position: 'bottom', labels: { color: '#0F0F11', font: { size: 11, weight: '600' } } };
-    opts.scales.x.title = { display: true, text: "Tranche d'âge", color: '#75757C', font: { size: 10.5, weight: '600' } };
-    opts.scales.y.title = { display: true, text: 'Nombre de bulletins', color: '#75757C', font: { size: 10.5, weight: '600' } };
-    opts.onHover = (evt, elements) => { evt.native.target.style.cursor = elements.length ? 'pointer' : 'default'; };
-    opts.onClick = (evt, elements) => {
-      if (!elements.length) return;
-      const row = sorted[elements[0].index];
-      if (!row) return;
-      filters.tranche_age = filters.tranche_age === row.tranche ? '' : row.tranche;
-      renderCrossFilterChips();
-      refreshData(true);
-    };
+      ? sorted.map((r, i) => (r.tranche === filters.tranche_age ? baseColors[i] : '#E4E4E8'))
+      : baseColors;
     charts.age = new Chart(document.getElementById('chart-age'), {
-      type: 'bar',
+      type: 'doughnut',
       data: {
         labels: sorted.map((r) => r.tranche),
-        datasets: [{ label: 'Bulletins par tranche d\'âge', data: sorted.map((r) => r.nb), backgroundColor: colors }],
+        datasets: [{ data: sorted.map((r) => r.nb), backgroundColor: colors }],
       },
-      options: opts,
+      options: {
+        maintainAspectRatio: false,
+        onHover: (evt, elements) => { evt.native.target.style.cursor = elements.length ? 'pointer' : 'default'; },
+        onClick: (evt, elements) => {
+          if (!elements.length) return;
+          const row = sorted[elements[0].index];
+          if (!row) return;
+          filters.tranche_age = filters.tranche_age === row.tranche ? '' : row.tranche;
+          renderCrossFilterChips();
+          refreshData(true);
+        },
+        plugins: {
+          title: { display: true, text: 'Répartition par tranche d\'âge', color: '#0F0F11', font: { size: 12, weight: '700' } },
+          legend: { position: 'bottom', labels: { color: '#0F0F11', font: { size: 11, weight: '600' } } },
+        },
+      },
     });
   }
 

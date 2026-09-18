@@ -10,6 +10,8 @@ function missionFilters(p) {
   if (p.statut_mission) clauses.push(`m.statut_mission = '${p.statut_mission}'`);
   if (p.debut_mission) clauses.push(`m.date_debut >= '${p.debut_mission}'`);
   if (p.fin_mission) clauses.push(`m.date_fin <= '${p.fin_mission}'`);
+  if (p.type_mission) clauses.push(`m.type_mission = '${p.type_mission}'`);
+  if (p.format) clauses.push(`m.format = '${p.format}'`);
   if (p.mission_ids && p.mission_ids.length) {
     clauses.push(`m.id in (${p.mission_ids.map((id) => `'${id}'`).join(',')})`);
   }
@@ -110,7 +112,11 @@ kpi_missions as (
   from scoped_missions where statut_mission in ('terminee','en_cours','en_attente')
 ),
 kpi_dons as (
-  select count(distinct id) as nb_dons, avg(montant) as don_moyen
+  -- bs_transmis = sous-ensemble transmis de nb_dons (BS réalisés = tous
+  -- statuts valides : nouveau/en_attente/transmis) — demande explicite
+  -- d'afficher les deux côte à côte au niveau des indicateurs globaux.
+  select count(distinct id) as nb_dons, avg(montant) as don_moyen,
+    count(distinct id) filter (where statut = 'transmis') as bs_transmis
   from scoped_dons
 ),
 kpi_heures as (
@@ -124,6 +130,7 @@ select
   (select nb_missions from kpi_missions) as nb_missions,
   (select nb_dons from kpi_dons) as nb_dons,
   (select don_moyen from kpi_dons) as don_moyen,
+  (select bs_transmis from kpi_dons) as bs_transmis,
   (select heures_rue from kpi_heures) as heures_rue,
   (select heures_rem from kpi_heures) as heures_rem,
   case when (select heures_rue from kpi_heures) > 0
@@ -176,7 +183,8 @@ group by 1,2 order by 1;`,
 -- ce suivi. Les totaux ci-dessous sont recalculés sur ce même périmètre
 -- restreint, pour rester cohérents avec les lignes affichées.
 eligible_missions as (
-  select id, code_mission, code_mission_client, statut_mission, date_debut, date_fin
+  select id, code_mission, code_mission_client, statut_mission, date_debut, date_fin,
+    ville_principale, type_mission, format
   from scoped_missions
   where statut_mission in ('en_cours','terminee')${missionDateOverlapClause(p)}
 ),
@@ -202,7 +210,7 @@ mission_rows as (
   select
     0 as sort_order,
     em.id as mission_id, em.code_mission, em.code_mission_client, em.statut_mission,
-    em.date_debut, em.date_fin,
+    em.date_debut, em.date_fin, em.ville_principale, em.type_mission, em.format,
     coalesce(hm.heures_rue,0) as heures_rue,
     coalesce(hm.heures_rem,0) as heures_rem,
     coalesce(dm.nb_dons,0) as nb_dons,
@@ -227,6 +235,7 @@ total_row as (
     1 as sort_order,
     null::uuid as mission_id, 'TOTAL' as code_mission, null::text as code_mission_client, null::text as statut_mission,
     null::date as date_debut, null::date as date_fin,
+    null::text as ville_principale, null::text as type_mission, null::text as format,
     coalesce((select heures_rue from total_heures),0) as heures_rue,
     coalesce((select heures_rem from total_heures),0) as heures_rem,
     coalesce((select nb_dons from total_dons),0) as nb_dons,
@@ -251,12 +260,25 @@ left join donateurs don on don.id = d.donateur_id
 where d.statut = 'transmis' and d.date_transmission is not null
 order by d.date_transmission desc
 limit 200;`,
+
+    // Ville(s) d'activité sur le périmètre filtré (missions/lots) —
+    // n'a de sens à afficher côté front que lorsque la période est réduite
+    // à un seul jour précis (date_min = date_max), sinon plusieurs villes
+    // se mélangeraient sans distinction. Toujours calculée ici (peu
+    // coûteux, réutilise le cte partagé) ; c'est le front qui décide de
+    // l'afficher ou non selon le filtre de période actif.
+    villesJour: `${cte}
+select distinct ville_emplacement
+from scoped_lots
+where ville_emplacement is not null and ville_emplacement <> ''
+order by 1
+limit 20;`,
   };
 }
 
 function buildMissionsListQuery(id_client) {
   return `select m.id, m.code_mission, m.code_mission_client, m.statut_mission,
-       m.date_debut, m.date_fin, m.ville_principale, m.type_mission
+       m.date_debut, m.date_fin, m.ville_principale, m.type_mission, m.format
 from missions m
 where m.client_id = '${id_client}' and m.statut_mission in ('en_cours','terminee')
 order by m.date_debut desc nulls last
