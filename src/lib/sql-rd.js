@@ -35,9 +35,17 @@ order by nom;`;
 // Table principale : une ligne par RD ayant travaillé sur la mission (dans
 // la plage de dates éventuelle), plus une ligne TOTAL. Reprend telle quelle
 // la logique du dashboard Metabase "Suivi Qualité" (grade, FPE, taux réel,
-// transfo, don moyen, âge médian, %+25/-25, ratio heures, taux d'absence
-// injustifiée) — bs_suspects est ajouté après-coup côté handler (cf.
-// buildRdBsSuspectsQuery) car c'est une requête séparée plus coûteuse.
+// transfo, don moyen, âge médian, %+25/-25, ratio heures, taux de présence,
+// taux d'absence injustifiée) — bs_suspects est ajouté après-coup côté
+// handler (cf. buildRdBsSuspectsQuery) car c'est une requête séparée plus
+// coûteuse.
+//
+// taux_presence = heures rémunérées / (nb jours prévus * 7h) : c'était
+// auparavant appelé "taux_absence" alors que la formule mesure l'inverse
+// (plus la valeur est haute, moins la personne est absente) — corrigé le
+// 9/2026 suite à un signalement. taux_absence_injustifiee, lui, mesure
+// bien une absence (jours d'absence injustifiée / total de jours) et reste
+// inchangé.
 function buildRdTableQuery(id_mission, dateRange) {
   const dateFilter = dateFilterClause('l.date', dateRange);
   return `WITH lots_mission AS (
@@ -110,7 +118,7 @@ rd_rows AS (
     round((a.heures_rue::numeric / NULLIF(a.heures_rem, 0))::numeric, 2) AS ratio_h,
     round(a.heures_rue::numeric, 2) AS heures_rue,
     round(a.heures_rem::numeric, 2) AS heures_rem,
-    round((100.0 * a.heures_rem / NULLIF(a.nb_jours * 7, 0))::numeric, 1) AS taux_absence,
+    round((100.0 * a.heures_rem / NULLIF(a.nb_jours * 7, 0))::numeric, 1) AS taux_presence,
     round((100.0 * coalesce(aa.jours_absence_injustifiee, 0) / NULLIF(a.jours_presence + a.jours_absence, 0))::numeric, 1) AS taux_absence_injustifiee,
     CASE WHEN cr.grade = 'RE' THEN 1 WHEN cr.grade='RDE' THEN 2 WHEN cr.grade='RDC' THEN 3 WHEN cr.grade='RD' THEN 4 ELSE 5 END AS grade_order
   FROM agg a
@@ -159,7 +167,7 @@ total_row AS (
     round((ta.heures_rue::numeric / NULLIF(ta.heures_rem, 0))::numeric, 2) AS ratio_h,
     round(ta.heures_rue::numeric, 2) AS heures_rue,
     round(ta.heures_rem::numeric, 2) AS heures_rem,
-    round((100.0 * ta.heures_rem / NULLIF(ta.nb_lots * 7, 0))::numeric, 1) AS taux_absence,
+    round((100.0 * ta.heures_rem / NULLIF(ta.nb_lots * 7, 0))::numeric, 1) AS taux_presence,
     round((100.0 * coalesce(taa.jours_absence_injustifiee, 0) / NULLIF(ta.jours_presence + ta.jours_absence, 0))::numeric, 1) AS taux_absence_injustifiee,
     0 AS grade_order
   FROM total_agg ta, total_dons td, total_absence_agg taa

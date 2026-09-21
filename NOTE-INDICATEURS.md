@@ -6,6 +6,12 @@
 - **BS au sens large** : statut ∈ (`nouveau`, `en_attente`, `transmis`, `incomplet`, `annule`).
 - **Heures de rue / heures rémunérées** : sommées uniquement sur les lots où `presence_recruteur` est `TRUE` ou `NULL` (exclus si `FALSE`).
 - **Âge d'un donateur** : `(date de signature du don − date de naissance) / 365.0`, toujours calculé par rapport à `dons.created_at`, jamais par rapport à la date du jour.
+- **Score qualité** : `don moyen × % donateurs +25 ans`, calculé sur les dons valides. Barème identique sur tous les dashboards qui l'affichent (`/rd`, `/re-collecte`, `/mission`, `/rm-collecte`, `/salarie`) :
+  - 0 à 3 : Très Faible
+  - 4 à 5,5 : Faible
+  - 5,5 à 6,5 : Moyen
+  - 6,5 à 8 : Bon
+  - 8 et plus : Très Bon
 
 ---
 
@@ -36,8 +42,9 @@
 - **Âge médian** : médiane (`percentile_cont(0.5)`) de l'âge des donateurs (dons valides).
 - **% donateurs −25 ans (`pct_moins_25`)** : `100 × (nb dons valides avec âge < 25) / BS réel`.
 - **Ratio heures (`ratio_h`)** : `heures_rue / heures_rem`.
-- **Taux d'absence** : `100 × heures rémunérées / (nombre de lots × 7)`.
-- **Taux d'absence injustifiée** : `100 × jours d'absence injustifiée / (jours de présence + jours d'absence)`, où un jour d'absence est injustifié si son motif n'est ni "maladie" ni "autorisée" (ou motif absent).
+- **Taux de présence** (champ `taux_presence` ; anciennement nommé à tort "taux d'absence" — corrigé le 9/2026, la formule mesure bien une présence : plus la valeur est haute, plus la personne est présente sur les heures prévues, ce qui est l'inverse de ce que le nom "absence" laissait penser) : `100 × heures rémunérées / (nombre de lots × 7)`.
+- **Taux d'absence injustifiée** : `100 × jours d'absence injustifiée / (jours de présence + jours d'absence)`, où un jour d'absence est injustifié si son motif n'est ni "maladie" ni "autorisée" (ou motif absent). Celui-ci, contrairement au précédent, mesure bien une absence.
+- **Score qualité** : `don moyen × % donateurs +25 ans` (voir barème commun dans Définitions communes).
 - **Badge FPE** : `'FPE'` si le contrat le plus récent du recruteur sur la mission porte un avenant de catégorie `fin_period_essai`.
 - **Répartition par tranche d'âge** : mêmes bornes que `/client` (18-20, 21-25, 26-35, 36-50, 50+).
 - **Répartition par genre** : `Hommes` (civilité = monsieur), `Femmes` (civilité = madame), `Autre/NC` sinon.
@@ -62,8 +69,8 @@
 
 ## /re-collecte
 
-- Reprend telles quelles les requêtes de `/rd` (table, âge, genre, bulletins/jour, motif de don suspect) et de `/mission` (taux réel par semaine).
-- **Liste des bulletins suspects** : mêmes 13 règles de motif que `/rd`, sur le périmètre statut ∈ (`nouveau`, `en_attente`, `transmis`, `annule`).
+- Reprend telles quelles les requêtes de `/rd` (table, âge, genre, bulletins/jour, motif de don suspect, taux de présence) et de `/mission` (taux réel par semaine).
+- **Liste des bulletins suspects** : mêmes 13 règles de motif que `/rd`, sur le périmètre statut ∈ (`nouveau`, `en_attente`, `transmis`, `annule`). Colonnes affichées (restreint le 9/2026, demande explicite) : Date / Statut / Motif / Montant / Donateur / RD (prénom + NOM) — l'adresse et l'email du donateur ne sont ni affichés ni remontés par la requête.
 
 ## /rm-collecte
 
@@ -86,8 +93,9 @@
 - **Taux d'absence** : `heures rémunérées / (nombre de lots × 7)`.
 - **Don moyen** : `avg(montant)` (dons valides).
 - **% donateurs +25 ans (`pct_plus_25`)** : `(nb dons valides avec âge ≥ 25) / (nb dons valides dont la date de naissance du donateur est connue)`.
-- **Score qualité** : `don moyen × % donateurs +25 ans`.
+- **Score qualité** : `don moyen × % donateurs +25 ans` (voir barème commun dans Définitions communes).
 - Les 5 indicateurs ci-dessus existent en 3 déclinaisons : par mission, en cumul sur toute la carrière ("résumé"), et en cumul sur les 270 dernières heures rémunérées déclarées ("statut global").
+- Note : le "Taux d'absence" ci-dessus utilise la même formule que le "Taux de présence" de `/rd`/`/re-collecte`/`/mission` (`heures rémunérées / (nombre de lots × 7)`) — non renommé ici, la correction de nom demandée portait explicitement sur `/rd`, `/re-collecte` et `/mission`. Idem pour `/rh`.
 
 ## /emplacement
 
@@ -108,7 +116,7 @@
 ## /rh
 
 - **Taux réel** (global et par mission) : `BS réel / heures de rue`.
-- **Taux d'absence** (global, par mission, par recruteur) : `heures rémunérées / (nombre de lots × 7)`.
+- **Taux d'absence** (global, par mission, par recruteur) : `heures rémunérées / (nombre de lots × 7)`. Note : même remarque que sur `/salarie` — cette formule mesure en réalité une présence (voir la correction faite sur `/rd`/`/re-collecte`/`/mission`), non renommée ici car hors du périmètre demandé.
 - **Taux de complétion de saisie — présence** : `(nb lots où presence_recruteur est renseigné) / (nb lots total)`.
 - **Taux de complétion de saisie — emplacement** : `(nb lots où emplacement_id est renseigné) / (nb lots total)`.
 - **Taux de FPE** (global, par initiative employeur/salarié) : `nb contrats avec avenant "fin de période d'essai" (par initiative) / nb contrats du périmètre`, basé sur `contrats.date_debut`.

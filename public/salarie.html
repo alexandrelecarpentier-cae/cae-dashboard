@@ -73,10 +73,11 @@
 
   .score-badge{display:inline-block; font-size:10px; font-weight:800; text-transform:uppercase;
     letter-spacing:.02em; padding:2px 7px; border-radius:var(--sharp); margin-left:8px; vertical-align:middle;}
-  .score-badge.alerte{background:#FFE0E0; color:#A31515;}
+  .score-badge.tresfaible{background:#FFE0E0; color:#A31515;}
+  .score-badge.faible{background:#FFE8D1; color:#B3540A;}
   .score-badge.moyen{background:#FFF3D6; color:#8A6100;}
-  .score-badge.fiable{background:#E1F2E7; color:#1F7A44;}
-  .score-badge.tres-fiable{background:#D6EFFF; color:#0B5FA5;}
+  .score-badge.bon{background:#E1F2E7; color:#1F7A44;}
+  .score-badge.tresbon{background:#D6EFFF; color:#0B5FA5;}
 
   .score-card{background:#fff; border:1px solid var(--line); border-left:2px solid var(--red);
     border-radius:var(--sharp); padding:14px 16px; margin-top:10px; display:flex; align-items:center;
@@ -141,18 +142,22 @@
     return Number(n).toLocaleString('fr-FR', { maximumFractionDigits: digits, minimumFractionDigits: digits }) + ' €';
   }
   // Barème v2 (fichier "Score Qualité") : score = don moyen x % de donateurs de + de 25 ans
+  // Barème score qualité (0 à 3 Très Faible / 4 à 5,5 Faible / 5,5 à 6,5
+  // Moyen / 6,5 à 8 Bon / 8 et plus Très Bon) — identique sur tous les
+  // dashboards affichant un score qualité (cf. NOTE-INDICATEURS.md).
   function scoreBareme(score) {
     if (score === null || score === undefined) return null;
     const s = Number(score);
-    if (s < 4) return { label: 'Alerte', desc: 'Pas fiable', cls: 'alerte' };
-    if (s < 5.5) return { label: 'RD-RDC', desc: 'Fiable moyen', cls: 'moyen' };
-    if (s < 6.5) return { label: 'RDC+', desc: 'Fiable', cls: 'fiable' };
-    return { label: 'RDE', desc: 'Très fiable', cls: 'tres-fiable' };
+    if (s <= 3) return { label: 'Très faible', cls: 'tresfaible' };
+    if (s <= 5.5) return { label: 'Faible', cls: 'faible' };
+    if (s <= 6.5) return { label: 'Moyen', cls: 'moyen' };
+    if (s <= 8) return { label: 'Bon', cls: 'bon' };
+    return { label: 'Très bon', cls: 'tresbon' };
   }
   function scoreBadgeHtml(score) {
     const b = scoreBareme(score);
     if (!b) return '';
-    return `<span class="score-badge ${b.cls}">${b.label} · ${b.desc}</span>`;
+    return `<span class="score-badge ${b.cls}">${b.label}</span>`;
   }
   function showError(msg) {
     document.getElementById('errorDetail').textContent = msg;
@@ -267,10 +272,11 @@
             Score qualité = Don moyen × % de donateurs de plus de 25 ans (âge calculé à la date du don).</p>
             <h4>Barème</h4>
             <ul>
-              <li><span>Score &lt; 4</span><b>Alerte · Pas fiable</b></li>
-              <li><span>4 ≤ Score &lt; 5,5</span><b>RD-RDC · Fiable moyen</b></li>
-              <li><span>5,5 ≤ Score &lt; 6,5</span><b>RDC+ · Fiable</b></li>
-              <li><span>Score ≥ 6,5</span><b>RDE · Très fiable</b></li>
+              <li><span>0 à 3</span><b>Très faible</b></li>
+              <li><span>4 à 5,5</span><b>Faible</b></li>
+              <li><span>5,5 à 6,5</span><b>Moyen</b></li>
+              <li><span>6,5 à 8</span><b>Bon</b></li>
+              <li><span>8 et plus</span><b>Très bon</b></li>
             </ul>
           </div>
         </span>

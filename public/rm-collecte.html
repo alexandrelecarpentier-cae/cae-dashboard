@@ -92,10 +92,11 @@
   .kpi.score{border-left-color:var(--text);}
   .kpi .badge{display:inline-block; margin-top:6px; font-size:9.5px; font-weight:800; text-transform:uppercase;
     letter-spacing:.03em; padding:2px 6px; border-radius:var(--sharp);}
-  .badge-alerte{background:#FFE3E8; color:#B10F32;}
+  .badge-tresfaible{background:#FFE3E8; color:#B10F32;}
+  .badge-faible{background:#FFE8D1; color:#B3540A;}
   .badge-moyen{background:#FFF3CE; color:#8A6200;}
-  .badge-fiable{background:#E4F3E1; color:#1F7A32;}
-  .badge-tresfiable{background:#0F0F11; color:#fff;}
+  .badge-bon{background:#E4F3E1; color:#1F7A32;}
+  .badge-tresbon{background:#0F0F11; color:#fff;}
 
   .card{background:#fff; border:1px solid var(--line); border-radius:var(--sharp); padding:14px 14px 12px; margin-bottom:10px;
     position:relative; overflow:hidden; box-shadow:0 1px 2px rgba(15,15,17,.03);}
@@ -185,10 +186,11 @@
     <div class="info-panel" id="suspectsInfoPanel">
       <p><b>Score qualité</b> = don moyen × % de donateurs de 25 ans et plus.</p>
       <ul>
-        <li>&lt; 4 : Alerte / peu fiable</li>
-        <li>4 – 5,5 : Fiable moyen</li>
-        <li>5,5 – 6,5 : Fiable</li>
-        <li>≥ 6,5 : Très fiable</li>
+        <li>0 – 3 : Très faible</li>
+        <li>4 – 5,5 : Faible</li>
+        <li>5,5 – 6,5 : Moyen</li>
+        <li>6,5 – 8 : Bon</li>
+        <li>≥ 8 : Très bon</li>
       </ul>
     </div>
   </div>
@@ -405,12 +407,16 @@
     if (donMoyen === null || donMoyen === undefined || pctMoins25 === null || pctMoins25 === undefined) return null;
     return donMoyen * (100 - pctMoins25) / 100;
   }
+  // Barème score qualité (0 à 3 Très Faible / 4 à 5,5 Faible / 5,5 à 6,5
+  // Moyen / 6,5 à 8 Bon / 8 et plus Très Bon) — identique sur tous les
+  // dashboards affichant un score qualité (cf. NOTE-INDICATEURS.md).
   function scoreBadge(score) {
     if (score === null || score === undefined) return '';
-    if (score < 4) return '<span class="badge badge-alerte">Alerte</span>';
-    if (score < 5.5) return '<span class="badge badge-moyen">Moyen</span>';
-    if (score < 6.5) return '<span class="badge badge-fiable">Fiable</span>';
-    return '<span class="badge badge-tresfiable">Très fiable</span>';
+    if (score <= 3) return '<span class="badge badge-tresfaible">Très faible</span>';
+    if (score <= 5.5) return '<span class="badge badge-faible">Faible</span>';
+    if (score <= 6.5) return '<span class="badge badge-moyen">Moyen</span>';
+    if (score <= 8) return '<span class="badge badge-bon">Bon</span>';
+    return '<span class="badge badge-tresbon">Très bon</span>';
   }
 
   function render(data) {

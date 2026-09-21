@@ -26,9 +26,13 @@ import { buildWeeklyQuery, dateUpToTodayClause } from './sql-mission-suivi.js';
 
 // Liste détaillée des bulletins suspects (section "Bulletins Suspects") :
 // contrairement à buildRdBsSuspectsQuery (qui ne renvoie qu'un compte par
-// RD), ici on renvoie une ligne par don suspect avec son motif et ses
-// coordonnées, en incluant aussi les dons annulés (statut affiché) pour
-// garder une trace visible même après annulation.
+// RD), ici on renvoie une ligne par don suspect avec son motif, en incluant
+// aussi les dons annulés (statut affiché) pour garder une trace visible même
+// après annulation. Colonnes volontairement limitées à ce qui est affiché —
+// Date / Statut / Motif / Montant / Donateur / RD (demande explicite) :
+// adresse et email du donateur ne sont ni affichés ni utilisés ailleurs dans
+// cette requête, donc pas remontés (moins de données personnelles exposées
+// que nécessaire).
 function buildBulletinsSuspectsListQuery(id_mission, id_utilisateur, dateRange) {
   const rdFilter = id_utilisateur ? `AND l.utilisateur_id = '${id_utilisateur}'` : '';
   const dateFilter = dateUpToTodayClause('l.date', dateRange);
@@ -57,12 +61,16 @@ SELECT * FROM (
   SELECT
     df.lot_date AS date,
     df.statut AS statut,
-    coalesce(uip_actuel.prenom || ' ' || uip_actuel.nom, u_actuel.email) AS rd,
+    -- Prénom + NOM du RD, même convention que le champ donateur ci-dessous
+    -- (prénom en casse normale, nom de famille en majuscules) ; repli sur
+    -- l'email si l'identité n'est pas renseignée.
+    CASE
+      WHEN uip_actuel.prenom IS NOT NULL OR uip_actuel.nom IS NOT NULL
+        THEN INITCAP(LOWER(coalesce(uip_actuel.prenom, ''))) || ' ' || UPPER(coalesce(uip_actuel.nom, ''))
+      ELSE u_actuel.email
+    END AS rd,
     INITCAP(LOWER(don.prenom)) || ' ' || UPPER(don.nom) AS donateur,
-    don.adresse AS adresse,
-    don.email AS email_donateur,
     df.montant AS montant,
-    df.id AS don_id,
     coalesce(dts.nb_dons_total, 0) AS nb_dons_total,
     ${donMotifCase('df', 'don', 'uip_actuel', 'uc_actuel', 'rc_tiers', 'dts')} AS motif
   FROM dons_filtres df
