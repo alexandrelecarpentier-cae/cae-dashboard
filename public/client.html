@@ -630,7 +630,6 @@
     const yearEnd = new Date(today.getFullYear(), 11, 31);
     const tags = [
       { key: 'total', label: 'Total', from: '', to: '' },
-      { key: 'today', label: "Aujourd'hui", from: isoDate(today), to: isoDate(today) },
       { key: 'yesterday', label: 'Hier', from: isoDate(yesterday), to: isoDate(yesterday) },
       { key: 'week', label: 'Cette semaine', from: isoDate(monday), to: isoDate(sunday) },
       { key: 'lastweek', label: 'Semaine dernière', from: isoDate(lastMonday), to: isoDate(lastSunday) },

@@ -50,7 +50,11 @@ function missionDateOverlapClause(p) {
 }
 
 function lotFilters(p) {
-  const clauses = ['1=1'];
+  // Journée en cours toujours exclue (dons/heures/taux réel non fiables tant
+  // que la journée n'est pas terminée — demande explicite, 9/2026), quel que
+  // soit le filtre de période choisi. C'est aussi pour ça que le raccourci
+  // "Aujourd'hui" a été retiré côté front (il ne renverrait plus rien).
+  const clauses = ['1=1', 'l.date < current_date'];
   if (p.date_min) clauses.push(`l.date >= '${p.date_min}'`);
   if (p.date_max) clauses.push(`l.date <= '${p.date_max}'`);
   if (p.jour_semaine) clauses.push(`extract(isodow from l.date) = ${p.jour_semaine}`);

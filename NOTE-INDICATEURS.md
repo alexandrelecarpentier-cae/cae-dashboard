@@ -37,6 +37,7 @@ Règles communes à tous les dashboards (demande explicite, 9/2026) ; les écart
 - **Taux réel** : `nb dons valides / heures de rue` (affiché brut, 3 décimales).
 - **Âge moyen** : `avg(âge)` (dons valides), affiché arrondi à l'entier.
 - **Tranche d'âge** (répartition) : `18-20` (18 ≤ âge < 21), `21-25` (21 ≤ âge < 26), `26-35` (26 ≤ âge < 36), `36-50` (36 ≤ âge < 51), `50 et +` (âge ≥ 51), `Autre` (âge inconnu).
+- **Journée en cours toujours exclue** : tous les indicateurs basés sur les lots/dons (heures, nb dons, don moyen, taux réel, âge moyen, tranches d'âge, graphes bulletins, tableau "Suivi des missions"...) n'incluent jamais la date du jour, quel que soit le filtre de période choisi (données du jour incomplètes/non fiables tant qu'il n'est pas terminé). Le raccourci de période "Aujourd'hui" a été retiré du dashboard pour cette raison (demande explicite, 9/2026).
 - Bloc infos mission + résultats globaux figé (sticky) sous le header au scroll ; taux réel positionné en dernier dans le bloc KPI (demandes explicites, 9/2026).
 - Camemberts genre et tranche d'âge : pourcentage de chaque part affiché dans la légende et l'infobulle (1 décimale), également ajouté à l'export CSV "Profil des donateurs". Les dons dont l'âge du donateur est inconnu restent comptés dans "Autre" plutôt qu'exclus (cf. audit de complétude ci-dessous).
 - Filtres : passent sur plusieurs lignes plutôt que défiler horizontalement sur les écrans de moins de 720px de large.
