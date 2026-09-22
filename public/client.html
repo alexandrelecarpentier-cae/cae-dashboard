@@ -46,6 +46,8 @@
 
   .filters{margin-top:10px;}
   .filter-row{display:flex; flex-wrap:nowrap; gap:10px; align-items:flex-start; overflow-x:auto; padding-bottom:2px;}
+  /* Ligne 1 = dates, ligne 2 = filtres catégoriels (demande explicite) */
+  .filter-row + .filter-row{margin-top:10px;}
   .filter-field{display:flex; flex-direction:column; gap:6px; flex:0 0 auto;}
   .filter-label{font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); font-weight:700; line-height:1; white-space:nowrap;}
   .control{
@@ -87,6 +89,11 @@
   }
   .error-banner.show{display:block;}
   .error-banner b{color:var(--red);}
+
+  /* Récap période/filtres — visible uniquement à l'export PDF (cf. @media
+     print), pour que le document exporté reste compréhensible une fois
+     séparé de l'écran (la barre de filtres, elle, ne s'imprime pas). */
+  .print-only{display:none;}
 
   .kpi-scroll{display:flex; gap:10px; overflow-x:auto; padding:14px 16px 4px; scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch;}
   .kpi-scroll::-webkit-scrollbar{display:none;}
@@ -160,6 +167,8 @@
   .mission-info-item .lbl{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px; font-weight:700;}
   .mission-info-item .val{font-size:14px; font-weight:700;}
 
+  @page{ margin:14mm 12mm; }
+
   @media print{
     header .filters, header .chip-row, header .meta-row, #refreshBar, .error-banner, .btn-reset, .btn-export,
     #countdown { display:none !important; }
@@ -168,17 +177,31 @@
        imprimée/exportée, demande explicite. */
     .no-print { display:none !important; }
     body{ background:#fff; }
+    /* Conserve les couleurs de marque (accent rouge, badges, fonds de
+       carte) à l'impression — sans ça, certains navigateurs impriment tout
+       en niveaux de gris par défaut ("Graphiques d'arrière-plan" décoché),
+       ce qui rend l'export terne. */
+    *{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
     header{ position:static; }
     /* #pinnedBlock devient sticky à l'écran (cf. règle plus haut) : à
        l'impression il doit redevenir statique comme le header, sinon il se
        superpose au contenu qui suit sur les pages 2+. */
     #pinnedBlock{ position:static; max-width:100%; box-shadow:none; }
+    /* Récap période/filtres (cf. #printSummary) — seul rappel du contexte
+       une fois la barre de filtres masquée à l'impression. */
+    .print-only{ display:block; font-size:11px; color:var(--muted); margin:0 16px 10px; line-height:1.5; }
+    /* La ligne de KPI défile horizontalement à l'écran (.kpi-scroll) : à
+       l'impression, le débordement serait simplement coupé plutôt que
+       visible, donc on repasse en grille qui s'enroule sur plusieurs
+       lignes pour que tous les indicateurs restent lisibles. */
+    .kpi-scroll{ flex-wrap:wrap; overflow:visible; }
+    .kpi{ min-width:110px; }
     .card{ break-inside:avoid; box-shadow:none; }
-    /* Hauteur inchangée par rapport à l'écran (230px, cf. .chart-box de
-       base) : la réduire écrasait les légendes des camemberts genre/âge.
-       grid-2 repasse en 2 colonnes fixes quel que soit le format papier,
-       Chart.js redimensionne les canvas sur "beforeprint" (cf. script). */
-    .grid-2{ grid-template-columns:1fr 1fr !important; }
+    /* Les deux camemberts (genre/tranche d'âge) doivent rester ensemble sur
+       la même page plutôt que d'être coupés entre les deux — chaque carte
+       évite déjà la coupure interne (.card), mais pas le bloc dans son
+       ensemble sans cette règle. */
+    .grid-2{ grid-template-columns:1fr 1fr !important; break-inside:avoid; }
     main{ max-width:100%; }
   }
 </style>
@@ -198,10 +221,6 @@
 
   <div class="filters">
     <div class="filter-row">
-      <div class="filter-field" style="width:200px;">
-        <div class="filter-label">Mission</div>
-        <select class="control" id="f-mission-select"><option value="">Toutes les missions</option></select>
-      </div>
       <div class="filter-field">
         <div class="filter-label">Période</div>
         <div class="day-tags" id="periodTags"></div>
@@ -213,6 +232,12 @@
       <div class="filter-field" style="width:130px;">
         <div class="filter-label">Au</div>
         <input class="control" type="date" id="f-date-max" aria-label="Date de fin">
+      </div>
+    </div>
+    <div class="filter-row">
+      <div class="filter-field" style="width:200px;">
+        <div class="filter-label">Mission</div>
+        <select class="control" id="f-mission-select"><option value="">Toutes les missions</option></select>
       </div>
       <div class="filter-field">
         <div class="filter-label">Statut mission</div>
@@ -242,6 +267,8 @@
 </header>
 
 <div id="pinnedBlock" class="hidden">
+  <div class="print-only" id="printSummary"></div>
+
   <div class="card hidden" id="missionInfoCard"><div class="card-inner">
     <div class="mission-info-title" id="missionInfoTitle"></div>
     <div class="mission-info-grid" id="missionInfoGrid"></div>
@@ -288,7 +315,7 @@
           <tr>
             <th>Code mission client</th><th>Code mission CAE</th><th>Statut</th><th>Début</th><th>Fin</th>
             <th>Ville</th><th>Type</th><th>Format</th>
-            <th>H rue</th><th>Bulletins</th><th>Taux réel</th><th>Don moyen</th><th>Âge moyen</th>
+            <th>H rue</th><th>Bulletins</th><th>Don moyen</th><th>Âge moyen</th><th>Taux réel</th>
           </tr>
         </thead>
         <tbody id="tbl-missions"></tbody>
@@ -738,6 +765,7 @@
       }
     }
     renderMissionInfo(info, villesJourField);
+    renderPrintSummary();
 
     const k = data.kpis || {};
     const kpis = [
@@ -814,9 +842,9 @@
         <td>${String(format).replace(/</g, '&lt;')}</td>
         <td>${fmtNum(r.heures_rue, 0)}</td>
         <td>${fmtNum(r.nb_dons, 0)}</td>
-        <td>${r.taux_reel != null ? fmtNum(r.taux_reel, 3) : '—'}</td>
         <td>${r.don_moyen != null ? fmtNum(r.don_moyen, 2) + '€' : '—'}</td>
         <td>${r.age_moyen != null ? fmtNum(r.age_moyen, 0) : '—'}</td>
+        <td>${r.taux_reel != null ? fmtNum(r.taux_reel, 3) : '—'}</td>
       </tr>`;
     }).join('');
     document.getElementById('tbl-missions').innerHTML = body ||
@@ -855,9 +883,9 @@
       { label: 'Format', get: (r) => MISSION_FORMAT_LABELS[r.format] || r.format || '' },
       { label: 'H rue', get: (r) => r.heures_rue != null ? Number(r.heures_rue).toFixed(1) : '' },
       { label: 'Bulletins', get: (r) => r.nb_dons != null ? r.nb_dons : '' },
-      { label: 'Taux réel', get: (r) => r.taux_reel != null ? Number(r.taux_reel).toFixed(3) : '' },
       { label: 'Don moyen', get: (r) => r.don_moyen != null ? Number(r.don_moyen).toFixed(2) : '' },
       { label: 'Âge moyen', get: (r) => r.age_moyen != null ? Number(r.age_moyen).toFixed(0) : '' },
+      { label: 'Taux réel', get: (r) => r.taux_reel != null ? Number(r.taux_reel).toFixed(3) : '' },
     ], 'suivi-missions.csv');
   });
 
@@ -918,6 +946,27 @@
       : 'Détails';
     document.getElementById('missionInfoGrid').innerHTML = fields.map((f) => `
       <div class="mission-info-item"><div class="lbl">${f.l}</div><div class="val">${f.v}</div></div>`).join('');
+  }
+
+  // Récap des filtres actifs, visible uniquement à l'export PDF (cf. classe
+  // .print-only) — une fois imprimée, la barre de filtres disparaît (cf.
+  // @media print) donc sans ce récap le PDF ne dit plus quelle période ni
+  // quels filtres étaient appliqués. Demande explicite ("export propre").
+  function renderPrintSummary() {
+    const parts = [];
+    if (filters.date_min && filters.date_max) {
+      parts.push(filters.date_min === filters.date_max
+        ? `Période : ${fmtDate(filters.date_min)}`
+        : `Période : ${fmtDate(filters.date_min)} – ${fmtDate(filters.date_max)}`);
+    } else {
+      parts.push('Période : toutes dates confondues');
+    }
+    parts.push(`Mission : ${selectedMissionLabel || 'toutes les missions'}`);
+    if (filters.statut_mission) parts.push(`Statut : ${MISSION_STATUT_LABELS[filters.statut_mission] || filters.statut_mission}`);
+    if (filters.type_mission) parts.push(`Type : ${MISSION_TYPE_LABELS[filters.type_mission] || filters.type_mission}`);
+    if (filters.format) parts.push(`Format : ${MISSION_FORMAT_LABELS[filters.format] || filters.format}`);
+    parts.push(`Généré le ${new Date().toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`);
+    document.getElementById('printSummary').textContent = parts.join(' · ');
   }
 
   // ---------------------------------------------------------------
