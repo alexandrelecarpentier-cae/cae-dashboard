@@ -799,7 +799,7 @@ async function handleSalarie(url, env) {
       ...m,
       ...(perfByMission.get(m.mission_id) || {
         bs_reel: 0, heures_rue: 0, heures_remuneration: 0, nb_lots: 0,
-        taux_reel: null, taux_h: null, taux_absence: null,
+        taux_reel: null, taux_h: null, taux_presence: null,
         don_moyen: null, pct_plus_25: null, score_qualite: null,
       }),
     }));

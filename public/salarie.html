@@ -54,16 +54,13 @@
     letter-spacing:.08em; color:var(--muted); font-weight:700; margin:22px 2px 8px;}
   .section-label .diamond{width:6px; height:6px; background:var(--red); transform:rotate(45deg); flex:0 0 auto;}
 
-  .mission-list{background:#fff; border:1px solid var(--line); border-radius:var(--sharp); overflow:hidden;}
-  .mission-row{padding:14px; border-bottom:1px solid var(--line);}
-  .mission-row:last-child{border-bottom:none;}
-  .mission-header{display:flex; align-items:center; gap:12px;}
-  .mission-body{flex:1 1 auto; min-width:0;}
-  .mission-name{font-size:14px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-  .mission-sub{font-size:11.5px; color:var(--muted); margin-top:2px;}
-  .mission-vals{text-align:right; flex:0 0 auto;}
-  .mission-vals .taux{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:15px; font-weight:800;}
-  .mission-vals .bs{font-size:10.5px; color:var(--muted); margin-top:1px;}
+  .table-scroll{background:#fff; border:1px solid var(--line); border-radius:var(--sharp); overflow-x:auto; -webkit-overflow-scrolling:touch;}
+  table{width:100%; border-collapse:collapse; font-size:12px; white-space:nowrap;}
+  th,td{padding:9px 10px; text-align:left; border-bottom:1px solid var(--line);}
+  th{color:var(--muted); font-weight:700; font-size:9.5px; text-transform:uppercase; letter-spacing:.04em;}
+  tbody tr:last-child td{border-bottom:none;}
+  td.num, th.num{text-align:right; font-family:ui-monospace,SFMono-Regular,Consolas,monospace;}
+  td.mission-cell{font-weight:700;}
 
   .metric-grid{display:grid; grid-template-columns:repeat(2, 1fr); gap:8px; margin-top:10px;}
   @media (min-width:480px){ .metric-grid{grid-template-columns:repeat(3, 1fr);} }
@@ -259,7 +256,7 @@
         <div class="kpi"><div class="val">${resume.heures_rue_total != null ? fmtNum(resume.heures_rue_total, 1) : '—'}</div><div class="lbl">Heures de rue totales</div></div>
         <div class="kpi"><div class="val">${resume.heures_remuneration_total != null ? fmtNum(resume.heures_remuneration_total, 1) : '—'}</div><div class="lbl">Heures rémunérées totales</div></div>
         <div class="kpi"><div class="val">${fmtPct(resume.taux_h_total)}</div><div class="lbl">Taux heures rue / rémunérées</div></div>
-        <div class="kpi"><div class="val">${resume.taux_absence_total != null ? fmtPct(resume.taux_absence_total) : '—'}</div><div class="lbl">Taux d'absence</div></div>
+        <div class="kpi"><div class="val">${resume.taux_presence_total != null ? fmtPct(resume.taux_presence_total) : '—'}</div><div class="lbl">Taux de présence</div></div>
       </div>
 
       <div class="section-label">
@@ -296,7 +293,21 @@
       </div>
 
       <div class="section-label"><span class="diamond"></span>Historique des missions</div>
-      <div class="mission-list" id="missionList"></div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Mission</th><th>Client</th><th>Rôle</th><th>Format</th><th>RE</th><th>RM</th>
+              <th>Début</th><th>Fin</th>
+              <th class="num">BS réel</th><th class="num">Taux réel</th>
+              <th class="num">Taux h</th><th class="num">Taux présence</th>
+              <th class="num">Don moyen</th><th class="num">+25 ans</th>
+              <th>Score qualité</th>
+            </tr>
+          </thead>
+          <tbody id="missionList"></tbody>
+        </table>
+      </div>
     `;
 
     const infoBtn = document.getElementById('statutInfoBtn');
@@ -317,33 +328,30 @@
 
     const listEl = document.getElementById('missionList');
     if (!missions.length) {
-      listEl.innerHTML = '<div class="empty">Aucune mission enregistrée</div>';
+      listEl.innerHTML = '<tr><td colspan="15" class="empty">Aucune mission enregistrée</td></tr>';
       return;
     }
+    const formatLabel = (f) => ({ street: 'Street', sitesprives: 'Site privé', hybride: 'Hybride' }[f] || f || '—');
     listEl.innerHTML = missions.map((m) => {
       const missionLabel = m.code_mission || m.code_mission_client || 'Mission';
-      const sub = [m.client_nom, fmtDate(m.date_debut) + ' → ' + fmtDate(m.date_fin), roleLabel(m)]
-        .filter(Boolean).join(' · ');
       return `
-      <div class="mission-row">
-        <div class="mission-header">
-          <div class="mission-body">
-            <div class="mission-name">${missionLabel}${scoreBadgeHtml(m.score_qualite)}</div>
-            <div class="mission-sub">${sub}</div>
-          </div>
-          <div class="mission-vals">
-            <div class="taux">${m.taux_reel != null ? fmtNum(m.taux_reel, 3) : '—'}</div>
-            <div class="bs">${fmtNum(m.bs_reel)} BS réel</div>
-          </div>
-        </div>
-        <div class="metric-grid">
-          <div class="metric"><div class="v">${fmtPct(m.taux_h)}</div><div class="l">Taux heures rue / rémunérées</div></div>
-          <div class="metric"><div class="v">${m.taux_absence != null ? fmtPct(m.taux_absence) : '—'}</div><div class="l">Taux d'absence</div></div>
-          <div class="metric"><div class="v">${m.don_moyen != null ? fmtMoney(m.don_moyen) : '—'}</div><div class="l">Don moyen</div></div>
-          <div class="metric"><div class="v">${m.pct_plus_25 != null ? fmtPct(m.pct_plus_25) : '—'}</div><div class="l">Donateurs +25 ans</div></div>
-          <div class="metric"><div class="v">${m.score_qualite != null ? fmtNum(m.score_qualite, 2) : '—'}</div><div class="l">Score qualité</div></div>
-        </div>
-      </div>`;
+      <tr>
+        <td class="mission-cell">${missionLabel}</td>
+        <td>${m.client_nom || '—'}</td>
+        <td>${roleLabel(m)}</td>
+        <td>${formatLabel(m.format)}</td>
+        <td>${m.re || '—'}</td>
+        <td>${m.rm || '—'}</td>
+        <td>${fmtDate(m.date_debut)}</td>
+        <td>${fmtDate(m.date_fin)}</td>
+        <td class="num">${fmtNum(m.bs_reel)}</td>
+        <td class="num">${m.taux_reel != null ? fmtNum(m.taux_reel, 3) : '—'}</td>
+        <td class="num">${fmtPct(m.taux_h)}</td>
+        <td class="num">${m.taux_presence != null ? fmtPct(m.taux_presence) : '—'}</td>
+        <td class="num">${m.don_moyen != null ? fmtMoney(m.don_moyen) : '—'}</td>
+        <td class="num">${m.pct_plus_25 != null ? fmtPct(m.pct_plus_25) : '—'}</td>
+        <td>${m.score_qualite != null ? fmtNum(m.score_qualite, 2) : '—'}${scoreBadgeHtml(m.score_qualite)}</td>
+      </tr>`;
     }).join('');
   }
 })();

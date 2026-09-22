@@ -25,24 +25,32 @@ limit 1;`;
 function buildMissionsQuery(id_utilisateur) {
   return `with u as (select '${id_utilisateur}'::uuid as id)
 select m.id as mission_id, m.code_mission, m.code_mission_client, m.statut_mission,
-  m.date_debut, m.date_fin, cl.nom as client_nom,
+  m.date_debut, m.date_fin, m.format, cl.nom as client_nom,
   ctr.statut as grade, ctr.fonction, ctr.date_debut as contrat_debut, ctr.date_fin as contrat_fin,
   (m.responsable_mission_id = u.id) as est_rm,
-  (m.responsable_equipe_id = u.id) as est_re
+  (m.responsable_equipe_id = u.id) as est_re,
+  coalesce(uip_rm.prenom || ' ' || uip_rm.nom, u_rm.email) as rm,
+  coalesce(uip_re.prenom || ' ' || uip_re.nom, u_re.email) as re
 from contrats ctr
 join u on ctr.utilisateur_id = u.id
 join missions m on m.id = ctr.mission_id
 left join clients cl on cl.id = m.client_id
+left join utilisateurs u_rm on u_rm.id = m.responsable_mission_id
+left join utilisateur_informations_personnelles uip_rm on uip_rm.utilisateur_id = m.responsable_mission_id
+left join utilisateurs u_re on u_re.id = m.responsable_equipe_id
+left join utilisateur_informations_personnelles uip_re on uip_re.utilisateur_id = m.responsable_equipe_id
 where 1=1 ${excludeClientsClause('m')}
 order by m.date_debut desc nulls last;`;
 }
 
 // Performance par mission, incluant :
 // - taux_h = heures de rue / heures rémunérées
-// - taux_absence = heures rémunérées / (nombre de lots * 7) — formule
+// - taux_presence = heures rémunérées / (nombre de lots prévus * 7) — formule
 //   canonique du projet (alignée le 9/2026 sur sql-rd.js et sql-rh.js, qui
 //   utilisaient auparavant jours_absence/(jours_presence+jours_absence) ;
-//   heures_remuneration/(nb_lots*7) est désormais la même formule partout).
+//   heures_remuneration/(nb_lots*7) est désormais la même formule partout ;
+//   champ renommé taux_absence -> taux_presence pour éviter la confusion
+//   avec taux_absence_injustifiee, cf. sql-rd.js).
 // - don_moyen et pct_plus_25 = % de dons dont le donateur avait plus de
 //   25 ans au moment du don (date du don - date de naissance, pas l'âge
 //   actuel — même convention que sql-mission.js pour bs_moins_25)
@@ -93,7 +101,7 @@ select h.mission_id,
   h.nb_lots,
   case when coalesce(h.heures_rue,0) > 0 then coalesce(d.bs_reel,0)::float / h.heures_rue else null end as taux_reel,
   case when coalesce(h.heures_remuneration,0) > 0 then coalesce(h.heures_rue,0)::float / h.heures_remuneration else null end as taux_h,
-  case when h.nb_lots > 0 then coalesce(h.heures_remuneration,0)::float / (h.nb_lots * 7) else null end as taux_absence,
+  case when h.nb_lots > 0 then coalesce(h.heures_remuneration,0)::float / (h.nb_lots * 7) else null end as taux_presence,
   d.don_moyen,
   case when coalesce(d.nb_dons_avec_naissance,0) > 0 then coalesce(d.nb_dons_plus_25,0)::float / d.nb_dons_avec_naissance else null end as pct_plus_25,
   case when coalesce(d.nb_dons_avec_naissance,0) > 0 and d.don_moyen is not null
@@ -136,7 +144,7 @@ select
   (select count(distinct mission_id) from contrats c join u on c.utilisateur_id = u.id join missions m on m.id = c.mission_id where 1=1 ${excludeClientsClause('m')}) as nb_missions,
   h.heures_rue_total, h.heures_remuneration_total, h.nb_lots_total,
   case when coalesce(h.heures_remuneration_total,0) > 0 then coalesce(h.heures_rue_total,0)::float / h.heures_remuneration_total else null end as taux_h_total,
-  case when h.nb_lots_total > 0 then coalesce(h.heures_remuneration_total,0)::float / (h.nb_lots_total * 7) else null end as taux_absence_total,
+  case when h.nb_lots_total > 0 then coalesce(h.heures_remuneration_total,0)::float / (h.nb_lots_total * 7) else null end as taux_presence_total,
   d.bs_reel as bs_reel_total
 from heures h cross join dons_u d;`;
 }
