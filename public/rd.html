@@ -257,6 +257,18 @@
     if (n === null || n === undefined) return '—';
     return fmtNum(n, 1) + ' %';
   }
+  // Taux de transfo arrondi à l'unité (0 décimale) — demande explicite,
+  // distinct de fmtPct1 (1 décimale) utilisé pour les autres indicateurs %.
+  function fmtPct0(n) {
+    if (n === null || n === undefined) return '—';
+    return fmtNum(n, 0) + ' %';
+  }
+  // ratio_h est un ratio brut (ex: 0,71) — affiché en pourcentage (71,0 %),
+  // demande explicite.
+  function fmtRatioPct(n) {
+    if (n === null || n === undefined) return '—';
+    return fmtPct1(Number(n) * 100);
+  }
   function fmtDate(d) {
     if (!d) return '—';
     return new Date(d).toLocaleDateString('fr-FR');
@@ -432,11 +444,11 @@
     const perf = [
       { v: fmtNum(row.bs_reel), l: 'BS réel' },
       { v: fmtNum(row.bs_rue), l: 'BS rue' },
-      { v: row.taux_reel != null ? fmtNum(row.taux_reel, 2) : '—', l: 'Taux réel' },
-      { v: row.tx_transfo != null ? fmtPct1(row.tx_transfo) : '—', l: 'Transfo' },
+      { v: row.taux_reel != null ? fmtNum(row.taux_reel, 3) : '—', l: 'Taux réel' },
+      { v: row.tx_transfo != null ? fmtPct0(row.tx_transfo) : '—', l: 'Transfo' },
       { v: fmtNum(row.bs_incomplets), l: 'Incomplets' },
       { v: fmtNum(row.bs_annules), l: 'Annulés' },
-      { v: row.ratio_h != null ? fmtNum(row.ratio_h, 2) : '—', l: 'Ratio h rue/rém' },
+      { v: row.ratio_h != null ? fmtRatioPct(row.ratio_h) : '—', l: 'Ratio h rue/rém' },
       { v: row.age_median != null ? fmtNum(row.age_median, 1) : '—', l: 'Âge médian' },
     ];
     document.getElementById('kpiPerf').innerHTML = perf.map((k) => `

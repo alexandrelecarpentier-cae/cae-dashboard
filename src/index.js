@@ -501,13 +501,18 @@ async function handleRmCollecte(url, env) {
   const id_client = url.searchParams.get('id_client') || '';
   if (id_client && !RE_UUID.test(id_client)) return jsonResponse({ error: 'id_client invalide' }, 400);
 
+  // Filtre mission unique, activé par un clic sur une ligne de la table
+  // "Suivi des missions" côté rm-collecte.html (demande explicite).
+  const id_mission = url.searchParams.get('id_mission') || '';
+  if (id_mission && !RE_UUID.test(id_mission)) return jsonResponse({ error: 'id_mission invalide' }, 400);
+
   const date_from = url.searchParams.get('date_from') || '';
   const date_to = url.searchParams.get('date_to') || '';
   if (date_from && !RE_DATE.test(date_from)) return jsonResponse({ error: 'date_from invalide' }, 400);
   if (date_to && !RE_DATE.test(date_to)) return jsonResponse({ error: 'date_to invalide' }, 400);
   const dateRange = date_from && date_to ? { from: date_from, to: date_to } : null;
 
-  const queries = buildRmCollecteQueries(id_rm || null, id_client || null, dateRange);
+  const queries = buildRmCollecteQueries(id_rm || null, id_client || null, dateRange, id_mission || null);
 
   try {
     const [missions, age, gender, suspectsList, rmList, clientList] = await Promise.all([

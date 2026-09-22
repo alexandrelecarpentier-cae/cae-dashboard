@@ -258,7 +258,7 @@
         <div class="kpi"><div class="val">${resume.bs_reel_total != null ? fmtNum(resume.bs_reel_total) : '—'}</div><div class="lbl">BS réel cumulé</div></div>
         <div class="kpi"><div class="val">${resume.heures_rue_total != null ? fmtNum(resume.heures_rue_total, 1) : '—'}</div><div class="lbl">Heures de rue totales</div></div>
         <div class="kpi"><div class="val">${resume.heures_remuneration_total != null ? fmtNum(resume.heures_remuneration_total, 1) : '—'}</div><div class="lbl">Heures rémunérées totales</div></div>
-        <div class="kpi"><div class="val">${resume.taux_h_total != null ? fmtNum(resume.taux_h_total, 3) : '—'}</div><div class="lbl">Taux heures rue / rémunérées</div></div>
+        <div class="kpi"><div class="val">${fmtPct(resume.taux_h_total)}</div><div class="lbl">Taux heures rue / rémunérées</div></div>
         <div class="kpi"><div class="val">${resume.taux_absence_total != null ? fmtPct(resume.taux_absence_total) : '—'}</div><div class="lbl">Taux d'absence</div></div>
       </div>
 
@@ -337,7 +337,7 @@
           </div>
         </div>
         <div class="metric-grid">
-          <div class="metric"><div class="v">${m.taux_h != null ? fmtNum(m.taux_h, 3) : '—'}</div><div class="l">Taux heures rue / rémunérées</div></div>
+          <div class="metric"><div class="v">${fmtPct(m.taux_h)}</div><div class="l">Taux heures rue / rémunérées</div></div>
           <div class="metric"><div class="v">${m.taux_absence != null ? fmtPct(m.taux_absence) : '—'}</div><div class="l">Taux d'absence</div></div>
           <div class="metric"><div class="v">${m.don_moyen != null ? fmtMoney(m.don_moyen) : '—'}</div><div class="l">Don moyen</div></div>
           <div class="metric"><div class="v">${m.pct_plus_25 != null ? fmtPct(m.pct_plus_25) : '—'}</div><div class="l">Donateurs +25 ans</div></div>

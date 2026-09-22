@@ -120,6 +120,11 @@
   th{color:var(--muted); font-weight:700; font-size:10px; text-transform:uppercase; letter-spacing:.04em;}
   td.num, th.num{text-align:right; font-family:ui-monospace,SFMono-Regular,Consolas,monospace;}
   tr.total-row td{font-weight:800; border-top:2px solid var(--text); background:var(--surface-2);}
+  /* Clic sur une ligne mission pour filtrer sur cette mission (demande
+     explicite) — cf. renderMissionsTable. */
+  tbody tr.clickable{cursor:pointer;}
+  tbody tr.clickable:hover{background:var(--surface-2);}
+  tbody tr.clickable.selected{background:var(--accent-tint, #FBE9EC);}
   .status-badge{display:inline-block; padding:2px 7px; border-radius:var(--sharp); font-size:10px; font-weight:800;
     border:1px solid var(--text); color:var(--text); text-transform:uppercase;}
   .status-badge.cancelled{background:var(--red); border-color:var(--red); color:#fff;}
@@ -274,6 +279,12 @@
     if (n === null || n === undefined) return '—';
     return fmtNum(n, 1) + ' %';
   }
+  // Taux de transfo arrondi à l'unité (0 décimale) — demande explicite,
+  // distinct de fmtPct1 (1 décimale) utilisé pour les autres indicateurs %.
+  function fmtPct0(n) {
+    if (n === null || n === undefined) return '—';
+    return fmtNum(n, 0) + ' %';
+  }
   // ratio_h est un ratio brut (ex: 0,71) — affiché en pourcentage (71,0 %)
   function fmtRatioPct(n) {
     if (n === null || n === undefined) return '—';
@@ -324,6 +335,10 @@
   let firstLoadDone = false;
   let agePieChart = null, genderPieChart = null;
   let selectedRm = '', selectedClient = '';
+  // Filtre mission unique, activé par un clic sur une ligne de la table
+  // "Suivi des missions" (demande explicite) — mêmes principes que
+  // selectedRm/selectedClient, mais côté mission plutôt que RM/association.
+  let selectedMission = '';
   let dateFrom = '', dateTo = '';
 
   const dateFromEl = document.getElementById('dateFrom');
@@ -379,6 +394,7 @@
       const p = new URLSearchParams();
       if (selectedRm) p.set('id_rm', selectedRm);
       if (selectedClient) p.set('id_client', selectedClient);
+      if (selectedMission) p.set('id_mission', selectedMission);
       if (dateFrom && dateTo) { p.set('date_from', dateFrom); p.set('date_to', dateTo); }
 
       const res = await fetch('/api/rm-collecte?' + p.toString(), { cache: 'no-store' });
@@ -439,7 +455,7 @@
       { v: fmtNum(row.bs_reel), l: 'BS réel' },
       { v: fmtNum(row.bs_rue), l: 'BS rue' },
       { v: row.taux_reel != null ? fmtNum(row.taux_reel, 3) : '—', l: 'Taux réel' },
-      { v: row.tx_transfo != null ? fmtPct1(row.tx_transfo) : '—', l: 'Transfo' },
+      { v: row.tx_transfo != null ? fmtPct0(row.tx_transfo) : '—', l: 'Transfo' },
       { v: fmtNum(row.bs_incomplets), l: 'Incomplets' },
       { v: fmtNum(row.bs_annules), l: 'Annulés' },
       { v: row.ratio_h != null ? fmtRatioPct(row.ratio_h) : '—', l: 'Ratio h rue/rém' },
@@ -533,7 +549,12 @@
     tbody.innerHTML = rows.map((r) => {
       const isTotal = r.code_mission === 'TOTAL';
       const score = scoreQualite(r.don_moyen, r.pct_moins_25);
-      return `<tr${isTotal ? ' class="total-row"' : ''}>
+      // Ligne cliquable (sauf TOTAL) pour filtrer sur cette mission — même
+      // effet que le futur select mission (demande explicite).
+      const clickable = !isTotal && r.mission_id;
+      const classes = [isTotal ? 'total-row' : '', clickable && r.mission_id === selectedMission ? 'selected' : '', clickable ? 'clickable' : ''].filter(Boolean).join(' ');
+      const attrs = clickable ? ` data-id="${r.mission_id}"` : '';
+      return `<tr${classes ? ` class="${classes}"` : ''}${attrs}>
         <td>${esc(r.code_mission)}</td>
         <td>${esc(r.client || '')}</td>
         <td>${isTotal ? '' : fmtDate(r.date_debut)}</td>
@@ -541,7 +562,7 @@
         <td class="num">${fmtNum(r.bs_rue)}</td>
         <td class="num">${fmtNum(r.bs_reel)}</td>
         <td class="num">${fmtNum(r.taux_reel, 3)}</td>
-        <td class="num">${fmtPct1(r.tx_transfo)}</td>
+        <td class="num">${fmtPct0(r.tx_transfo)}</td>
         <td class="num">${fmtRatioPct(r.ratio_h)}</td>
         <td class="num">${score != null ? fmtNum(score, 2) : '—'}</td>
         <td class="num">${fmtEuro(r.don_moyen)}</td>
@@ -551,6 +572,14 @@
         <td>${esc(r.ville_principale || '')}</td>
       </tr>`;
     }).join('');
+    tbody.querySelectorAll('tr.clickable').forEach((tr) => {
+      tr.addEventListener('click', () => {
+        const id = tr.dataset.id;
+        // Reclic sur la mission déjà sélectionnée : revient à "toutes les missions".
+        selectedMission = (id === selectedMission) ? '' : id;
+        refreshData();
+      });
+    });
   }
 
   function renderSuspectsTable(rows) {

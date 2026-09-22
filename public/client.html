@@ -64,6 +64,13 @@
     padding:0 12px; height:34px; box-sizing:border-box; font-size:12px; font-weight:700; color:var(--muted); cursor:pointer;
     text-transform:uppercase; letter-spacing:.03em; align-self:flex-end;
   }
+  /* Écrans moins larges : les filtres passent sur plusieurs lignes plutôt
+     que de défiler horizontalement (demande explicite) — le scroll caché
+     rendait certains filtres difficiles à découvrir sur mobile/tablette. */
+  @media (max-width:720px){
+    .filter-row{flex-wrap:wrap; overflow-x:visible;}
+    .filter-field{flex:0 1 auto;}
+  }
 
   .chip-row{display:none; flex-wrap:wrap; gap:6px; margin-top:10px;}
   .chip-row.show{display:flex;}
@@ -89,6 +96,19 @@
   .kpi .lbl{font-size:10.5px; color:var(--muted); margin-top:6px; text-transform:uppercase; letter-spacing:.05em;}
 
   main{padding:4px 16px 40px; max-width:1100px; margin:0 auto;}
+
+  /* Bloc "infos mission + résultats globaux" figé sous le header sticky au
+     scroll (demande explicite) : top calé sur la hauteur réelle du header
+     (mesurée en JS, cf. syncHeaderHeight) car cette hauteur varie (bandeau
+     d'erreur, filtres qui passent sur plusieurs lignes en écran étroit...).
+     Fond plein + ombre légère pour bien le distinguer du contenu qui défile
+     dessous. */
+  #pinnedBlock{
+    position:sticky; top:var(--header-h, 0px); z-index:15;
+    background:var(--bg); max-width:1100px; margin:0 auto;
+    padding:4px 16px 8px; box-shadow:0 4px 8px -6px rgba(15,15,17,.15);
+  }
+  #pinnedBlock.hidden{display:none;}
 
   .section-label{display:flex; align-items:center; gap:6px; font-size:10px; text-transform:uppercase;
     letter-spacing:.08em; color:var(--muted); font-weight:700; margin:18px 2px 8px;}
@@ -149,6 +169,10 @@
     .no-print { display:none !important; }
     body{ background:#fff; }
     header{ position:static; }
+    /* #pinnedBlock devient sticky à l'écran (cf. règle plus haut) : à
+       l'impression il doit redevenir statique comme le header, sinon il se
+       superpose au contenu qui suit sur les pages 2+. */
+    #pinnedBlock{ position:static; max-width:100%; box-shadow:none; }
     .card{ break-inside:avoid; box-shadow:none; }
     /* Hauteur inchangée par rapport à l'écran (230px, cf. .chart-box de
        base) : la réduire écrasait les légendes des camemberts genre/âge.
@@ -217,16 +241,18 @@
   </div>
 </header>
 
-<div id="state">Chargement des données depuis Metabase…</div>
-
-<main id="content" class="hidden">
+<div id="pinnedBlock" class="hidden">
   <div class="card hidden" id="missionInfoCard"><div class="card-inner">
     <div class="mission-info-title" id="missionInfoTitle"></div>
     <div class="mission-info-grid" id="missionInfoGrid"></div>
   </div></div>
 
   <div class="kpi-scroll" id="kpiRow"></div>
+</div>
 
+<div id="state">Chargement des données depuis Metabase…</div>
+
+<main id="content" class="hidden">
   <div class="section-label"><span class="diamond"></span>Bulletins</div>
   <div class="section-sub">Filtre de période appliqué sur la date de collecte du bulletin.</div>
   <div class="card"><div class="card-inner">
@@ -305,6 +331,22 @@
 
   const stateEl = document.getElementById('state');
   const contentEl = document.getElementById('content');
+  const pinnedBlockEl = document.getElementById('pinnedBlock');
+
+  // Hauteur réelle du header sticky, injectée en variable CSS pour caler le
+  // "top" du bloc figé (#pinnedBlock) juste en dessous — le header n'a pas
+  // une hauteur fixe (bandeau d'erreur, filtres qui passent sur plusieurs
+  // lignes en écran étroit...), donc on la mesure plutôt que de la coder en dur.
+  const headerEl = document.querySelector('header');
+  function syncHeaderHeight() {
+    document.documentElement.style.setProperty('--header-h', headerEl.offsetHeight + 'px');
+  }
+  if (window.ResizeObserver) {
+    new ResizeObserver(syncHeaderHeight).observe(headerEl);
+  } else {
+    window.addEventListener('resize', syncHeaderHeight);
+  }
+  syncHeaderHeight();
 
   if (!idClient) {
     stateEl.textContent = "Lien invalide : le paramètre id_client est manquant dans l'URL.";
@@ -678,6 +720,7 @@
   function render(data) {
     stateEl.classList.add('hidden');
     contentEl.classList.remove('hidden');
+    pinnedBlockEl.classList.remove('hidden');
 
     const info = data.info || {};
     const clientName = info.client_nom || info.raison_sociale;
@@ -698,7 +741,6 @@
 
     const k = data.kpis || {};
     const kpis = [
-      { v: k.taux_reel != null ? fmtNum(k.taux_reel, 3) : '—', l: 'Taux réel' },
       { v: fmtNum(k.nb_dons), l: 'BS réalisés' },
       { v: fmtNum(k.bs_transmis), l: 'BS transmis' },
       { v: k.don_moyen != null ? fmtNum(k.don_moyen, 2) + '€' : '—', l: 'Don moyen' },
@@ -706,6 +748,8 @@
       // moyen à la décimale près n'apporte rien de plus lisible ici.
       { v: k.age_moyen != null ? fmtNum(k.age_moyen, 0) : '—', l: 'Âge moyen' },
       { v: k.heures_rue != null ? fmtNum(k.heures_rue, 0) : '—', l: 'Heures rue' },
+      // Taux réel en dernière position — demande explicite.
+      { v: k.taux_reel != null ? fmtNum(k.taux_reel, 3) : '—', l: 'Taux réel' },
     ];
     document.getElementById('kpiRow').innerHTML = kpis.map((kp) => `
       <div class="kpi"><div class="val">${kp.v}</div><div class="lbl">${kp.l}</div></div>`).join('');
@@ -912,14 +956,20 @@
     ], 'bulletins-transmis.csv');
   });
   document.getElementById('btnExportProfilCsv').addEventListener('click', () => {
+    // % calculé au sein de chaque camembert (genre / tranche d'âge
+    // séparément), même logique que les % affichés dans les graphes —
+    // demande explicite.
+    const totalGenre = genreRowsCache.reduce((s, r) => s + (r.nb || 0), 0);
+    const totalAge = ageRowsCache.reduce((s, r) => s + (r.nb || 0), 0);
     const rows = [
-      ...genreRowsCache.map((r) => ({ categorie: 'Genre', valeur: CIVILITE_LABELS[r.civilite] || r.civilite, nb: r.nb })),
-      ...ageRowsCache.map((r) => ({ categorie: "Tranche d'âge", valeur: r.tranche, nb: r.nb })),
+      ...genreRowsCache.map((r) => ({ categorie: 'Genre', valeur: CIVILITE_LABELS[r.civilite] || r.civilite, nb: r.nb, pct: totalGenre > 0 ? fmtNum((r.nb / totalGenre) * 100, 1) : '0' })),
+      ...ageRowsCache.map((r) => ({ categorie: "Tranche d'âge", valeur: r.tranche, nb: r.nb, pct: totalAge > 0 ? fmtNum((r.nb / totalAge) * 100, 1) : '0' })),
     ];
     exportCsv(rows, [
       { label: 'Catégorie', get: (r) => r.categorie },
       { label: 'Valeur', get: (r) => r.valeur },
       { label: 'Nombre', get: (r) => r.nb },
+      { label: '%', get: (r) => r.pct },
     ], 'profil-donateurs.csv');
   });
 
@@ -1100,7 +1150,37 @@
         },
         plugins: {
           title: { display: true, text: 'Répartition par genre', color: '#0F0F11', font: { size: 12, weight: '700' } },
-          legend: { position: 'bottom', labels: { color: '#0F0F11', font: { size: 11, weight: '600' } } },
+          // % affichés dans la légende et l'infobulle — demande explicite.
+          legend: {
+            position: 'bottom',
+            labels: {
+              color: '#0F0F11', font: { size: 11, weight: '600' },
+              generateLabels: (chart) => {
+                const data = chart.data.datasets[0].data;
+                const total = data.reduce((a, b) => a + (b || 0), 0);
+                return chart.data.labels.map((label, i) => {
+                  const pct = total > 0 ? fmtNum((data[i] / total) * 100, 1) : '0';
+                  return {
+                    text: `${label} (${pct} %)`,
+                    fillStyle: chart.data.datasets[0].backgroundColor[i],
+                    strokeStyle: chart.data.datasets[0].backgroundColor[i],
+                    hidden: false,
+                    index: i,
+                  };
+                });
+              },
+            },
+          },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const data = ctx.dataset.data;
+                const total = data.reduce((a, b) => a + (b || 0), 0);
+                const pct = total > 0 ? fmtNum((ctx.parsed / total) * 100, 1) : '0';
+                return `${ctx.label}: ${ctx.parsed} (${pct} %)`;
+              },
+            },
+          },
         },
       },
     });
@@ -1138,7 +1218,37 @@
         },
         plugins: {
           title: { display: true, text: 'Répartition par tranche d\'âge', color: '#0F0F11', font: { size: 12, weight: '700' } },
-          legend: { position: 'bottom', labels: { color: '#0F0F11', font: { size: 11, weight: '600' } } },
+          // % affichés dans la légende et l'infobulle — demande explicite.
+          legend: {
+            position: 'bottom',
+            labels: {
+              color: '#0F0F11', font: { size: 11, weight: '600' },
+              generateLabels: (chart) => {
+                const data = chart.data.datasets[0].data;
+                const total = data.reduce((a, b) => a + (b || 0), 0);
+                return chart.data.labels.map((label, i) => {
+                  const pct = total > 0 ? fmtNum((data[i] / total) * 100, 1) : '0';
+                  return {
+                    text: `${label} (${pct} %)`,
+                    fillStyle: chart.data.datasets[0].backgroundColor[i],
+                    strokeStyle: chart.data.datasets[0].backgroundColor[i],
+                    hidden: false,
+                    index: i,
+                  };
+                });
+              },
+            },
+          },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const data = ctx.dataset.data;
+                const total = data.reduce((a, b) => a + (b || 0), 0);
+                const pct = total > 0 ? fmtNum((ctx.parsed / total) * 100, 1) : '0';
+                return `${ctx.label}: ${ctx.parsed} (${pct} %)`;
+              },
+            },
+          },
         },
       },
     });

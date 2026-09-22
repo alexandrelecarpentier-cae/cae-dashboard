@@ -392,7 +392,7 @@
       { v: s.heures_remuneration != null ? fmtNum(s.heures_remuneration) : '—', l: 'Heures rémunérées' },
       { v: fmtNum(s.bs_reel), l: 'BS réel' },
       { v: fmtRatio(s.taux_reel_point_mort), l: 'Taux réel', sub: 'BS / heures rém. — point mort 0,28' },
-      { v: fmtRatio(s.ratio_h, 2), l: 'Ratio heures rue/rém.' },
+      { v: fmtPct(s.ratio_h), l: 'Ratio heures rue/rém.' },
       { v: s.don_moyen != null ? fmtEuro(s.don_moyen) : '—', l: 'Don moyen' },
       { v: s.age_median != null ? fmtNum(s.age_median, 1) + ' ans' : '—', l: 'Âge médian donateur' },
       { v: fmtPct(s.pct_plus_25), l: 'Donateurs +25 ans' },

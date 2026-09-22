@@ -120,6 +120,11 @@
   th{color:var(--muted); font-weight:700; font-size:10px; text-transform:uppercase; letter-spacing:.04em;}
   td.num, th.num{text-align:right; font-family:ui-monospace,SFMono-Regular,Consolas,monospace;}
   tr.total-row td{font-weight:800; border-top:2px solid var(--text); background:var(--surface-2);}
+  /* Clic sur une ligne RD pour filtrer sur ce RD (demande explicite) — même
+     mécanique que le select "rdSelect", cf. renderMissionTable. */
+  tbody tr.clickable{cursor:pointer;}
+  tbody tr.clickable:hover{background:var(--surface-2);}
+  tbody tr.clickable.selected{background:var(--accent-tint, #FBE9EC);}
   .grade-badge{display:inline-block; padding:2px 7px; border-radius:var(--sharp); font-size:10px; font-weight:800;
     border:1px solid var(--text); color:var(--text); text-transform:uppercase;}
   .fpe-badge{display:inline-block; margin-left:5px; padding:2px 7px; border-radius:var(--sharp); font-size:10px; font-weight:800;
@@ -309,6 +314,18 @@
   function fmtPct1(n) {
     if (n === null || n === undefined) return '—';
     return fmtNum(n, 1) + ' %';
+  }
+  // Taux de transfo arrondi à l'unité (0 décimale) — demande explicite,
+  // distinct de fmtPct1 (1 décimale) utilisé pour les autres indicateurs %.
+  function fmtPct0(n) {
+    if (n === null || n === undefined) return '—';
+    return fmtNum(n, 0) + ' %';
+  }
+  // ratio_h est un ratio brut (ex: 0,71) — affiché en pourcentage (71,0 %),
+  // demande explicite.
+  function fmtRatioPct(n) {
+    if (n === null || n === undefined) return '—';
+    return fmtPct1(Number(n) * 100);
   }
   function fmtEuro(n) {
     if (n === null || n === undefined) return '—';
@@ -519,11 +536,11 @@
     const perf = [
       { v: fmtNum(row.bs_reel), l: 'BS réel' },
       { v: fmtNum(row.bs_rue), l: 'BS rue' },
-      { v: row.taux_reel != null ? fmtNum(row.taux_reel, 2) : '—', l: 'Taux réel' },
-      { v: row.tx_transfo != null ? fmtPct1(row.tx_transfo) : '—', l: 'Transfo' },
+      { v: row.taux_reel != null ? fmtNum(row.taux_reel, 3) : '—', l: 'Taux réel' },
+      { v: row.tx_transfo != null ? fmtPct0(row.tx_transfo) : '—', l: 'Transfo' },
       { v: fmtNum(row.bs_incomplets), l: 'Incomplets' },
       { v: fmtNum(row.bs_annules), l: 'Annulés' },
-      { v: row.ratio_h != null ? fmtNum(row.ratio_h, 2) : '—', l: 'Ratio h rue/rém' },
+      { v: row.ratio_h != null ? fmtRatioPct(row.ratio_h) : '—', l: 'Ratio h rue/rém' },
       { v: row.age_median != null ? fmtNum(row.age_median, 1) : '—', l: 'Âge médian' },
     ];
     document.getElementById('kpiPerf').innerHTML = perf.map((k) => `
@@ -686,20 +703,34 @@
     }
     tbody.innerHTML = displayRows.map((r) => {
       const isTotal = r.rd === 'TOTAL';
-      return `<tr${isTotal ? ' class="total-row"' : ''}>
+      // Ligne cliquable (sauf TOTAL) pour filtrer sur ce RD — même effet que
+      // le select "rdSelect" (demande explicite).
+      const clickable = !isTotal && r.utilisateur_id;
+      const classes = [isTotal ? 'total-row' : '', clickable && r.utilisateur_id === selectedRd ? 'selected' : '', clickable ? 'clickable' : ''].filter(Boolean).join(' ');
+      const attrs = clickable ? ` data-id="${r.utilisateur_id}"` : '';
+      return `<tr${classes ? ` class="${classes}"` : ''}${attrs}>
         <td>${esc(r.rd)}${r.fpe ? '<span class="fpe-badge">FPE</span>' : ''}</td>
         <td>${r.statut ? `<span class="grade-badge">${esc(r.statut)}</span>` : ''}</td>
         <td class="num">${r.contrat_h ?? '—'}</td>
         <td class="num">${r.bs_reel ?? '—'}</td>
-        <td class="num">${fmtPct1(r.tx_transfo)}</td>
-        <td class="num">${fmtNum(r.taux_reel, 2)}</td>
+        <td class="num">${fmtPct0(r.tx_transfo)}</td>
+        <td class="num">${fmtNum(r.taux_reel, 3)}</td>
         <td class="num">${fmtEuro(r.don_moyen)}</td>
         <td class="num">${r.age_median ?? '—'}</td>
         <td class="num">${fmtPct1(r.pct_moins_25)}</td>
-        <td class="num">${fmtNum(r.ratio_h, 2)}</td>
+        <td class="num">${fmtRatioPct(r.ratio_h)}</td>
         <td class="num">${fmtPct1(r.taux_presence)}</td>
       </tr>`;
     }).join('');
+    tbody.querySelectorAll('tr.clickable').forEach((tr) => {
+      tr.addEventListener('click', () => {
+        const id = tr.dataset.id;
+        // Reclic sur le RD déjà sélectionné : revient à "Toute l'équipe".
+        selectedRd = (id === selectedRd) ? '' : id;
+        rdSelectEl.value = selectedRd;
+        refreshData();
+      });
+    });
   }
 
   function renderDayFeed(statsRows, commentRows, suspectRows) {
@@ -771,8 +802,8 @@
           <div class="day-section-label">Stats</div>
           <div class="stat-chips">
             <div class="stat-chip"><div class="v">${fmtNum(s.bs_reel)}</div><div class="l">BS réel</div></div>
-            <div class="stat-chip"><div class="v">${fmtNum(s.taux_reel, 2)}</div><div class="l">Taux réel</div></div>
-            <div class="stat-chip"><div class="v">${fmtNum(s.ratio_h, 2)}</div><div class="l">H rue/H rém</div></div>
+            <div class="stat-chip"><div class="v">${fmtNum(s.taux_reel, 3)}</div><div class="l">Taux réel</div></div>
+            <div class="stat-chip"><div class="v">${fmtRatioPct(s.ratio_h)}</div><div class="l">H rue/H rém</div></div>
             <div class="stat-chip"><div class="v">${fmtEuro(s.don_moyen)}</div><div class="l">Don moyen</div></div>
             <div class="stat-chip"><div class="v">${fmtPct1(s.pct_moins_25)}</div><div class="l">% &lt;25</div></div>
           </div>

@@ -42,9 +42,13 @@ function missionOverlapClause(dateRange) {
   return dateRange ? `AND m.date_debut <= '${dateRange.to}' AND m.date_fin >= '${dateRange.from}'` : '';
 }
 
-function missionScopeCTE(rmId, clientId, dateRange) {
+function missionScopeCTE(rmId, clientId, dateRange, missionId) {
   const rmFilter = rmId ? `AND m.responsable_mission_id = '${rmId}'` : '';
   const clientFilter = clientId ? `AND m.client_id = '${clientId}'` : '';
+  // Filtre mission unique, activé par un clic sur une ligne de la table
+  // "Suivi des missions" (demande explicite) — mêmes règles de validation
+  // (UUID whitelisté côté index.js) que rmId/clientId ci-dessus.
+  const missionFilter = missionId ? `AND m.id = '${missionId}'` : '';
   const overlapFilter = missionOverlapClause(dateRange);
   const manualExclusionFilter = MANUALLY_CANCELLED_MISSIONS.length
     ? `AND m.code_mission NOT IN (${MANUALLY_CANCELLED_MISSIONS.map((c) => `'${c}'`).join(', ')})`
@@ -62,15 +66,16 @@ function missionScopeCTE(rmId, clientId, dateRange) {
   WHERE m.statut_mission IN ('terminee', 'en_cours')
     ${rmFilter}
     ${clientFilter}
+    ${missionFilter}
     ${overlapFilter}
     ${manualExclusionFilter}
     ${excludeClientsClause('m')}`;
 }
 
-function buildMissionsDataQuery(rmId, clientId, dateRange) {
+function buildMissionsDataQuery(rmId, clientId, dateRange, missionId) {
   const dateFilter = dateRangeClause('l.date', dateRange);
   return `WITH filtered_missions AS (
-  ${missionScopeCTE(rmId, clientId, dateRange)}
+  ${missionScopeCTE(rmId, clientId, dateRange, missionId)}
 ),
 lots_mission AS (
   SELECT l.id, l.mission_id, l.utilisateur_id, l.date, l.presence_recruteur,
@@ -161,10 +166,10 @@ SELECT * FROM total_row
 ORDER BY sort_order, date_debut DESC NULLS LAST;`;
 }
 
-function buildAgePieQuery(rmId, clientId, dateRange) {
+function buildAgePieQuery(rmId, clientId, dateRange, missionId) {
   const dateFilter = dateRangeClause('l.date', dateRange);
   return `WITH filtered_missions AS (
-  ${missionScopeCTE(rmId, clientId, dateRange)}
+  ${missionScopeCTE(rmId, clientId, dateRange, missionId)}
 ),
 lots_f AS (
   SELECT l.id
@@ -198,10 +203,10 @@ GROUP BY 1
 ORDER BY MIN(age);`;
 }
 
-function buildGenderPieQuery(rmId, clientId, dateRange) {
+function buildGenderPieQuery(rmId, clientId, dateRange, missionId) {
   const dateFilter = dateRangeClause('l.date', dateRange);
   return `WITH filtered_missions AS (
-  ${missionScopeCTE(rmId, clientId, dateRange)}
+  ${missionScopeCTE(rmId, clientId, dateRange, missionId)}
 ),
 lots_f AS (
   SELECT l.id
@@ -249,10 +254,10 @@ ORDER BY c.nom;`;
 // annulés (avec leur statut affiché, pour garder une trace visible), mais
 // pas les dons déjà transmis : une fois transmis, le contrôle qualité est
 // considéré comme fait, ils n'ont plus besoin d'apparaître dans cette liste.
-function buildBulletinsSuspectsListQuery(rmId, clientId, dateRange) {
+function buildBulletinsSuspectsListQuery(rmId, clientId, dateRange, missionId) {
   const dateFilter = dateUpToTodayClause('l.date', dateRange);
   return `WITH filtered_missions AS (
-  ${missionScopeCTE(rmId, clientId, dateRange)}
+  ${missionScopeCTE(rmId, clientId, dateRange, missionId)}
 ),
 dons_filtres AS (
     SELECT d.*, l.date AS lot_date, l.utilisateur_id AS lot_utilisateur_id, l.mission_id AS mission_id
@@ -304,12 +309,12 @@ WHERE t.motif <> '✅ Ok'
 ORDER BY t.date DESC, t.montant DESC;`;
 }
 
-function buildRmCollecteQueries(rmId, clientId, dateRange) {
+function buildRmCollecteQueries(rmId, clientId, dateRange, missionId) {
   return {
-    missions: buildMissionsDataQuery(rmId, clientId, dateRange),
-    age: buildAgePieQuery(rmId, clientId, dateRange),
-    gender: buildGenderPieQuery(rmId, clientId, dateRange),
-    suspectsList: buildBulletinsSuspectsListQuery(rmId, clientId, dateRange),
+    missions: buildMissionsDataQuery(rmId, clientId, dateRange, missionId),
+    age: buildAgePieQuery(rmId, clientId, dateRange, missionId),
+    gender: buildGenderPieQuery(rmId, clientId, dateRange, missionId),
+    suspectsList: buildBulletinsSuspectsListQuery(rmId, clientId, dateRange, missionId),
   };
 }
 
