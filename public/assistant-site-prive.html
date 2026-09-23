@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Site privé — Dashboard CAE</title>
+<title>Assistant site privé — Dashboard CAE</title>
 <style>
   :root{
     --bg:#FFFFFF; --surface:#FFFFFF; --surface-2:#F5F5F6; --line:#E4E4E8;
@@ -43,7 +43,6 @@
     background:var(--surface-2); color:var(--text); border:1px solid var(--line); border-radius:var(--sharp);
     padding:8px 10px; font-size:13px; width:100%; height:34px; box-sizing:border-box; font-family:inherit; font-weight:600;
   }
-  select.control{ font-family:inherit; }
   .search-wrap{position:relative;}
   .search-suggestions{
     display:none; position:fixed; z-index:1000; min-width:260px;
@@ -108,6 +107,8 @@
   tbody td{padding:8px 8px; border-bottom:1px solid var(--line); font-family:ui-monospace,SFMono-Regular,Consolas,monospace;}
   tbody tr:hover{background:var(--surface-2);}
   .table-scroll{max-height:420px; overflow-y:auto;}
+  .rdre{font-weight:800;}
+  .rdre .re{color:var(--red);}
 
   #state{padding:60px 16px; text-align:center; color:var(--muted); font-size:14px;}
   #state.error{color:var(--red);}
@@ -118,7 +119,7 @@
 <body>
 
 <header>
-  <h1>Site <em>privé</em></h1>
+  <h1>Assistant <em>site privé</em></h1>
   <div class="meta-row">
     <div class="sync"><span class="live-diamond off" id="liveDiamond"></span>Synchro <b id="syncTime">—</b></div>
     <div class="sync" id="countdown">5:00</div>
@@ -128,23 +129,11 @@
   <div class="filters">
     <div class="filter-row">
       <div class="filter-field">
-        <div class="filter-label">Mission</div>
+        <div class="filter-label">Code mission</div>
         <div class="search-wrap">
           <input class="control" type="text" id="f-mission-search" placeholder="Toutes les missions" autocomplete="off">
           <div class="search-suggestions" id="missionSuggestions"></div>
         </div>
-      </div>
-      <div class="filter-field">
-        <div class="filter-label">Association</div>
-        <select class="control" id="clientSelect"><option value="">Toutes les associations</option></select>
-      </div>
-      <div class="filter-field">
-        <div class="filter-label">Ville</div>
-        <select class="control" id="villeSelect"><option value="">Toutes les villes</option></select>
-      </div>
-      <div class="filter-field">
-        <div class="filter-label">Département</div>
-        <select class="control" id="departementSelect"><option value="">Tous les départements</option></select>
       </div>
       <div class="filter-field">
         <div class="filter-label">Site privé</div>
@@ -181,12 +170,11 @@
 <div id="state">Chargement des données depuis Metabase…</div>
 
 <main id="content" class="hidden">
-  <div class="section-label"><span class="diamond"></span>Indicateurs globaux</div>
-  <div class="section-sub">Basé sur la date de collecte (date du lot).</div>
+  <div class="section-label"><span class="diamond"></span>Indicateurs</div>
+  <div class="section-sub">Sur la mission / le site / la période sélectionnés — basé sur la date de collecte (date du lot).</div>
   <div class="kpi-scroll" id="kpiGlobal"></div>
 
   <div class="section-label"><span class="diamond"></span>Évolution du taux réel</div>
-  <div class="section-sub">Basé sur la date de collecte (date du lot).</div>
   <div class="card"><div class="card-inner">
     <div class="quick-tags" id="granularityTags" style="margin-bottom:12px;">
       <span class="quick-tag" data-g="jour">Jour</span>
@@ -197,13 +185,12 @@
   </div></div>
 
   <div class="section-label"><span class="diamond"></span>Taux réel par typologie d'emplacement</div>
-  <div class="section-sub">Basé sur la date de collecte (date du lot).</div>
   <div class="card"><div class="card-inner">
     <div class="chart-box" id="typoChartBox"><canvas id="chart-typologie"></canvas></div>
   </div></div>
 
   <div class="section-label"><span class="diamond"></span>Par enseigne
-    <span class="note">Top 40 — déduite du nom de l'emplacement, approximatif — basé sur la date de collecte (date du lot)</span>
+    <span class="note">Top 40 — déduite du nom de l'emplacement, approximatif</span>
   </div>
   <div class="card"><div class="card-inner">
     <div class="table-scroll">
@@ -216,22 +203,8 @@
     </div>
   </div></div>
 
-  <div class="section-label"><span class="diamond"></span>Récap par mission
-    <span class="note">Vue globale — basé sur la date de collecte (date du lot)</span>
-  </div>
-  <div class="card"><div class="card-inner">
-    <div class="table-scroll">
-      <table>
-        <thead>
-          <tr><th>Mission</th><th>Association</th><th class="num">Emplacements</th><th class="num">Heures rue</th><th class="num">BS réel</th><th class="num">Taux réel</th><th class="num">Don moyen</th></tr>
-        </thead>
-        <tbody id="tbl-mission"></tbody>
-      </table>
-    </div>
-  </div></div>
-
-  <div class="section-label"><span class="diamond"></span>Classement des sites privés
-    <span class="note">Moyenne pondérée sur la période sélectionnée — pour identifier le meilleur SP (filtrer par période puis trier)</span>
+  <div class="section-label"><span class="diamond"></span>Classement des sites
+    <span class="note">Moyenne pondérée sur la période sélectionnée — pour identifier le meilleur SP</span>
   </div>
   <div class="card"><div class="card-inner">
     <div class="table-scroll">
@@ -245,13 +218,13 @@
   </div></div>
 
   <div class="section-label"><span class="diamond"></span>Emplacements
-    <span class="note">300 dernières activités dans la période — date, site, mission</span>
+    <span class="note">300 dernières activités — RD+RE = effectif présent ce jour-là (ex. "3+1" = 3 recruteurs + 1 responsable d'équipe)</span>
   </div>
   <div class="card"><div class="card-inner">
     <div class="table-scroll">
       <table>
         <thead>
-          <tr><th>Date</th><th>Emplacement</th><th>Mission</th><th class="num">BS réel</th><th class="num">Taux réel</th></tr>
+          <tr><th>Date</th><th>Emplacement</th><th>Mission</th><th class="num">Effectif</th><th class="num">BS réel</th><th class="num">Taux réel</th></tr>
         </thead>
         <tbody id="tbl-emplacements"></tbody>
       </table>
@@ -262,12 +235,15 @@
 <script>
 (function () {
   // ---------------------------------------------------------------
-  // Cette page ne contient AUCUNE clé d'accès. Les données viennent de
-  // /api/site-prive, qui interroge Metabase côté serveur.
-  // Vue cross-emplacements (tous les emplacements de type "prive"),
-  // filtrable par mission / association / site privé précis, tous
-  // combinables et optionnels — pas de mission cible fixe, comme
-  // /rm-collecte.
+  // Version restreinte de /site-prive à destination des ASP (assistant(e)s
+  // site privé) — demande explicite, 9/2026 : filtres limités à recherche
+  // par code mission + dates + recherche par site privé (pas d'association,
+  // pas de ville/département, pas de récap global toutes missions
+  // confondues), et effectif RD/RE affiché par emplacement pour éviter
+  // d'avoir à ouvrir les diagrammes de performance de la mission. Backend :
+  // /api/assistant-site-prive (src/index.js, handleAssistantSitePrive) —
+  // ignore tout filtre association/ville/département même envoyé
+  // manuellement, la restriction est appliquée côté serveur.
   // ---------------------------------------------------------------
   const stateEl = document.getElementById('state');
   const contentEl = document.getElementById('content');
@@ -311,6 +287,14 @@
     const yy = String(d.getFullYear()).slice(-2);
     return `${dd}/${mm}/${yy}`;
   }
+  // "3+1" = 3 RD + 1 RE — le "+1" n'apparaît que s'il y a au moins un RE
+  // recensé ce jour-là, pour ne pas afficher "3+0" en permanence.
+  function fmtEffectif(nbRd, nbRe) {
+    const rd = Number(nbRd) || 0;
+    const re = Number(nbRe) || 0;
+    if (!rd && !re) return '—';
+    return re > 0 ? `${rd}<span class="re">+${re}</span>` : `${rd}`;
+  }
 
   // ---------------------------------------------------------------
   // Chargement résilient de Chart.js (cdnjs d'abord, jsdelivr en repli).
@@ -335,19 +319,16 @@
   }
 
   // ---------------------------------------------------------------
-  // Filtres : mission et site privé en recherche typeahead (trop
-  // d'entrées pour un <select> — 313 missions et ~1000 sites actifs),
-  // association en <select> classique (~32 entrées). Même pattern que
-  // client.html (mission-search) / rm-collecte.html (clientSelect).
+  // Filtres : mission (recherche par code uniquement, pas par association)
+  // et site privé en recherche typeahead.
   // ---------------------------------------------------------------
   let selectedMissionId = '', selectedMissionLabel = '';
   let selectedEmplacementId = '', selectedEmplacementLabel = '';
-  let selectedClientId = '';
 
   let missionsCache = [], emplacementsCache = [];
 
   function missionLabel(m) {
-    return [m.code_mission, m.client_nom].filter(Boolean).join(' — ') || 'Mission';
+    return m.code_mission || 'Mission';
   }
   function emplacementLabel(e) {
     return [e.nom, e.ville].filter(Boolean).join(' — ') || 'Emplacement';
@@ -443,29 +424,9 @@
     setTimeout(() => { emplacementSearchEl.value = selectedEmplacementLabel; }, 150);
   });
 
-  const clientSelectEl = document.getElementById('clientSelect');
-  clientSelectEl.addEventListener('change', () => {
-    selectedClientId = clientSelectEl.value;
-    refreshData();
-  });
-
-  let selectedVille = '', selectedDepartement = '';
-  const villeSelectEl = document.getElementById('villeSelect');
-  const departementSelectEl = document.getElementById('departementSelect');
-  villeSelectEl.addEventListener('change', () => {
-    selectedVille = villeSelectEl.value;
-    refreshData();
-  });
-  departementSelectEl.addEventListener('change', () => {
-    selectedDepartement = departementSelectEl.value;
-    refreshData();
-  });
-
   // ---------------------------------------------------------------
-  // Filtre période — mêmes raccourcis rapides que rm-collecte.html
-  // (Total / Aujourd'hui / Hier), avec saisie manuelle des dates
-  // appliquée immédiatement elle aussi. "Total" (par défaut) = aucun
-  // filtre de date, cohérent avec la vue agrégée par défaut de cette page.
+  // Filtre période — Total / Aujourd'hui / Hier + Du/Au, appliqué
+  // immédiatement (même pattern que /site-prive).
   // ---------------------------------------------------------------
   function isoDate(d) {
     const tz = d.getTimezoneOffset();
@@ -501,9 +462,6 @@
   document.getElementById('filtersReset').addEventListener('click', () => {
     selectedMissionId = ''; selectedMissionLabel = ''; missionSearchEl.value = '';
     selectedEmplacementId = ''; selectedEmplacementLabel = ''; emplacementSearchEl.value = '';
-    selectedClientId = ''; clientSelectEl.value = '';
-    selectedVille = ''; villeSelectEl.value = '';
-    selectedDepartement = ''; departementSelectEl.value = '';
     dateFrom = ''; dateTo = ''; dateFromEl.value = ''; dateToEl.value = '';
     setActiveQuickTag('total');
     refreshData();
@@ -531,17 +489,14 @@
   function buildQuery() {
     const p = new URLSearchParams();
     if (selectedMissionId) p.set('id_mission', selectedMissionId);
-    if (selectedClientId) p.set('id_client', selectedClientId);
     if (selectedEmplacementId) p.set('id_emplacement', selectedEmplacementId);
-    if (selectedVille) p.set('ville', selectedVille);
-    if (selectedDepartement) p.set('departement', selectedDepartement);
     if (dateFrom && dateTo) { p.set('date_from', dateFrom); p.set('date_to', dateTo); }
     return p.toString();
   }
 
   async function refreshData() {
     try {
-      const res = await fetch('/api/site-prive?' + buildQuery(), { cache: 'no-store' });
+      const res = await fetch('/api/assistant-site-prive?' + buildQuery(), { cache: 'no-store' });
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data.message || data.error || 'Erreur inconnue');
       render(data);
@@ -551,7 +506,7 @@
       liveMode = false;
       document.getElementById('errorDetail').textContent = err.message;
       document.getElementById('errorBanner').classList.add('show');
-      console.warn('Fetch /api/site-prive failed:', err);
+      console.warn('Fetch /api/assistant-site-prive failed:', err);
     }
     renderSyncLabel();
   }
@@ -569,15 +524,6 @@
     if (!listsBuilt) {
       missionsCache = data.missionList || [];
       emplacementsCache = data.emplacementList || [];
-      const clientList = data.clientList || [];
-      clientSelectEl.innerHTML = '<option value="">Toutes les associations</option>' +
-        clientList.map((c) => `<option value="${c.id}">${esc(c.nom)}</option>`).join('');
-      const villeList = data.villeList || [];
-      villeSelectEl.innerHTML = '<option value="">Toutes les villes</option>' +
-        villeList.map((v) => `<option value="${esc(v.ville)}">${esc(v.ville)}</option>`).join('');
-      const departementList = data.departementList || [];
-      departementSelectEl.innerHTML = '<option value="">Tous les départements</option>' +
-        departementList.map((d) => `<option value="${esc(d.departement)}">${esc(d.departement)}</option>`).join('');
       listsBuilt = true;
     }
 
@@ -596,7 +542,6 @@
     renderEvolutionChart();
     renderTypoChart(parTypologie);
     renderEnseigneTable(data.parEnseigne || []);
-    renderMissionTable(data.parMission || []);
     renderClassementTable(data.classementSp || []);
     renderEmplacementsTable(data.emplacementsActivite || []);
   }
@@ -681,24 +626,11 @@
         <td>${esc(fmtDateShort(r.date))}</td>
         <td>${esc(site)}</td>
         <td>${esc(mission)}</td>
+        <td class="num rdre">${fmtEffectif(r.nb_rd, r.nb_re)}</td>
         <td class="num">${fmtNum(r.bs_reel)}</td>
         <td class="num">${r.taux_reel != null ? fmtNum(r.taux_reel, 3) : '—'}</td>
       </tr>`;
-    }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Aucune donnée</td></tr>';
-  }
-
-  function renderMissionTable(rows) {
-    document.getElementById('tbl-mission').innerHTML = rows.map((r) => `
-      <tr>
-        <td>${esc(r.code_mission || r.code_mission_client || 'Mission')}</td>
-        <td>${esc(r.client_nom)}</td>
-        <td class="num">${fmtNum(r.nb_emplacements)}</td>
-        <td class="num">${r.heures_rue != null ? fmtNum(r.heures_rue) : '—'}</td>
-        <td class="num">${fmtNum(r.bs_reel)}</td>
-        <td class="num">${r.taux_reel != null ? fmtNum(r.taux_reel, 3) : '—'}</td>
-        <td class="num">${r.don_moyen != null ? fmtEuro(r.don_moyen) : '—'}</td>
-      </tr>
-    `).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--muted);">Aucune donnée</td></tr>';
+    }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);">Aucune donnée</td></tr>';
   }
 
   function renderClassementTable(rows) {

@@ -37,6 +37,8 @@ import {
   buildMissionListQuery as buildSitePriveMissionListQuery,
   buildClientListQuery as buildSitePriveClientListQuery,
   buildEmplacementListQuery as buildSitePriveEmplacementListQuery,
+  buildVilleListQuery as buildSitePriveVilleListQuery,
+  buildDepartementListQuery as buildSitePriveDepartementListQuery,
 } from './lib/sql-site-prive.js';
 import {
   buildRhQueries,
@@ -63,6 +65,7 @@ export default {
       if (url.pathname === '/api/salarie') return await handleSalarie(url, env);
       if (url.pathname === '/api/emplacement') return await handleEmplacement(url, env);
       if (url.pathname === '/api/site-prive') return await handleSitePrive(url, env);
+      if (url.pathname === '/api/assistant-site-prive') return await handleAssistantSitePrive(url, env);
       if (url.pathname === '/api/rh') return await handleRh(url, env);
       if (url.pathname === '/api/direction') return await handleDirection(url, env);
       if (url.pathname === '/api/re-mobilisation') return await handleReMobilisation(url, env);
@@ -555,23 +558,47 @@ async function handleSitePrive(url, env) {
   if (date_from && !RE_DATE.test(date_from)) return jsonResponse({ error: 'date_from invalide' }, 400);
   if (date_to && !RE_DATE.test(date_to)) return jsonResponse({ error: 'date_to invalide' }, 400);
 
+  // ville : valeur libre (nom de ville réel en base) choisie dans un menu
+  // alimenté par buildVilleListQuery — sanitizeFreeText suffit à neutraliser
+  // toute valeur malveillante (même convention que emplacement/type_mission
+  // sur /client, cf. readClientParams).
+  const villeRaw = url.searchParams.get('ville') || '';
+  let ville = null;
+  if (villeRaw) {
+    const r = sanitizeFreeText(villeRaw);
+    if (r.error) return jsonResponse({ error: 'ville invalide' }, 400);
+    ville = r.value;
+  }
+
+  // departement : 2 ou 3 caractères alphanumériques (cf. departementSqlExpr
+  // dans sql-site-prive.js) — whitelist par regex, plus strict qu'un simple
+  // sanitizeFreeText puisque le format attendu est connu et fixe.
+  const departement = url.searchParams.get('departement') || '';
+  if (departement && !/^[0-9]{2,3}$/.test(departement)) {
+    return jsonResponse({ error: 'departement invalide' }, 400);
+  }
+
   const queries = buildSitePriveQueries({
     id_mission: id_mission || null,
     id_client: id_client || null,
     id_emplacement: id_emplacement || null,
+    ville: ville || null,
+    departement: departement || null,
     date_from: date_from || null,
     date_to: date_to || null,
   });
 
   try {
     const [
-      globalStats, parTypologie, parEnseigne, emplacementsActivite,
+      globalStats, parTypologie, parEnseigne, parMission, classementSp, emplacementsActivite,
       tauxParJour, tauxParSemaine, tauxParMois,
-      missionList, clientList, emplacementList,
+      missionList, clientList, emplacementList, villeList, departementList,
     ] = await Promise.all([
       runQuery(env, queries.globalStats),
       runQuery(env, queries.parTypologie),
       runQuery(env, queries.parEnseigne),
+      runQuery(env, queries.parMission),
+      runQuery(env, queries.classementSp),
       runQuery(env, queries.emplacementsActivite),
       runQuery(env, queries.tauxParJour),
       runQuery(env, queries.tauxParSemaine),
@@ -579,18 +606,102 @@ async function handleSitePrive(url, env) {
       runQuery(env, buildSitePriveMissionListQuery()),
       runQuery(env, buildSitePriveClientListQuery()),
       runQuery(env, buildSitePriveEmplacementListQuery()),
+      runQuery(env, buildSitePriveVilleListQuery()),
+      runQuery(env, buildSitePriveDepartementListQuery()),
     ]);
 
     return jsonResponse({
       globalStats: globalStats[0] || null,
       parTypologie,
       parEnseigne,
+      parMission,
+      classementSp,
       emplacementsActivite,
       tauxParJour,
       tauxParSemaine,
       tauxParMois,
       missionList,
       clientList,
+      emplacementList,
+      villeList,
+      departementList,
+    });
+  } catch (e) {
+    return jsonResponse({ error: String(e.message || e) }, 502);
+  }
+}
+
+// ---------------------------------------------------------------
+// /api/assistant-site-prive — version restreinte de /site-prive à
+// destination des ASP (assistant(e)s site privé), demande explicite 9/2026.
+// Réutilise buildSitePriveQueries (même fichier sql-site-prive.js, mêmes
+// formules) mais :
+// - AUCUN filtre association/ville/département n'est lu depuis l'URL (même
+//   si un client les envoyait, ils seraient ignorés) : id_client/ville/
+//   departement sont toujours passés à null, donc filtersClause() ne les
+//   applique jamais ici — restriction appliquée côté serveur, pas
+//   seulement côté UI.
+// - Seul un sous-ensemble des requêtes construites est exécuté/retourné :
+//   pas de parMission (récap global toutes missions confondues) ni de
+//   clientList/villeList/departementList (listes qui alimenteraient des
+//   filtres qu'on ne veut pas leur donner).
+// - emplacementsActivite inclut nb_rd/nb_re (recruteurs vs responsable
+//   d'équipe) pour un pointage rapide de l'effectif par site sans ouvrir
+//   les diagrammes de la mission.
+// ---------------------------------------------------------------
+async function handleAssistantSitePrive(url, env) {
+  const configError = requireConfig(env);
+  if (configError) return jsonResponse({ error: configError }, 500);
+
+  const id_mission = url.searchParams.get('id_mission') || '';
+  if (id_mission && !RE_UUID.test(id_mission)) return jsonResponse({ error: 'id_mission invalide' }, 400);
+
+  const id_emplacement = url.searchParams.get('id_emplacement') || '';
+  if (id_emplacement && !RE_UUID.test(id_emplacement)) return jsonResponse({ error: 'id_emplacement invalide' }, 400);
+
+  const date_from = url.searchParams.get('date_from') || '';
+  const date_to = url.searchParams.get('date_to') || '';
+  if (date_from && !RE_DATE.test(date_from)) return jsonResponse({ error: 'date_from invalide' }, 400);
+  if (date_to && !RE_DATE.test(date_to)) return jsonResponse({ error: 'date_to invalide' }, 400);
+
+  const queries = buildSitePriveQueries({
+    id_mission: id_mission || null,
+    id_client: null,
+    id_emplacement: id_emplacement || null,
+    ville: null,
+    departement: null,
+    date_from: date_from || null,
+    date_to: date_to || null,
+  });
+
+  try {
+    const [
+      globalStats, parTypologie, parEnseigne, classementSp, emplacementsActivite,
+      tauxParJour, tauxParSemaine, tauxParMois,
+      missionList, emplacementList,
+    ] = await Promise.all([
+      runQuery(env, queries.globalStats),
+      runQuery(env, queries.parTypologie),
+      runQuery(env, queries.parEnseigne),
+      runQuery(env, queries.classementSp),
+      runQuery(env, queries.emplacementsActivite),
+      runQuery(env, queries.tauxParJour),
+      runQuery(env, queries.tauxParSemaine),
+      runQuery(env, queries.tauxParMois),
+      runQuery(env, buildSitePriveMissionListQuery()),
+      runQuery(env, buildSitePriveEmplacementListQuery()),
+    ]);
+
+    return jsonResponse({
+      globalStats: globalStats[0] || null,
+      parTypologie,
+      parEnseigne,
+      classementSp,
+      emplacementsActivite,
+      tauxParJour,
+      tauxParSemaine,
+      tauxParMois,
+      missionList,
       emplacementList,
     });
   } catch (e) {

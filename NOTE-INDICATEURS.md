@@ -128,9 +128,21 @@ Règles communes à tous les dashboards (demande explicite, 9/2026) ; les écart
 
 (Périmètre : emplacements où `type_emplacement = 'prive'`.)
 
-- **Taux réel** (global, par typologie d'emplacement, par enseigne, par jour d'activité, par période jour/semaine/mois) : `BS réel / heures de rue`, toujours en moyenne pondérée (somme des BS réels ÷ somme des heures). Affiché brut, 3 décimales.
-- **Don moyen** (global, par typologie, par enseigne) : `avg(montant)` (dons valides), affiché en euros à 2 décimales.
+- **Taux réel** (global, par typologie d'emplacement, par enseigne, par mission, par site, par jour d'activité, par période jour/semaine/mois) : `BS réel / heures de rue`, toujours en moyenne pondérée (somme des BS réels ÷ somme des heures). Affiché brut, 3 décimales.
+- **Don moyen** (global, par typologie, par enseigne, par mission, par site) : `avg(montant)` (dons valides), affiché en euros à 2 décimales.
 - **Enseigne** : premier mot du nom de l'emplacement, en majuscules et sans accents.
+- **Filtres ville / département** (demande explicite, 9/2026) : ville = `emplacements.ville` exacte ; département = 2 premiers chiffres de `emplacements.code_postal` (3 premiers pour les DOM 97x/98x). Ne distingue pas 2A/2B (Corse), tous deux sous "20".
+- **Récap par mission** (demande explicite, 9/2026) : une ligne par mission du périmètre filtré (nb d'emplacements couverts, heures rue, BS réel, taux réel, don moyen) — vue globale, pas de détail par site.
+- **Classement des sites privés** (demande explicite, 9/2026) : un site par ligne, taux réel = moyenne pondérée sur la période sélectionnée (filtre Du/Au), triés par taux réel décroissant — permet d'identifier le meilleur SP sur une période donnée (ex. le mois en cours). Sites sans heure de rue sur la période exclus.
+- **RD / RE par emplacement/jour/mission** (table "Emplacements", demande explicite, 9/2026 — utilisé par /assistant-site-prive) : nb_rd/nb_re = recruteurs distincts présents ce jour-là, différenciés selon qu'ils sont ou non `missions.responsable_equipe_id` (même logique que le rôle affiché sur /salarie).
+
+## /assistant-site-prive
+
+Version restreinte de `/site-prive` à destination des ASP (assistant(e)s site privé), demande explicite 9/2026. Mêmes formules que `/site-prive` (voir ci-dessus), mais :
+
+- **Filtres** : recherche par code mission + dates (Total/Aujourd'hui/Hier/Du-Au) + recherche par site privé uniquement. Pas de filtre association, ville ou département.
+- **Pas d'accès** aux statistiques globales par ville, par département, au récap "toutes missions confondues", ni au filtre association — restriction appliquée côté serveur (`/api/assistant-site-prive` ignore tout paramètre id_client/ville/departement, même envoyé manuellement), pas seulement côté affichage.
+- **Effectif RD+RE par emplacement/jour/mission** (table "Emplacements") : affiché au format "3+1" (3 recruteurs + 1 responsable d'équipe), pour vérifier l'effectif présent sans ouvrir les diagrammes de performance de la mission. RE = personne dont l'`utilisateur_id` correspond au `responsable_equipe_id` de la mission ce jour-là ; tous les autres recruteurs distincts présents sont comptés en RD.
 
 ## /rh
 

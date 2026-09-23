@@ -16,11 +16,20 @@ import { excludeClientsClause } from './excluded-clients.js';
 
 const STATUTS_VALIDES = "('nouveau','en_attente','transmis')";
 
+// Département déduit des 2 premiers chiffres du code postal (3 premiers
+// pour les DOM 97x/98x) — approximation standard, suffisante pour un filtre
+// de pilotage. Ne distingue pas 2A/2B (Corse) : les deux restent sous "20".
+function departementSqlExpr(col) {
+  return `(case when left(${col},2) in ('97','98') then left(${col},3) else left(${col},2) end)`;
+}
+
 function filtersClause(p) {
   const clauses = [`e.type_emplacement = 'prive'`];
   if (p.id_mission) clauses.push(`m.id = '${p.id_mission}'`);
   if (p.id_client) clauses.push(`m.client_id = '${p.id_client}'`);
   if (p.id_emplacement) clauses.push(`e.id = '${p.id_emplacement}'`);
+  if (p.ville) clauses.push(`e.ville = '${p.ville}'`);
+  if (p.departement) clauses.push(`${departementSqlExpr('e.code_postal')} = '${p.departement}'`);
   if (p.date_from) clauses.push(`l.date >= '${p.date_from}'`);
   if (p.date_to) clauses.push(`l.date <= '${p.date_to}'`);
   return clauses.join(' AND ');
@@ -32,6 +41,7 @@ function filtersClause(p) {
 function baseCte(p) {
   return `with lots_f as (
   select l.id, l.mission_id, l.emplacement_id, l.date, l.nombre_horaires_rue, l.presence_recruteur,
+    l.utilisateur_id, m.responsable_equipe_id,
     e.categorie, e.nom as emplacement_nom
   from lots l
   join emplacements e on e.id = l.emplacement_id
@@ -108,11 +118,19 @@ order by bs_reel desc nulls last;`;
 // décroissante et plafonnée à 300 lignes — combinée aux filtres de la page
 // (mission/asso/site/période), largement suffisant pour naviguer l'activité
 // récente sans surcharger la page.
+// nb_rd / nb_re : recruteurs distincts ayant travaillé ce jour/emplacement/
+// mission, différenciés selon qu'ils sont (ou non) le responsable d'équipe
+// (RE) désigné sur la mission (missions.responsable_equipe_id) — même
+// logique que roleLabel() sur /salarie. Utilisé par /assistant-site-prive
+// pour afficher l'effectif "3+1" (3 RD + 1 RE) sans avoir à ouvrir les
+// diagrammes de performance de la mission (demande explicite, 9/2026).
 function buildEmplacementsActiviteQuery(p) {
   return `${baseCte(p)},
 jours_ei as (
   select l.date, l.emplacement_id, l.mission_id, l.emplacement_nom, l.categorie,
-    sum(l.nombre_horaires_rue) filter (where coalesce(l.presence_recruteur,true)) as heures_rue
+    sum(l.nombre_horaires_rue) filter (where coalesce(l.presence_recruteur,true)) as heures_rue,
+    count(distinct l.utilisateur_id) filter (where l.responsable_equipe_id is null or l.utilisateur_id <> l.responsable_equipe_id) as nb_rd,
+    count(distinct l.utilisateur_id) filter (where l.responsable_equipe_id is not null and l.utilisateur_id = l.responsable_equipe_id) as nb_re
   from lots_f l
   group by 1,2,3,4,5
 ),
@@ -124,7 +142,8 @@ dons_ei as (
 )
 select j.date, j.emplacement_nom, e.ville, j.categorie, m.code_mission, cl.nom as client_nom,
   j.heures_rue, coalesce(dj.bs_reel, 0) as bs_reel,
-  case when coalesce(j.heures_rue,0) > 0 then coalesce(dj.bs_reel,0)::float / j.heures_rue else null end as taux_reel
+  case when coalesce(j.heures_rue,0) > 0 then coalesce(dj.bs_reel,0)::float / j.heures_rue else null end as taux_reel,
+  j.nb_rd, j.nb_re
 from jours_ei j
 join emplacements e on e.id = j.emplacement_id
 join missions m on m.id = j.mission_id
@@ -204,6 +223,72 @@ order by bs_reel desc nulls last
 limit 40;`;
 }
 
+// Récap global par mission (demande explicite, 9/2026) : une ligne par
+// mission du périmètre filtré, avec les mêmes indicateurs que les KPIs
+// globaux (nb emplacements couverts, heures rue, BS réel, taux réel, don
+// moyen) — comparable dans l'esprit à "Suivi des missions" sur /client,
+// mais restreint aux emplacements privés (périmètre de cette page).
+function buildParMissionQuery(p) {
+  return `${baseCte(p)},
+par_mission as (
+  select l.mission_id,
+    count(distinct l.emplacement_id) as nb_emplacements,
+    sum(l.nombre_horaires_rue) filter (where coalesce(l.presence_recruteur,true)) as heures_rue
+  from lots_f l
+  group by 1
+),
+dons_mission as (
+  select l.mission_id,
+    count(distinct d.id) as bs_reel, avg(d.montant) as don_moyen
+  from dons_f d
+  join lots_f l on l.id = d.lot_id
+  group by 1
+)
+select pm.mission_id, m.code_mission, m.code_mission_client, cl.nom as client_nom,
+  pm.nb_emplacements, pm.heures_rue,
+  coalesce(dm.bs_reel, 0) as bs_reel, dm.don_moyen,
+  case when coalesce(pm.heures_rue,0) > 0 then coalesce(dm.bs_reel,0)::float / pm.heures_rue else null end as taux_reel
+from par_mission pm
+join missions m on m.id = pm.mission_id
+left join clients cl on cl.id = m.client_id
+left join dons_mission dm on dm.mission_id = pm.mission_id
+order by bs_reel desc nulls last;`;
+}
+
+// Classement des sites privés par taux réel moyen sur la période filtrée
+// (demande explicite, 9/2026 — "identifier le meilleur SP du mois" en
+// combinant ce classement avec le filtre de période Du/Au existant). Moyenne
+// pondérée (somme BS réel / somme heures rue par site), pas une moyenne de
+// taux journaliers — cohérent avec le calcul du taux réel partout ailleurs.
+// Limité aux sites ayant au moins une heure de rue sur la période, sinon un
+// site avec 0h remonterait avec un taux nul/non significatif.
+function buildClassementSpQuery(p) {
+  return `${baseCte(p)},
+par_site as (
+  select l.emplacement_id, l.emplacement_nom,
+    count(distinct l.date) as nb_jours,
+    sum(l.nombre_horaires_rue) filter (where coalesce(l.presence_recruteur,true)) as heures_rue
+  from lots_f l
+  group by 1,2
+),
+dons_site as (
+  select l.emplacement_id,
+    count(distinct d.id) as bs_reel, avg(d.montant) as don_moyen
+  from dons_f d
+  join lots_f l on l.id = d.lot_id
+  group by 1
+)
+select ps.emplacement_id, ps.emplacement_nom, e.ville, ps.nb_jours, ps.heures_rue,
+  coalesce(ds.bs_reel, 0) as bs_reel, ds.don_moyen,
+  coalesce(ds.bs_reel,0)::float / ps.heures_rue as taux_reel
+from par_site ps
+join emplacements e on e.id = ps.emplacement_id
+left join dons_site ds on ds.emplacement_id = ps.emplacement_id
+where coalesce(ps.heures_rue,0) > 0
+order by taux_reel desc
+limit 100;`;
+}
+
 // Listes de référence pour les filtres (missions / associations / sites
 // privés ayant une activité enregistrée) — construites une seule fois côté
 // front (comme rmList/clientList sur /rm-collecte), indépendamment des
@@ -238,11 +323,31 @@ where 1=1 ${excludeClientsClause('m')}
 order by e.nom;`;
 }
 
+function buildVilleListQuery() {
+  return `select distinct e.ville
+from lots l
+join emplacements e on e.id = l.emplacement_id and e.type_emplacement = 'prive'
+join missions m on m.id = l.mission_id
+where e.ville is not null and e.ville <> '' ${excludeClientsClause('m')}
+order by e.ville;`;
+}
+
+function buildDepartementListQuery() {
+  return `select distinct ${departementSqlExpr('e.code_postal')} as departement
+from lots l
+join emplacements e on e.id = l.emplacement_id and e.type_emplacement = 'prive'
+join missions m on m.id = l.mission_id
+where e.code_postal is not null and e.code_postal <> '' ${excludeClientsClause('m')}
+order by 1;`;
+}
+
 function buildSitePriveQueries(p) {
   return {
     globalStats: buildGlobalStatsQuery(p),
     parTypologie: buildParTypologieQuery(p),
     parEnseigne: buildParEnseigneQuery(p),
+    parMission: buildParMissionQuery(p),
+    classementSp: buildClassementSpQuery(p),
     emplacementsActivite: buildEmplacementsActiviteQuery(p),
     tauxParJour: buildTauxEvolutionQuery(p, 'jour'),
     tauxParSemaine: buildTauxEvolutionQuery(p, 'semaine'),
@@ -255,4 +360,6 @@ export {
   buildMissionListQuery,
   buildClientListQuery,
   buildEmplacementListQuery,
+  buildVilleListQuery,
+  buildDepartementListQuery,
 };
