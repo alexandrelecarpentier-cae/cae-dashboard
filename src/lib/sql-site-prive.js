@@ -189,26 +189,77 @@ order by j.periode;`;
 // tête de fichier). Limité aux 40 enseignes avec le plus de BS réel, pour
 // rester lisible (il peut y avoir plusieurs centaines d'enseignes
 // distinctes déduites sur l'ensemble des emplacements privés).
+// Liste fermée d'enseignes (demande explicite, 9/2026) : remplace l'ancienne
+// heuristique "premier mot du nom" par une correspondance sur cette liste
+// fixe. Les variantes les plus spécifiques d'une même enseigne (ex.
+// "Carrefour City") DOIVENT être testées avant leur forme générique (ex.
+// "Carrefour"), sinon toute City/Market/Hyper tomberait dans le seau
+// générique — d'où l'ordre précis ci-dessous, group par group. Tout
+// emplacement dont le nom ne correspond à aucune entrée tombe dans
+// "Autres". "Brico Dépôt" (orthographe correcte de l'enseigne) plutôt que
+// "Bricot Dépôt" tel que transmis initialement.
+const ENSEIGNES = [
+  ['Carrefour City', 'CARREFOUR CITY'],
+  ['Carrefour Market', 'CARREFOUR MARKET'],
+  ['Carrefour Hyper', 'CARREFOUR HYPER'],
+  ['Carrefour', 'CARREFOUR'],
+  ['Intermarché Express', 'INTERMARCHE EXPRESS'],
+  ['Intermarché Contact', 'INTERMARCHE CONTACT'],
+  ['Intermarché Hyper', 'INTERMARCHE HYPER'],
+  ['Intermarché', 'INTERMARCHE'],
+  ['Auchan Hyper', 'AUCHAN HYPER'],
+  ['Auchan', 'AUCHAN'],
+  ['U Express', 'U EXPRESS'],
+  ['Super U', 'SUPER U'],
+  ['Hyper U', 'HYPER U'],
+  ['Monoprix', 'MONOPRIX'],
+  ['Leclerc Express', 'LECLERC EXPRESS'],
+  ['Leclerc', 'LECLERC'],
+  ['Biocoop', 'BIOCOOP'],
+  ['La Vie Claire', 'LA VIE CLAIRE'],
+  ['Otera', 'OTERA'],
+  ['CCO', 'CCO'],
+  ['Pharmacie', 'PHARMACIE'],
+  ['Castorama', 'CASTORAMA'],
+  ['Leroy Merlin', 'LEROY MERLIN'],
+  ['Mr Bricolage', 'MR BRICOLAGE'],
+  ['Brico Dépôt', 'BRICO DEPOT'],
+  ['Decathlon', 'DECATHLON'],
+  ['Intersport', 'INTERSPORT'],
+  ['Botanic', 'BOTANIC'],
+  ['Animalis', 'ANIMALIS'],
+  ['B&M', 'B&M'],
+  ['Cultura', 'CULTURA'],
+];
+
+// translate() replie les accents les plus courants avant comparaison, pour
+// que les variantes accentuées/non accentuées d'un même nom matchent le
+// même motif (ex. "INTERMARCHÉ" et "INTERMARCHE").
+function enseigneCaseSql(nomExpr) {
+  const norm = `upper(translate(${nomExpr}, 'ÀÂÄÉÈÊËÎÏÔÖÙÛÜÇàâäéèêëîïôöùûüç', 'AAAEEEEIIOOUUUCaaaeeeeiioouuuc'))`;
+  const whens = ENSEIGNES.map(([label, pattern]) => `when position('${pattern}' in ${norm}) > 0 then '${label}'`).join('\n    ');
+  return `case
+    ${whens}
+    else 'Autres'
+  end`;
+}
+
 function buildParEnseigneQuery(p) {
   return `${baseCte(p)},
 lots_ens as (
   select id, emplacement_id, nombre_horaires_rue, presence_recruteur,
-    -- translate() replie les accents les plus courants (ex. "INTERMARCHÉ"
-    -- et "INTERMARCHE" tombent dans le même seau) : sans ça, les variantes
-    -- accentuées/non accentuées d'un même nom en base auraient éclaté la
-    -- même enseigne en plusieurs lignes.
-    nullif(translate(upper(split_part(trim(emplacement_nom), ' ', 1)), 'ÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ', 'AAAEEEEIIOOUUUC'), '') as enseigne
+    ${enseigneCaseSql('emplacement_nom')} as enseigne
   from lots_f
 ),
 par_ens as (
-  select coalesce(enseigne, '—') as enseigne,
+  select enseigne,
     count(distinct emplacement_id) as nb_emplacements,
     sum(nombre_horaires_rue) filter (where coalesce(presence_recruteur,true)) as heures_rue
   from lots_ens
   group by 1
 ),
 dons_ens as (
-  select coalesce(le.enseigne, '—') as enseigne,
+  select le.enseigne,
     count(distinct d.id) as bs_reel, avg(d.montant) as don_moyen
   from dons_f d
   join lots_ens le on le.id = d.lot_id
@@ -219,8 +270,7 @@ select pe.enseigne, pe.nb_emplacements, pe.heures_rue,
   case when coalesce(pe.heures_rue,0) > 0 then coalesce(de.bs_reel,0)::float / pe.heures_rue else null end as taux_reel
 from par_ens pe
 left join dons_ens de on de.enseigne = pe.enseigne
-order by bs_reel desc nulls last
-limit 40;`;
+order by bs_reel desc nulls last;`;
 }
 
 // Récap global par mission (demande explicite, 9/2026) : une ligne par
