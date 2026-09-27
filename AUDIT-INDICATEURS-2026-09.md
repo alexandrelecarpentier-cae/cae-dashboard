@@ -31,6 +31,18 @@ Comme la donnée d'âge est très incomplète sur les missions anciennes (quasi 
 - Mission avec ~75 % de couverture (761 BS réel, 568 avec date de naissance connue, 214 < 25 ans) : ancien calcul 28,1 %, nouveau 37,7 % — écart de 9,6 points sur des données réelles, confirmant que la convention a un effet non marginal.
 - 4 missions à couverture ~100 % : les deux conventions donnent exactement le même résultat (29,7 % à 65,6 %), comme attendu.
 
+## 2.2 Vérification ciblée /rm et /direction (mêmes noms d'indicateurs, formules alignées ?)
+
+À la demande explicite de l'utilisateur, vérification que les indicateurs portant le même nom sur `/rm` et `/direction` que sur les autres dashboards utilisent bien la même formule.
+
+**Bug de libellé corrigé — `/direction`.** La carte KPI intitulée "Taux réel" affichait en réalité le champ `taux_reel_point_mort` (`BS réel / heures RÉMUNÉRÉES`), une formule volontairement différente du "Taux réel" (`BS réel / heures de RUE`) utilisé sur tous les autres dashboards (`/client`, `/rd`, `/mission`, `/rm-collecte`, `/salarie`, `/emplacement`, `/site-prive`, `/rh`...). La différence était déjà documentée en commentaire de code et dans une note discrète (`sub`) sous la carte, mais le libellé principal identique à celui utilisé partout ailleurs créait un risque réel de confusion pour quiconque compare rapidement deux dashboards. **Corrigé** : libellé renommé en "Taux réel (point mort)" avec une note explicite renforcée — aucun changement de formule, correction d'affichage uniquement.
+
+**Formats corrigés — `/rm`.** Le "Taux de transformation" (`transfo`, même formule que `tx_transfo` ailleurs : `BS réel / BS au sens large`) était affiché avec 1 décimale, alors que la convention établie sur tous les autres dashboards (tâche #171 d'un audit précédent) impose un arrondi à l'unité pour cet indicateur précis. **Corrigé** sur le KPI global "Taux de transfo global" et sur la carte "Transfo" par mission — affichage uniquement, la formule ne change pas.
+
+**Point vérifié et jugé sain — `/rm`, taux réel.** Le "Taux réel" par mission est reconstruit côté client en JavaScript à partir des lignes journalières de la carte Metabase : heures de rue estimées = Σ(BS réel du jour ÷ Taux réel du jour), puis taux réel = Σ BS réel ÷ Σ heures estimées. C'est bien une moyenne pondérée (somme/somme), cohérente avec la convention du projet — pas une moyenne naïve des taux journaliers.
+
+**Point non vérifiable — `/rm`, "Donateurs <25".** Ce champ vient tel quel de la colonne Metabase "% < 25" de la carte 514 ; sa formule (et en particulier son dénominateur, cf. la convention `pct_moins_25`/`pct_plus_25` harmonisée en section 2.1) est définie dans Metabase, hors du code de ce projet, et n'a donc pas pu être vérifiée. Il est possible que ce chiffre ne suive pas la même convention que celle désormais appliquée partout ailleurs dans le code — seule une inspection de la carte 514 directement dans Metabase permettrait de le confirmer ou de l'aligner.
+
 ## 3. Points vérifiés et jugés sains (pas de bug)
 
 - **Moyenne pondérée du taux réel partout.** Vérifié par calcul indépendant sur des lots réels de missions en cours : moyenne pondérée (somme BS réel / somme heures) = 0,416, moyenne naïve des taux journaliers = 0,181 — un écart de plus du double, qui confirme que le choix (déjà fait partout dans le code) de la moyenne pondérée plutôt que la moyenne de ratios journaliers est important et correctement appliqué dans les 13 fichiers `sql-*.js` inspectés.
@@ -53,6 +65,8 @@ Comme la donnée d'âge est très incomplète sur les missions anciennes (quasi 
 - `src/lib/sql-rd.js` — dénominateur `pct_moins_25` harmonisé (table RD + total).
 - `src/lib/sql-rm-collecte.js` — dénominateur `pct_moins_25` harmonisé (table missions + total).
 - `src/lib/sql-mission-suivi.js` — dénominateur `pct_moins_25` harmonisé (fil par jour).
-- `NOTE-INDICATEURS.md` — sections `/direction` et `/rm` ajoutées (absentes de la note), section "Protection des clients exclus" ajoutée, formules `pct_moins_25`/`taux_absence` mises à jour partout où elles ont changé.
+- `public/rm.html` — format `tx_transfo`/`transfo` aligné sur 0 décimale (KPI global + carte par mission), aucune formule changée.
+- `public/direction.html` — libellé "Taux réel" renommé en "Taux réel (point mort)" pour éviter la confusion avec le "Taux réel" (BS/heures rue) des autres dashboards, aucune formule changée.
+- `NOTE-INDICATEURS.md` — sections `/direction` et `/rm` ajoutées (absentes de la note), section "Protection des clients exclus" ajoutée, formules `pct_moins_25`/`taux_absence` mises à jour partout où elles ont changé, vigilance de nommage `/direction`/`/rm` documentée.
 
 Tous les fichiers `.js`/scripts extraits des `.html` modifiés ont été vérifiés avec `node --check` (syntaxe OK). Toutes les requêtes modifiées ont été rejouées contre la base Metabase de production avant validation.

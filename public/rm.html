@@ -340,7 +340,7 @@ async function refreshData(showToast){
 // ---------------------------------------------------------------
 function fmtDate(iso){ const d=new Date(iso+"T00:00:00"); return d.toLocaleDateString("fr-FR",{day:"2-digit",month:"short"}); }
 function fmtNum(n,dec=0){ return Number(n||0).toLocaleString("fr-FR",{maximumFractionDigits:dec, minimumFractionDigits:dec}); }
-function fmtPct(n){ return (n*100).toFixed(1).replace(".",",")+"%"; }
+function fmtPct(n,dec=1){ return (n*100).toFixed(dec).replace(".",",")+"%"; }
 function daysLeft(iso){
   const end = new Date(iso+"T00:00:00"); const t = new Date(todayISO()+"T00:00:00");
   return Math.round((end-t)/86400000);
@@ -367,7 +367,7 @@ function renderKPIs(){
     {v:items.length, l:"Missions en cours"},
     {v:fmtNum(totalReelJour), l:"BS collectés aujourd'hui"},
     {v:fmtNum(totalReel), l:"BS réel global"},
-    {v:fmtPct(avgTransfo), l:"Taux de transfo global"},
+    {v:fmtPct(avgTransfo,0), l:"Taux de transfo global"},
     {v:fmtNum(totalAnnul), l:"BS annulés (global)"},
   ];
   document.getElementById("kpiRow").innerHTML = kpis.map(k=>`
@@ -498,7 +498,7 @@ function renderList(){
       </div>
       <div class="stat-grid">
         <div class="stat${cls(m.code,'bs_reel')}"><div class="n">${fmtNum(m.bs_reel)}</div><div class="l">BS réel</div></div>
-        <div class="stat${cls(m.code,'transfo')}"><div class="n">${fmtPct(m.transfo)}</div><div class="l">Transfo</div></div>
+        <div class="stat${cls(m.code,'transfo')}"><div class="n">${fmtPct(m.transfo,0)}</div><div class="l">Transfo</div></div>
         <div class="stat${cls(m.code,'don_moyen')}"><div class="n">${Number(m.don_moyen||0).toFixed(2)}€</div><div class="l">Don moyen</div></div>
         <div class="stat"><div class="n">${fmtNum(m.nb_utilisateurs)}</div><div class="l">Recruteurs</div></div>
         <div class="stat${cls(m.code,'bs_incomplets')}"><div class="n">${fmtNum(m.bs_incomplets)}</div><div class="l">Incomplets</div></div>
