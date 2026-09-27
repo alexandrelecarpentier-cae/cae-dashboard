@@ -241,7 +241,7 @@
             <tr>
               <th>Mission</th><th>Association</th><th>Statut</th>
               <th class="num">Recruteurs</th><th class="num">Heures rue</th><th class="num">BS réel</th>
-              <th class="num">Taux réel</th><th class="num">Taux absence</th>
+              <th class="num">Taux réel</th><th class="num">Taux de présence</th>
               <th class="num">Compl. présence</th><th class="num">Compl. emplacement</th>
               <th class="num">Jours compl. équipe</th>
             </tr>
@@ -264,7 +264,7 @@
             <thead>
               <tr>
                 <th>Recruteur</th><th class="num">Jours</th><th class="num">Heures rue</th><th class="num">BS réel</th>
-                <th class="num">Taux réel</th><th class="num">Taux absence</th>
+                <th class="num">Taux réel</th><th class="num">Taux de présence</th>
                 <th class="num">Compl. présence</th><th class="num">Compl. emplacement</th><th class="num">Don moyen</th>
               </tr>
             </thead>
@@ -312,7 +312,7 @@
     if (n === null || n === undefined) return '—';
     return fmtNum(n, 3);
   }
-  // taux_absence / taux_completion_* sont calculés en ratio (0-1) côté SQL
+  // taux_presence / taux_completion_* sont calculés en ratio (0-1) côté SQL
   // (cohérent avec taux_reel) mais s'affichent en pourcentage ici, plus
   // lisible pour ce type d'indicateur.
   function fmtPct(n, digits = 1) {
@@ -661,7 +661,7 @@
       { v: s.heures_rue != null ? fmtNum(s.heures_rue) : '—', l: 'Heures rue' },
       { v: fmtNum(s.bs_reel), l: 'BS réel' },
       { v: fmtRatio(s.taux_reel), l: 'Taux réel' },
-      { v: fmtPct(s.taux_absence), l: 'Taux absence' },
+      { v: fmtPct(s.taux_presence), l: 'Taux de présence' },
       { v: fmtPct(s.taux_completion_presence), l: 'Compl. présence' },
       { v: fmtPct(s.taux_completion_emplacement), l: 'Compl. emplacement' },
       { v: (() => { const a = avgCompletionEquipe(completionEquipeRows); return a != null ? fmtNum(a, 1) + ' j' : '—'; })(), l: 'Jours compl. équipe (moy.)' },
@@ -784,7 +784,7 @@
         <td class="num">${m.heures_rue != null ? fmtNum(m.heures_rue) : '—'}</td>
         <td class="num">${fmtNum(m.bs_reel)}</td>
         <td class="num">${fmtRatio(m.taux_reel)}</td>
-        <td class="num">${fmtPct(m.taux_absence)}</td>
+        <td class="num">${fmtPct(m.taux_presence)}</td>
         <td class="num">${fmtPct(m.taux_completion_presence)}</td>
         <td class="num">${fmtPct(m.taux_completion_emplacement)}</td>
         <td class="num">${fmtSignedDays(joursCompletion)}</td>
@@ -823,7 +823,7 @@
         <td class="num">${r.heures_rue != null ? fmtNum(r.heures_rue) : '—'}</td>
         <td class="num">${fmtNum(r.bs_reel)}</td>
         <td class="num">${fmtRatio(r.taux_reel)}</td>
-        <td class="num">${fmtPct(r.taux_absence)}</td>
+        <td class="num">${fmtPct(r.taux_presence)}</td>
         <td class="num">${fmtPct(r.taux_completion_presence)}</td>
         <td class="num">${fmtPct(r.taux_completion_emplacement)}</td>
         <td class="num">${r.don_moyen != null ? fmtEuro(r.don_moyen) : '—'}</td>

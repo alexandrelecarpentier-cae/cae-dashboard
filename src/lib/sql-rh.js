@@ -7,8 +7,12 @@
 // - taux_reel = BS réel / heures de rue (moyenne pondérée : somme des BS
 //   réels / somme des heures rue, jamais une moyenne de taux journaliers),
 //   comme partout ailleurs dans ce projet.
-// - taux_absence = heures rémunérées / (nombre de lots * 7) — formule
-//   canonique du projet (identique à /rd.html et /salarie.html).
+// - taux_presence = heures rémunérées / (nombre de lots * 7) — formule
+//   canonique du projet (identique à /rd.html et /salarie.html). Anciennement
+//   appelé "taux_absence" alors que la formule mesure l'inverse (plus la
+//   valeur est haute, plus la personne est présente) — corrigé le 9/2026
+//   suite à un signalement, en cohérence avec le renommage déjà fait dans
+//   sql-rd.js et sql-salarie.js (cf. NOTE-INDICATEURS.md).
 // - taux_completion_presence = part des lots où presence_recruteur EST
 //   renseigné (non NULL) parmi tous les lots. Vérifié en base : sur les 12
 //   derniers mois, environ 15% des lots n'ont pas ce champ rempli — un vrai
@@ -73,7 +77,7 @@ select
   a.nb_missions, a.heures_rue,
   coalesce(da.bs_reel, 0) as bs_reel,
   case when coalesce(a.heures_rue,0) > 0 then coalesce(da.bs_reel,0)::float / a.heures_rue else null end as taux_reel,
-  case when a.nb_lots > 0 then coalesce(a.heures_remuneration,0)::float / (a.nb_lots * 7) else null end as taux_absence,
+  case when a.nb_lots > 0 then coalesce(a.heures_remuneration,0)::float / (a.nb_lots * 7) else null end as taux_presence,
   case when a.nb_lots > 0 then a.lots_presence_renseignee::float / a.nb_lots else null end as taux_completion_presence,
   case when a.nb_lots > 0 then a.lots_emplacement_renseigne::float / a.nb_lots else null end as taux_completion_emplacement
 from agg a, dons_agg da;`;
@@ -104,7 +108,7 @@ select m.id as mission_id, m.code_mission, m.code_mission_client, m.statut_missi
   pm.nb_recruteurs, pm.heures_rue,
   coalesce(dm.bs_reel, 0) as bs_reel,
   case when coalesce(pm.heures_rue,0) > 0 then coalesce(dm.bs_reel,0)::float / pm.heures_rue else null end as taux_reel,
-  case when pm.nb_lots > 0 then coalesce(pm.heures_remuneration,0)::float / (pm.nb_lots * 7) else null end as taux_absence,
+  case when pm.nb_lots > 0 then coalesce(pm.heures_remuneration,0)::float / (pm.nb_lots * 7) else null end as taux_presence,
   case when pm.nb_lots > 0 then pm.lots_presence_renseignee::float / pm.nb_lots else null end as taux_completion_presence,
   case when pm.nb_lots > 0 then pm.lots_emplacement_renseigne::float / pm.nb_lots else null end as taux_completion_emplacement
 from par_mission pm
@@ -336,7 +340,7 @@ recruteur_rows as (
     pr.nb_lots, pr.heures_rue,
     coalesce(dr.bs_reel, 0) as bs_reel,
     case when coalesce(pr.heures_rue,0) > 0 then coalesce(dr.bs_reel,0)::float / pr.heures_rue else null end as taux_reel,
-    case when pr.nb_lots > 0 then coalesce(pr.heures_remuneration,0)::float / (pr.nb_lots * 7) else null end as taux_absence,
+    case when pr.nb_lots > 0 then coalesce(pr.heures_remuneration,0)::float / (pr.nb_lots * 7) else null end as taux_presence,
     case when pr.nb_lots > 0 then pr.lots_presence_renseignee::float / pr.nb_lots else null end as taux_completion_presence,
     case when pr.nb_lots > 0 then pr.lots_emplacement_renseigne::float / pr.nb_lots else null end as taux_completion_emplacement,
     dr.don_moyen,
@@ -365,7 +369,7 @@ total_row as (
     ta.nb_lots, ta.heures_rue,
     coalesce(td.bs_reel, 0) as bs_reel,
     case when coalesce(ta.heures_rue,0) > 0 then coalesce(td.bs_reel,0)::float / ta.heures_rue else null end as taux_reel,
-    case when ta.nb_lots > 0 then coalesce(ta.heures_remuneration,0)::float / (ta.nb_lots * 7) else null end as taux_absence,
+    case when ta.nb_lots > 0 then coalesce(ta.heures_remuneration,0)::float / (ta.nb_lots * 7) else null end as taux_presence,
     case when ta.nb_lots > 0 then ta.lots_presence_renseignee::float / ta.nb_lots else null end as taux_completion_presence,
     case when ta.nb_lots > 0 then ta.lots_emplacement_renseigne::float / ta.nb_lots else null end as taux_completion_emplacement,
     td.don_moyen,

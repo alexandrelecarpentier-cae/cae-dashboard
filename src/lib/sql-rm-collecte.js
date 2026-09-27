@@ -104,7 +104,8 @@ dons_agg AS (
     count(DISTINCT id) FILTER (WHERE statut = 'annule') AS bs_annules,
     avg(montant) FILTER (WHERE statut IN ('nouveau','en_attente','transmis')) AS don_moyen,
     percentile_cont(0.5) WITHIN GROUP (ORDER BY age) FILTER (WHERE statut IN ('nouveau','en_attente','transmis')) AS age_median,
-    count(DISTINCT id) FILTER (WHERE statut IN ('nouveau','en_attente','transmis') AND age < 25) AS nb_moins_25
+    count(DISTINCT id) FILTER (WHERE statut IN ('nouveau','en_attente','transmis') AND age < 25) AS nb_moins_25,
+    count(DISTINCT id) FILTER (WHERE statut IN ('nouveau','en_attente','transmis') AND age IS NOT NULL) AS nb_dons_avec_naissance
   FROM dons_mission GROUP BY mission_id
 ),
 mission_rows AS (
@@ -121,7 +122,7 @@ mission_rows AS (
     round((da.bs_reel::numeric / NULLIF(a.heures_rue, 0))::numeric, 3) AS taux_reel,
     round(da.don_moyen::numeric, 2) AS don_moyen,
     round(da.age_median::numeric, 1) AS age_median,
-    round((100.0 * da.nb_moins_25 / NULLIF(da.bs_reel, 0))::numeric, 1) AS pct_moins_25,
+    round((100.0 * da.nb_moins_25 / NULLIF(da.nb_dons_avec_naissance, 0))::numeric, 1) AS pct_moins_25,
     round((a.heures_rue::numeric / NULLIF(a.heures_rem, 0))::numeric, 2) AS ratio_h
   FROM filtered_missions fm
   LEFT JOIN agg a ON a.mission_id = fm.id
@@ -139,7 +140,8 @@ total_dons AS (
     count(DISTINCT id) FILTER (WHERE statut = 'annule') AS bs_annules,
     avg(montant) FILTER (WHERE statut IN ('nouveau','en_attente','transmis')) AS don_moyen,
     percentile_cont(0.5) WITHIN GROUP (ORDER BY age) FILTER (WHERE statut IN ('nouveau','en_attente','transmis')) AS age_median,
-    count(DISTINCT id) FILTER (WHERE statut IN ('nouveau','en_attente','transmis') AND age < 25) AS nb_moins_25
+    count(DISTINCT id) FILTER (WHERE statut IN ('nouveau','en_attente','transmis') AND age < 25) AS nb_moins_25,
+    count(DISTINCT id) FILTER (WHERE statut IN ('nouveau','en_attente','transmis') AND age IS NOT NULL) AS nb_dons_avec_naissance
   FROM dons_mission
 ),
 total_row AS (
@@ -156,7 +158,7 @@ total_row AS (
     round((td.bs_reel::numeric / NULLIF(ta.heures_rue, 0))::numeric, 3) AS taux_reel,
     round(td.don_moyen::numeric, 2) AS don_moyen,
     round(td.age_median::numeric, 1) AS age_median,
-    round((100.0 * td.nb_moins_25 / NULLIF(td.bs_reel, 0))::numeric, 1) AS pct_moins_25,
+    round((100.0 * td.nb_moins_25 / NULLIF(td.nb_dons_avec_naissance, 0))::numeric, 1) AS pct_moins_25,
     round((ta.heures_rue::numeric / NULLIF(ta.heures_rem, 0))::numeric, 2) AS ratio_h
   FROM total_agg ta, total_dons td
 )

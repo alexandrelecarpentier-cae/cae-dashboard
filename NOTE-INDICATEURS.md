@@ -50,7 +50,7 @@ Règles communes à tous les dashboards (demande explicite, 9/2026) ; les écart
 - **Taux réel par jour** : `bs_reel du jour / heures_rue du jour` (affiché brut, 3 décimales).
 - **Ratio heures (par jour)** : `heures_rue / heures_remuneration` (affiché en pourcentage, 1 décimale).
 - **Don moyen (par jour)** : `avg(montant)` des dons valides du jour.
-- **% donateurs −25 ans (par jour)** : `100 × (nb dons valides avec âge < 25) / nb dons valides`.
+- **% donateurs −25 ans (par jour)** : `100 × (nb dons valides du jour avec âge < 25) / (nb dons valides du jour dont la date de naissance du donateur est connue)` — dénominateur harmonisé le 9/2026 (audit) sur la même convention que `/salarie`/`/direction` (voir note sur `pct_moins_25`/`pct_plus_25` ci-dessous).
 
 ## /rd (et repris par /re-collecte, /mission)
 
@@ -58,7 +58,7 @@ Règles communes à tous les dashboards (demande explicite, 9/2026) ; les écart
 - **Taux réel** : `BS réel / heures de rue` (affiché brut, 3 décimales).
 - **Don moyen** : `avg(montant)` (dons valides), affiché en euros à 2 décimales.
 - **Âge médian** : médiane (`percentile_cont(0.5)`) de l'âge des donateurs (dons valides), affiché à 1 décimale.
-- **% donateurs −25 ans (`pct_moins_25`)** : `100 × (nb dons valides avec âge < 25) / BS réel` (affiché en pourcentage, 1 décimale).
+- **% donateurs −25 ans (`pct_moins_25`)** : `100 × (nb dons valides avec âge < 25) / (nb dons valides dont la date de naissance du donateur est connue)` (affiché en pourcentage, 1 décimale). **Formule harmonisée le 9/2026** (audit) : avant cette date, le dénominateur était le BS réel total (y compris les dons sans date de naissance connue, qui ne peuvent jamais compter au numérateur), ce qui sous-estimait mécaniquement le % sur les missions où la donnée d'âge est incomplète — voir "Complétude des données d'âge" sous `/client`. Cette correction rend `pct_moins_25` cohérent avec `pct_plus_25` de `/salarie` et `/direction`, qui utilisaient déjà ce dénominateur. Sur les missions récentes (couverture ~100 %), le chiffre ne change pas ; sur les missions anciennes ou incomplètes, il peut augmenter sensiblement (ex. observé : 28,1 % → 37,7 % sur une mission à 75 % de couverture ; `null`/« — » au lieu de `0 %` quand aucune date de naissance n'est connue sur le périmètre).
 - **Ratio heures (`ratio_h`)** : `heures_rue / heures_rem` (affiché en pourcentage, 1 décimale — ex : `71,0 %`).
 - **Taux de présence** (champ `taux_presence` ; anciennement nommé à tort "taux d'absence" — corrigé le 9/2026, la formule mesure bien une présence : plus la valeur est haute, plus la personne est présente sur les heures prévues, ce qui est l'inverse de ce que le nom "absence" laissait penser) : `100 × heures rémunérées / (nombre de lots × 7)` (affiché en pourcentage, 1 décimale).
 - **Taux d'absence injustifiée** : `100 × jours d'absence injustifiée / (jours de présence + jours d'absence)`, où un jour d'absence est injustifié si son motif n'est ni "maladie" ni "autorisée" (ou motif absent). Celui-ci, contrairement au précédent, mesure bien une absence. Affiché en pourcentage, 1 décimale.
@@ -94,7 +94,7 @@ Règles communes à tous les dashboards (demande explicite, 9/2026) ; les écart
 ## /rm-collecte
 
 - **Nb RD** : `count(distinct utilisateur_id)` des lots de la mission.
-- **Taux de transformation (`tx_transfo`)**, **Taux réel**, **Don moyen**, **Âge médian**, **% donateurs −25 ans (`pct_moins_25`)**, **Ratio heures (`ratio_h`)** : mêmes formules et mêmes formats d'affichage que `/rd` (voir ci-dessus), agrégées par mission (et une ligne TOTAL toutes missions confondues). Possibilité de filtrer la table "Suivi des missions" sur une seule mission en cliquant sur sa ligne (demande explicite, 9/2026).
+- **Taux de transformation (`tx_transfo`)**, **Taux réel**, **Don moyen**, **Âge médian**, **% donateurs −25 ans (`pct_moins_25`)**, **Ratio heures (`ratio_h`)** : mêmes formules et mêmes formats d'affichage que `/rd` (voir ci-dessus, y compris le dénominateur harmonisé de `pct_moins_25`), agrégées par mission (et une ligne TOTAL toutes missions confondues). Possibilité de filtrer la table "Suivi des missions" sur une seule mission en cliquant sur sa ligne (demande explicite, 9/2026).
 - **Répartition par tranche d'âge** et **par genre** : mêmes formules que `/rd`.
 - **Liste des bulletins suspects** : mêmes 13 règles de motif que `/rd`, sur le périmètre statut ∈ (`nouveau`, `en_attente`, `annule`) — les dons déjà `transmis` sont exclus (contrôle qualité considéré comme fait).
 
@@ -114,7 +114,7 @@ Règles communes à tous les dashboards (demande explicite, 9/2026) ; les écart
 - **% donateurs +25 ans (`pct_plus_25`)** : `(nb dons valides avec âge ≥ 25) / (nb dons valides dont la date de naissance du donateur est connue)`, affiché en pourcentage, 1 décimale.
 - **Score qualité** : `don moyen × % donateurs +25 ans` (voir barème commun dans Définitions communes), affiché à 1 décimale avec le badge du barème.
 - Les 5 indicateurs ci-dessus existent en 3 déclinaisons : par mission, en cumul sur toute la carrière ("résumé"), et en cumul sur les 270 dernières heures rémunérées déclarées ("statut global").
-- Note : le "Taux d'absence" ci-dessus utilise la même formule que le "Taux de présence" de `/rd`/`/re-collecte`/`/mission` (`heures rémunérées / (nombre de lots × 7)`) — non renommé ici, la correction de nom demandée portait explicitement sur `/rd`, `/re-collecte` et `/mission`. Idem pour `/rh`.
+- Note : le champ nommé "Taux d'absence" dans cette section de la note utilise en réalité la même formule que le "Taux de présence" de `/rd`/`/re-collecte`/`/mission`/`/rh` (`heures rémunérées / (nombre de lots × 7)`) ; le champ SQL sous-jacent (`taux_presence`) et le libellé affiché sur `/salarie.html` ont déjà été corrigés en ce sens (9/2026, cf. tâche #158/#186) — coquille de nom corrigée dans cette note.
 
 ## /emplacement
 
@@ -147,7 +147,7 @@ Version restreinte de `/site-prive` à destination des ASP (assistant(e)s site p
 ## /rh
 
 - **Taux réel** (global et par mission) : `BS réel / heures de rue` (affiché brut, 3 décimales).
-- **Taux d'absence** (global, par mission, par recruteur) : `heures rémunérées / (nombre de lots × 7)` (affiché en pourcentage, 1 décimale). Note : même remarque que sur `/salarie` — cette formule mesure en réalité une présence (voir la correction faite sur `/rd`/`/re-collecte`/`/mission`), non renommée ici car hors du périmètre demandé.
+- **Taux de présence** (global, par mission, par recruteur) : `heures rémunérées / (nombre de lots × 7)` (affiché en pourcentage, 1 décimale). Champ SQL et libellé affiché corrigés le 9/2026 (audit) : portait auparavant le nom `taux_absence` alors que la formule mesure l'inverse (bug identique à celui déjà corrigé sur `/rd` et `/salarie`, propagation manquée à l'époque).
 - **Taux de complétion de saisie — présence** : `(nb lots où presence_recruteur est renseigné) / (nb lots total)`, affiché en pourcentage, 1 décimale.
 - **Taux de complétion de saisie — emplacement** : `(nb lots où emplacement_id est renseigné) / (nb lots total)`, affiché en pourcentage, 1 décimale.
 - **Taux de FPE** (global, par initiative employeur/salarié) : `nb contrats avec avenant "fin de période d'essai" (par initiative) / nb contrats du périmètre`, basé sur `contrats.date_debut`.
@@ -156,6 +156,28 @@ Version restreinte de `/site-prive` à destination des ASP (assistant(e)s site p
 - **Délai de complétion d'équipe** : `date de début de contrat du dernier recruteur arrivé sur la mission − date de début de la mission`.
 - **Badge FPE par recruteur** : `'FPE'` si le contrat le plus récent du recruteur sur la mission porte un avenant de catégorie `fin_period_essai`.
 - **Don moyen par recruteur** (table détail mission) : `avg(montant)` (dons valides).
+
+## /direction
+
+Vue COMEX cross-clients (aucun `id_client`/`id_mission` de filtrage — porte sur l'ensemble du périmètre non exclu).
+
+- **Taux réel (point mort)** : `BS réel / heures RÉMUNÉRÉES` — **volontairement différent** du "taux réel" utilisé partout ailleurs dans le projet (`BS réel / heures de rue`). Vient d'un document source fourni par l'utilisateur mentionnant un seuil de rentabilité ("point mort") à 0,28 exprimé sur cette base ; ne pas confondre les deux lors d'une comparaison inter-dashboards.
+- **Don moyen, âge médian, % donateurs +25 ans (`pct_plus_25`)** : mêmes formules que `/rd` (`pct_plus_25` sur dénominateur "dons avec date de naissance connue", cohérent avec `/salarie`).
+- **Absentéisme** : `1 − (taux de présence hors arrêts maladie)`, où seuls les jours d'absence au motif "maladie" sont exclus du numérateur (les absences "autorisées" restent comptées comme de l'absentéisme). Définition **différente** de `taux_absence_injustifiee` de `/rd` (qui exclut à la fois "maladie" ET "autorisée"). Règle non tranchée sur le périmètre exact des arrêts maladie à exclure — signalé dans le code comme non définitif.
+- **Ratios d'effectif** : part des recruteurs "anciens" (≥ 3 missions) vs "nouveaux" ; répartition RD/RDC/RDE d'après le grade du contrat le plus récent de chaque personne.
+- **Taux de FPE** : `nb contrats avec avenant fin de période d'essai / nb contrats du périmètre`, sans distinction employeur/salarié (contrairement à `/rh` qui distingue les deux).
+- **Avancement des missions à objectif** : `BS réel / objectif de bulletins théorique`, limité aux missions où cet objectif est renseigné, triées par avancement croissant (les moins avancées en premier).
+
+## /rm
+
+**Hors périmètre de cet audit au niveau du code** : ce dashboard ne construit aucune requête SQL dans ce projet. Il consomme une question Metabase déjà existante (carte n°514, "Missions en cours") via `/api/rm-missions` — la logique de calcul de cette carte vit dans Metabase, pas dans `sql-*.js`, et n'a donc pas pu être vérifiée dans le cadre de cet audit (elle nécessiterait d'inspecter la définition de la carte 514 directement dans Metabase). Le seul traitement fait ici est un filtrage a posteriori des lignes dont le nom de client figure dans la liste des clients exclus (`EXCLUDED_CLIENT_NAMES`), par nom plutôt que par id (id non exposé par la carte).
+
+## Protection des clients exclus (contrôle transverse, vérifié 9/2026)
+
+Trois clients de démo/test sont exclus de tous les dashboards (cf. `excluded-clients.js`). Deux mécanismes coexistent et ont été vérifiés cohérents lors de cet audit :
+
+- **Filtrage SQL direct** (`excludeClientsClause`/`excludeClientsDirectClause`) : utilisé par les dashboards multi-missions/cross-clients (`/rm-collecte`, `/rh`, `/direction`, `/challenge`, `/salarie`, `/emplacement`), qui listent ou agrègent plusieurs missions dans une même requête.
+- **Validation en amont de l'id reçu en paramètre** : pour les dashboards scopés à UNE seule entité (une mission, un client), l'id est vérifié avant toute requête — `readClientId()` rejette un `id_client` exclu (`/client`), et `missionIsExcluded()` rejette un `id_mission` exclu (`/re-mobilisation`, `/rd-mobilisation`, résolution de mission). C'est pourquoi `sql-mobilisation.js` et `sql-client.js` n'ont pas besoin d'appeler `excludeClientsClause` en interne : la protection est faite un cran au-dessus, dans `index.js`/`metabase.js`. Vérifié en lisant le code des deux mécanismes : pas de trou identifié.
 
 ## /mobilisation (re-mobilisation, rd-mobilisation)
 

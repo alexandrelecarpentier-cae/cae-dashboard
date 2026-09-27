@@ -81,7 +81,8 @@ dons_jour AS (
   SELECT date,
     count(DISTINCT id) FILTER (WHERE statut IN ('nouveau','en_attente','transmis')) AS bs_reel,
     avg(montant) FILTER (WHERE statut IN ('nouveau','en_attente','transmis')) AS don_moyen,
-    count(DISTINCT id) FILTER (WHERE statut IN ('nouveau','en_attente','transmis') AND age < 25) AS nb_moins_25
+    count(DISTINCT id) FILTER (WHERE statut IN ('nouveau','en_attente','transmis') AND age < 25) AS nb_moins_25,
+    count(DISTINCT id) FILTER (WHERE statut IN ('nouveau','en_attente','transmis') AND age IS NOT NULL) AS nb_dons_avec_naissance
   FROM dons_all GROUP BY date
 )
 SELECT hj.date AS date,
@@ -89,7 +90,7 @@ SELECT hj.date AS date,
   round(coalesce(dj.bs_reel,0)::numeric / NULLIF(hj.heures_rue,0)::numeric, 2) AS taux_reel,
   round(hj.heures_rue::numeric / NULLIF(hj.heures_rem,0)::numeric, 2) AS ratio_h,
   round(dj.don_moyen::numeric, 2) AS don_moyen,
-  round((100.0 * coalesce(dj.nb_moins_25,0)) / NULLIF(dj.bs_reel,0)::numeric, 1) AS pct_moins_25
+  round((100.0 * coalesce(dj.nb_moins_25,0)) / NULLIF(dj.nb_dons_avec_naissance,0)::numeric, 1) AS pct_moins_25
 FROM heures_jour hj LEFT JOIN dons_jour dj ON dj.date = hj.date
 ORDER BY hj.date DESC;`;
 }
