@@ -58,9 +58,9 @@ absences_f as (
 }
 
 // Indicateurs globaux du périmètre filtré :
-// - taux_reel_point_mort = BS réel / heures rémunérées (formule spécifique
-//   du fichier source — différente du "taux réel" = BS/heures RUE utilisé
-//   partout ailleurs dans le projet ; 0,28 = point mort selon le fichier).
+// - taux_reel = BS réel / heures de RUE — même formule que sur tous les
+//   autres dashboards du projet (/client, /rd, /mission, /rm-collecte,
+//   /salarie, /emplacement, /site-prive, /rh...), alignée le 9/2026.
 // - ratio_h = heures de rue / heures rémunérées.
 // - don_moyen, age_median, pct_plus_25 ans = mêmes formules que /rd
 //   ("3 critères qualité"), sur les dons valides du périmètre.
@@ -73,9 +73,9 @@ select
   (select sum(nombre_horaires_rue) filter (where coalesce(presence_recruteur,true)) from lots_f) as heures_rue,
   (select sum(nombre_horaires_remuneration) filter (where coalesce(presence_recruteur,true)) from lots_f) as heures_remuneration,
   (select count(distinct id) from dons_f) as bs_reel,
-  case when (select sum(nombre_horaires_remuneration) filter (where coalesce(presence_recruteur,true)) from lots_f) > 0
-    then (select count(distinct id) from dons_f)::float / (select sum(nombre_horaires_remuneration) filter (where coalesce(presence_recruteur,true)) from lots_f)
-    else null end as taux_reel_point_mort,
+  case when (select sum(nombre_horaires_rue) filter (where coalesce(presence_recruteur,true)) from lots_f) > 0
+    then (select count(distinct id) from dons_f)::float / (select sum(nombre_horaires_rue) filter (where coalesce(presence_recruteur,true)) from lots_f)
+    else null end as taux_reel,
   case when (select sum(nombre_horaires_remuneration) filter (where coalesce(presence_recruteur,true)) from lots_f) > 0
     then (select sum(nombre_horaires_rue) filter (where coalesce(presence_recruteur,true)) from lots_f)::float / (select sum(nombre_horaires_remuneration) filter (where coalesce(presence_recruteur,true)) from lots_f)
     else null end as ratio_h,

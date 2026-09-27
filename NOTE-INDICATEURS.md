@@ -161,13 +161,12 @@ Version restreinte de `/site-prive` à destination des ASP (assistant(e)s site p
 
 Vue COMEX cross-clients (aucun `id_client`/`id_mission` de filtrage — porte sur l'ensemble du périmètre non exclu).
 
-- **Taux réel (point mort)** : `BS réel / heures RÉMUNÉRÉES` — **volontairement différent** du "taux réel" utilisé partout ailleurs dans le projet (`BS réel / heures de rue`). Vient d'un document source fourni par l'utilisateur mentionnant un seuil de rentabilité ("point mort") à 0,28 exprimé sur cette base ; ne pas confondre les deux lors d'une comparaison inter-dashboards.
+- **Taux réel** : `BS réel / heures de RUE`, même formule que partout ailleurs dans le projet. **Aligné le 9/2026** (demande explicite) : ce KPI utilisait auparavant `BS réel / heures RÉMUNÉRÉES` (formule dite "point mort" d'un document source), volontairement différente du "taux réel" standard — jugé source de confusion trop importante pour être maintenu tel quel ; supprimé du dashboard.
 - **Don moyen, âge médian, % donateurs +25 ans (`pct_plus_25`)** : mêmes formules que `/rd` (`pct_plus_25` sur dénominateur "dons avec date de naissance connue", cohérent avec `/salarie`).
 - **Absentéisme** : `1 − (taux de présence hors arrêts maladie)`, où seuls les jours d'absence au motif "maladie" sont exclus du numérateur (les absences "autorisées" restent comptées comme de l'absentéisme). Définition **différente** de `taux_absence_injustifiee` de `/rd` (qui exclut à la fois "maladie" ET "autorisée"). Règle non tranchée sur le périmètre exact des arrêts maladie à exclure — signalé dans le code comme non définitif.
 - **Ratios d'effectif** : part des recruteurs "anciens" (≥ 3 missions) vs "nouveaux" ; répartition RD/RDC/RDE d'après le grade du contrat le plus récent de chaque personne.
 - **Taux de FPE** : `nb contrats avec avenant fin de période d'essai / nb contrats du périmètre`, sans distinction employeur/salarié (contrairement à `/rh` qui distingue les deux).
 - **Avancement des missions à objectif** : `BS réel / objectif de bulletins théorique`, limité aux missions où cet objectif est renseigné, triées par avancement croissant (les moins avancées en premier).
-- **Vigilance de nommage (corrigée lors de l'audit)** : la carte KPI "Taux réel" affichait en réalité `taux_reel_point_mort` (BS/heures rémunérées), sous le même intitulé que le "Taux réel" (BS/heures de rue) utilisé sur tous les autres dashboards — un rapprochement rapide entre `/direction` et n'importe quel autre dashboard aurait pu laisser croire à la même grandeur. Libellé renommé en "Taux réel (point mort)" avec une note explicite ; aucune formule modifiée, correction d'affichage uniquement.
 
 ## /rm
 

@@ -382,16 +382,13 @@
     renderObjectifTable(data.objectifMissions || []);
   }
 
-  // taux_reel_point_mort = BS réel / heures rémunérées (formule du fichier
-  // source, différente du "taux réel" = BS/heures rue utilisé ailleurs
-  // dans le projet — 0,28 = point mort selon le fichier).
   function renderKpiActivite(s, fpe) {
     const kpis = [
       { v: fmtNum(s.nb_missions), l: 'Missions' },
       { v: s.heures_rue != null ? fmtNum(s.heures_rue) : '—', l: 'Heures rue' },
       { v: s.heures_remuneration != null ? fmtNum(s.heures_remuneration) : '—', l: 'Heures rémunérées' },
       { v: fmtNum(s.bs_reel), l: 'BS réel' },
-      { v: fmtRatio(s.taux_reel_point_mort), l: 'Taux réel (point mort)', sub: 'BS / heures rém. — ≠ "Taux réel" des autres dashboards (BS/heures rue) ; point mort 0,28' },
+      { v: fmtRatio(s.taux_reel), l: 'Taux réel' },
       { v: fmtPct(s.ratio_h), l: 'Ratio heures rue/rém.' },
       { v: s.don_moyen != null ? fmtEuro(s.don_moyen) : '—', l: 'Don moyen' },
       { v: s.age_median != null ? fmtNum(s.age_median, 1) + ' ans' : '—', l: 'Âge médian donateur' },
