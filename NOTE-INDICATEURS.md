@@ -1,5 +1,9 @@
 # Indicateurs — Dashboard CAE
 
+## Mode staging/prod (9/2026)
+
+Un badge cliquable en bas à droite de chaque page (`◇ PROD` / `◆ STAGING`) bascule la base Metabase interrogée par toutes les routes `/api/*` : Production (id 3, par défaut) ou Staging (id 4, `.../databases/4-staging`). Le choix est mémorisé dans un cookie (`dashboard_db_mode`), lu côté serveur sur chaque requête — un rechargement de page suffit à changer de base, pas besoin de redéployer. Le cookie est partagé par toutes les pages du domaine, donc le mode choisi reste actif en naviguant d'un dashboard à l'autre. Exception : `/rm` reste toujours branché sur Production, car il s'appuie sur une carte Metabase déjà construite (n°514) qui est liée à sa propre base au moment de sa création — le cookie n'a pas d'effet sur les questions Metabase, seulement sur les requêtes SQL natives de ce projet.
+
 ## Définitions communes
 
 - **Dons valides** : statut ∈ (`nouveau`, `en_attente`, `transmis`).

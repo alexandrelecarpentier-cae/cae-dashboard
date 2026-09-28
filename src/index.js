@@ -49,9 +49,26 @@ import {
 import { buildDirectionQueries, buildClientListQuery as buildDirectionClientListQuery } from './lib/sql-direction.js';
 import { isExcludedClient, buildMissionClientQuery, EXCLUDED_CLIENT_NAMES } from './lib/excluded-clients.js';
 
+// Mode staging/prod (demande explicite, 9/2026) : un cookie posé côté
+// navigateur par le petit widget présent sur chaque page (cf. public/*.html)
+// bascule la base Metabase interrogée par TOUTES les routes /api/*, sans
+// avoir à modifier chaque handler individuellement — on enrichit l'objet
+// env transmis en aval d'un champ METABASE_DATABASE_ID que runQuery()
+// (metabase.js) regarde en priorité sur la constante DATABASE_ID par
+// défaut (3 = Production). 4 = Staging, cf. demande explicite de
+// l'utilisateur (URL Metabase .../databases/4-staging).
+const STAGING_DATABASE_ID = 4;
+function resolveDatabaseId(request) {
+  const cookie = request.headers.get('Cookie') || '';
+  const match = cookie.match(/(?:^|;\s*)dashboard_db_mode=(staging|prod)/);
+  return match && match[1] === 'staging' ? STAGING_DATABASE_ID : null;
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    const stagingDbId = resolveDatabaseId(request);
+    if (stagingDbId) env = { ...env, METABASE_DATABASE_ID: stagingDbId };
     try {
       if (url.pathname === '/api/client') return await handleClient(url, env);
       if (url.pathname === '/api/facets') return await handleFacets(url, env);

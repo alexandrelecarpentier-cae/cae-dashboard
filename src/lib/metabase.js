@@ -5,7 +5,7 @@ export const RE_CODE = /^[A-Za-z0-9_-]{1,30}$/;
 export const RE_DATE = /^\d{4}-\d{2}-\d{2}$/;
 export const GENRES = ['monsieur', 'madame'];
 export const TRANCHES_AGE = ['18-20', '21-25', '26-35', '36-50', '50 et +'];
-export const DATABASE_ID = 3; // base "Production" dans Metabase
+export const DATABASE_ID = 3; // base "Production" dans Metabase (4 = Staging — cf. mode staging/prod, index.js)
 
 // Point de passage unique pour /api/client, /api/facets et
 // /api/client-missions (toutes appellent readClientId) : un client exclu
@@ -31,6 +31,10 @@ export function sanitizeFreeText(value, maxLen = 100) {
 }
 
 export async function runQuery(env, sql) {
+  // env.METABASE_DATABASE_ID est posé par index.js quand le mode staging est
+  // actif (cookie dashboard_db_mode=staging) — sinon on reste sur la base
+  // Production par défaut.
+  const database = env.METABASE_DATABASE_ID || DATABASE_ID;
   const res = await fetch(`${env.METABASE_URL}/api/dataset`, {
     method: 'POST',
     headers: {
@@ -38,7 +42,7 @@ export async function runQuery(env, sql) {
       'x-api-key': env.METABASE_API_KEY,
     },
     body: JSON.stringify({
-      database: DATABASE_ID,
+      database,
       type: 'native',
       native: { query: sql },
     }),
@@ -59,6 +63,10 @@ export async function runQuery(env, sql) {
 // natif) — utilisé pour la vue RM globale, qui reprend telle quelle la
 // question Metabase "Missions en cours" (id 514, toutes missions tous
 // clients confondus) plutôt que de réécrire cette agrégation en SQL.
+// NB : une carte Metabase est liée à sa propre base au moment de sa
+// création — le mode staging/prod (cookie dashboard_db_mode, cf. index.js)
+// n'a donc aucun effet ici, contrairement à runQuery(). /rm reste toujours
+// branché sur la carte 514 de Production.
 export async function runCardQuery(env, cardId, missionId) {
   const payload = {};
   if (missionId) {
