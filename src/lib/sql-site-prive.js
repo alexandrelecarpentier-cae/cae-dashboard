@@ -16,6 +16,25 @@ import { excludeClientsClause } from './excluded-clients.js';
 
 const STATUTS_VALIDES = "('nouveau','en_attente','transmis')";
 
+// Ce dashboard ne doit porter que sur des missions de format "site privé"
+// (3 variantes historiques en base pour la même réalité, cf. sql-client.js)
+// ou "hybride" (mission street ET site privé) — jamais du pur street, même
+// si un de ses lots pointe accidentellement vers un emplacement de type
+// "prive" (demande explicite, 9/2026). Restriction appliquée à TOUTES les
+// requêtes de ce fichier via filtersClause, pas seulement quand l'utilisateur
+// choisit explicitement le filtre "Format" ci-dessous.
+const FORMAT_SITE_PRIVE_VALUES = ['site_prive', 'sites_privees', 'sitesprives'];
+const FORMAT_HYBRIDE_VALUES = ['hybride'];
+const ALLOWED_MISSION_FORMATS = [...FORMAT_SITE_PRIVE_VALUES, ...FORMAT_HYBRIDE_VALUES];
+function formatValuesFor(format) {
+  if (format === 'site_prive') return FORMAT_SITE_PRIVE_VALUES;
+  if (format === 'hybride') return FORMAT_HYBRIDE_VALUES;
+  return ALLOWED_MISSION_FORMATS;
+}
+function sqlList(values) {
+  return values.map((v) => `'${v}'`).join(',');
+}
+
 // Département déduit des 2 premiers chiffres du code postal (3 premiers
 // pour les DOM 97x/98x) — approximation standard, suffisante pour un filtre
 // de pilotage. Ne distingue pas 2A/2B (Corse) : les deux restent sous "20".
@@ -24,7 +43,10 @@ function departementSqlExpr(col) {
 }
 
 function filtersClause(p) {
-  const clauses = [`e.type_emplacement = 'prive'`];
+  const clauses = [
+    `e.type_emplacement = 'prive'`,
+    `m.format in (${sqlList(formatValuesFor(p.format))})`,
+  ];
   if (p.id_mission) clauses.push(`m.id = '${p.id_mission}'`);
   if (p.id_client) clauses.push(`m.client_id = '${p.id_client}'`);
   if (p.id_emplacement) clauses.push(`e.id = '${p.id_emplacement}'`);
@@ -343,11 +365,17 @@ limit 100;`;
 // privés ayant une activité enregistrée) — construites une seule fois côté
 // front (comme rmList/clientList sur /rm-collecte), indépendamment des
 // filtres actuellement sélectionnés.
+// Restriction de format (site privé / hybride, cf. formatValuesFor ci-dessus)
+// appliquée ici aussi : ces listes alimentent les dropdowns de filtres, elles
+// ne doivent pas proposer une mission/ville/site qui n'appartient qu'à des
+// missions purement street.
+const ALLOWED_FORMATS_SQL = sqlList(ALLOWED_MISSION_FORMATS);
+
 function buildMissionListQuery() {
   return `select distinct m.id, m.code_mission, c.nom as client_nom
 from lots l
 join emplacements e on e.id = l.emplacement_id and e.type_emplacement = 'prive'
-join missions m on m.id = l.mission_id
+join missions m on m.id = l.mission_id and m.format in (${ALLOWED_FORMATS_SQL})
 left join clients c on c.id = m.client_id
 where 1=1 ${excludeClientsClause('m')}
 order by m.code_mission;`;
@@ -357,7 +385,7 @@ function buildClientListQuery() {
   return `select distinct c.id, c.nom
 from lots l
 join emplacements e on e.id = l.emplacement_id and e.type_emplacement = 'prive'
-join missions m on m.id = l.mission_id
+join missions m on m.id = l.mission_id and m.format in (${ALLOWED_FORMATS_SQL})
 join clients c on c.id = m.client_id
 where c.nom is not null
   ${excludeClientsClause('m')}
@@ -368,7 +396,7 @@ function buildEmplacementListQuery() {
   return `select distinct e.id, e.nom, e.ville, e.categorie
 from lots l
 join emplacements e on e.id = l.emplacement_id and e.type_emplacement = 'prive'
-join missions m on m.id = l.mission_id
+join missions m on m.id = l.mission_id and m.format in (${ALLOWED_FORMATS_SQL})
 where 1=1 ${excludeClientsClause('m')}
 order by e.nom;`;
 }
@@ -377,7 +405,7 @@ function buildVilleListQuery() {
   return `select distinct e.ville
 from lots l
 join emplacements e on e.id = l.emplacement_id and e.type_emplacement = 'prive'
-join missions m on m.id = l.mission_id
+join missions m on m.id = l.mission_id and m.format in (${ALLOWED_FORMATS_SQL})
 where e.ville is not null and e.ville <> '' ${excludeClientsClause('m')}
 order by e.ville;`;
 }
@@ -386,7 +414,7 @@ function buildDepartementListQuery() {
   return `select distinct ${departementSqlExpr('e.code_postal')} as departement
 from lots l
 join emplacements e on e.id = l.emplacement_id and e.type_emplacement = 'prive'
-join missions m on m.id = l.mission_id
+join missions m on m.id = l.mission_id and m.format in (${ALLOWED_FORMATS_SQL})
 where e.code_postal is not null and e.code_postal <> '' ${excludeClientsClause('m')}
 order by 1;`;
 }

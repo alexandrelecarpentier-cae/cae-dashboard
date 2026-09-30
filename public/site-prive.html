@@ -147,6 +147,14 @@
         <select class="control" id="departementSelect"><option value="">Tous les départements</option></select>
       </div>
       <div class="filter-field">
+        <div class="filter-label">Format</div>
+        <select class="control" id="formatSelect">
+          <option value="">Tous formats</option>
+          <option value="site_prive">Site privé</option>
+          <option value="hybride">Hybride</option>
+        </select>
+      </div>
+      <div class="filter-field">
         <div class="filter-label">Site privé</div>
         <div class="search-wrap">
           <input class="control" type="text" id="f-emplacement-search" placeholder="Tous les sites" autocomplete="off">
@@ -461,6 +469,17 @@
     refreshData();
   });
 
+  // Format de mission (site privé / hybride) — le dashboard ne couvre de
+  // toute façon jamais que ces deux formats (restriction appliquée côté
+  // serveur), ce filtre permet juste de restreindre encore à l'un des deux
+  // (demande explicite, 9/2026).
+  let selectedFormat = '';
+  const formatSelectEl = document.getElementById('formatSelect');
+  formatSelectEl.addEventListener('change', () => {
+    selectedFormat = formatSelectEl.value;
+    refreshData();
+  });
+
   // ---------------------------------------------------------------
   // Filtre période — mêmes raccourcis rapides que rm-collecte.html
   // (Total / Aujourd'hui / Hier), avec saisie manuelle des dates
@@ -504,6 +523,7 @@
     selectedClientId = ''; clientSelectEl.value = '';
     selectedVille = ''; villeSelectEl.value = '';
     selectedDepartement = ''; departementSelectEl.value = '';
+    selectedFormat = ''; formatSelectEl.value = '';
     dateFrom = ''; dateTo = ''; dateFromEl.value = ''; dateToEl.value = '';
     setActiveQuickTag('total');
     refreshData();
@@ -535,6 +555,7 @@
     if (selectedEmplacementId) p.set('id_emplacement', selectedEmplacementId);
     if (selectedVille) p.set('ville', selectedVille);
     if (selectedDepartement) p.set('departement', selectedDepartement);
+    if (selectedFormat) p.set('format', selectedFormat);
     if (dateFrom && dateTo) { p.set('date_from', dateFrom); p.set('date_to', dateTo); }
     return p.toString();
   }

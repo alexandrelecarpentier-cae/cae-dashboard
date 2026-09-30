@@ -595,12 +595,22 @@ async function handleSitePrive(url, env) {
     return jsonResponse({ error: 'departement invalide' }, 400);
   }
 
+  // format : whitelist stricte (site_prive | hybride) — ce dashboard ne
+  // couvre de toute façon jamais que ces deux formats (cf. filtersClause
+  // dans sql-site-prive.js), ce paramètre ne fait que restreindre encore
+  // à l'un des deux quand l'utilisateur le choisit explicitement.
+  const format = url.searchParams.get('format') || '';
+  if (format && !['site_prive', 'hybride'].includes(format)) {
+    return jsonResponse({ error: 'format invalide' }, 400);
+  }
+
   const queries = buildSitePriveQueries({
     id_mission: id_mission || null,
     id_client: id_client || null,
     id_emplacement: id_emplacement || null,
     ville: ville || null,
     departement: departement || null,
+    format: format || null,
     date_from: date_from || null,
     date_to: date_to || null,
   });
