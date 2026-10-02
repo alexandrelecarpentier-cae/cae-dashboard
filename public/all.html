@@ -41,11 +41,54 @@
   .badge{font-size:9.5px; text-transform:uppercase; letter-spacing:.05em; font-weight:800;
     padding:2px 7px; border-radius:var(--sharp); border:1px solid var(--line); color:var(--muted); white-space:nowrap;}
   .badge.restricted{color:var(--red); border-color:#F6C9D1; background:#FFF6F7;}
+  .badge.staging{color:#fff; border-color:var(--red); background:var(--red);}
+
+  .staging-list{border:1px solid var(--line); border-radius:var(--sharp); overflow:hidden;}
+  .staging-row{display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:10px 12px; text-decoration:none; color:inherit; border-bottom:1px solid var(--line);}
+  .staging-row:last-child{border-bottom:none;}
+  .staging-row:hover{background:var(--surface-2);}
+  .staging-row .path{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; color:var(--text); font-size:13px; font-weight:700;}
+  .staging-row .go{color:var(--red); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap;}
 
   footer{padding:20px 16px 40px; text-align:center; color:var(--muted); font-size:11px;}
 </style>
 </head>
 <body>
+<script>
+// Mode staging (demande explicite, 10/2026) : si l'URL de la page contient
+// ?staging=1, tous les appels fetch('/api/...') de la page reçoivent
+// automatiquement le même paramètre, pour que le Worker (index.js)
+// interroge la base Metabase Staging (id 4) au lieu de Production (id 3).
+// Remplace l'ancien switch cookie + bouton, retiré de toutes les pages.
+(function(){
+  var isStaging = new URLSearchParams(window.location.search).get('staging') === '1';
+  if (!isStaging) return;
+  var origFetch = window.fetch;
+  window.fetch = function(input, init){
+    try {
+      var isApiCall = (typeof input === 'string' && input.indexOf('/api/') !== -1)
+        || (input && input.url && input.url.indexOf('/api/') !== -1);
+      if (isApiCall) {
+        var url = typeof input === 'string' ? input : input.url;
+        url += (url.indexOf('?') === -1 ? '?' : '&') + 'staging=1';
+        input = typeof input === 'string' ? url : new Request(url, input);
+      }
+    } catch (e) {}
+    return origFetch.call(this, input, init);
+  };
+  document.addEventListener('DOMContentLoaded', function(){
+    var b = document.createElement('div');
+    b.textContent = '\u25C6 STAGING';
+    b.style.cssText = 'position:fixed;bottom:14px;right:14px;z-index:9999;'
+      + 'font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:11px;font-weight:700;'
+      + 'padding:7px 12px;border-radius:2px;letter-spacing:.03em;pointer-events:none;'
+      + 'box-shadow:0 2px 8px rgba(0,0,0,.25);color:#fff;background:#E2173B;';
+    document.body.appendChild(b);
+  });
+})();
+</script>
+
 
 <header>
   <h1>Dashboards <em>CAE</em></h1>
@@ -178,39 +221,30 @@
     </div>
   </a>
 
+  <div class="section-label"><span class="diamond"></span>Version staging <span class="badge staging">base Metabase Staging</span></div>
+  <div class="desc" style="margin:0 2px 10px;">Mêmes pages, mais avec <span style="font-family:ui-monospace,SFMono-Regular,Consolas,monospace;">?staging=1</span> dans l'URL : tous les appels de la page interrogent alors la base Metabase <strong>Staging</strong> (id 4) au lieu de Production (id 3). Le paramètre se propage automatiquement à tous les filtres/exports de la page.</div>
+
+  <div class="staging-list">
+    <a class="staging-row" href="/client?id_client=66effb2e-fef7-4cd3-8c98-85000ecb5fba&staging=1"><span class="path">/client</span><span class="go">Ouvrir en staging →</span></a>
+    <a class="staging-row" href="/mission?id_mission=55bc04fe-8ce0-453a-ab79-8b3569f0f566&staging=1"><span class="path">/mission</span><span class="go">Ouvrir en staging →</span></a>
+    <a class="staging-row" href="/rd?id_mission=55bc04fe-8ce0-453a-ab79-8b3569f0f566&id_utilisateur=01a0c2de-35ce-7c6f-b6ab-42a0516e6c9a&staging=1"><span class="path">/rd</span><span class="go">Ouvrir en staging →</span></a>
+    <a class="staging-row" href="/re-collecte?id_mission=55bc04fe-8ce0-453a-ab79-8b3569f0f566&staging=1"><span class="path">/re-collecte</span><span class="go">Ouvrir en staging →</span></a>
+    <a class="staging-row" href="/salarie?id_utilisateur=01a0c2de-35ce-7c6f-b6ab-42a0516e6c9a&staging=1"><span class="path">/salarie</span><span class="go">Ouvrir en staging →</span></a>
+    <a class="staging-row" href="/emplacement?id_emplacement=019d0696-1cc6-75f2-b7fc-10377b80be61&staging=1"><span class="path">/emplacement</span><span class="go">Ouvrir en staging →</span></a>
+    <a class="staging-row" href="/re-mobilisation?mission_id=019c66fe-e645-7aac-846e-8be655464055&staging=1"><span class="path">/re-mobilisation</span><span class="go">Ouvrir en staging →</span></a>
+    <a class="staging-row" href="/rd-mobilisation?mission_id=019c66fe-e645-7aac-846e-8be655464055&user_id=019c6b5c-23c6-71fc-b73a-b9b4fdc1e9e6&staging=1"><span class="path">/rd-mobilisation</span><span class="go">Ouvrir en staging →</span></a>
+    <a class="staging-row" href="/rm-collecte?staging=1"><span class="path">/rm-collecte</span><span class="go">Ouvrir en staging →</span></a>
+    <a class="staging-row" href="/site-prive?staging=1"><span class="path">/site-prive</span><span class="go">Ouvrir en staging →</span></a>
+    <a class="staging-row" href="/assistant-site-prive?staging=1"><span class="path">/assistant-site-prive</span><span class="go">Ouvrir en staging →</span></a>
+    <a class="staging-row" href="/rh?staging=1"><span class="path">/rh</span><span class="go">Ouvrir en staging →</span></a>
+    <a class="staging-row" href="/direction?staging=1"><span class="path">/direction</span><span class="go">Ouvrir en staging →</span></a>
+    <a class="staging-row" href="/challenge?staging=1"><span class="path">/challenge</span><span class="go">Ouvrir en staging →</span></a>
+  </div>
+  <div class="desc" style="margin:8px 2px 0;">/rm n'apparaît pas ici : elle s'appuie sur une carte Metabase (n°514) liée en dur à Production, le paramètre staging n'a aucun effet dessus.</div>
+
 </main>
 
 <footer>Les id utilisés ci-dessus sont réels (base de production, clients exclus écartés) — capturés le 27/09/2026, peuvent devenir obsolètes si la mission/le salarié/l'emplacement est archivé.</footer>
 
-<!-- Mode staging/prod (demande explicite, 9/2026) : bascule la base
-     Metabase interrogée par TOUTES les pages, via un cookie lu côté
-     serveur (index.js) sur chaque requête /api/*. Widget identique sur
-     toutes les pages du projet. -->
-<div id="dbModeBadge" onclick="__dbModeToggle()" title="Cliquer pour basculer Production / Staging"></div>
-<script>
-(function(){
-  function dbMode(){
-    var m = document.cookie.match(/(?:^|;\s*)dashboard_db_mode=(staging|prod)/);
-    return m ? m[1] : 'prod';
-  }
-  function paint(){
-    var mode = dbMode();
-    var el = document.getElementById('dbModeBadge');
-    if(!el) return;
-    el.textContent = mode === 'staging' ? '◆ STAGING' : '◇ PROD';
-    el.style.cssText = 'position:fixed;bottom:14px;right:14px;z-index:9999;'
-      + 'font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:11px;font-weight:700;'
-      + 'padding:7px 12px;border-radius:2px;cursor:pointer;letter-spacing:.03em;'
-      + 'box-shadow:0 2px 8px rgba(0,0,0,.25);color:#fff;background:'
-      + (mode === 'staging' ? '#E2173B' : '#1A1A1D') + ';';
-  }
-  window.__dbModeToggle = function(){
-    var next = dbMode() === 'staging' ? 'prod' : 'staging';
-    document.cookie = 'dashboard_db_mode=' + next + '; path=/; max-age=31536000';
-    location.reload();
-  };
-  paint();
-})();
-</script>
 </body>
 </html>

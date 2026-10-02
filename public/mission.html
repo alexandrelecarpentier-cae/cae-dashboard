@@ -163,6 +163,40 @@
 </style>
 </head>
 <body>
+<script>
+// Mode staging (demande explicite, 10/2026) : si l'URL de la page contient
+// ?staging=1, tous les appels fetch('/api/...') de la page reçoivent
+// automatiquement le même paramètre, pour que le Worker (index.js)
+// interroge la base Metabase Staging (id 4) au lieu de Production (id 3).
+// Remplace l'ancien switch cookie + bouton, retiré de toutes les pages.
+(function(){
+  var isStaging = new URLSearchParams(window.location.search).get('staging') === '1';
+  if (!isStaging) return;
+  var origFetch = window.fetch;
+  window.fetch = function(input, init){
+    try {
+      var isApiCall = (typeof input === 'string' && input.indexOf('/api/') !== -1)
+        || (input && input.url && input.url.indexOf('/api/') !== -1);
+      if (isApiCall) {
+        var url = typeof input === 'string' ? input : input.url;
+        url += (url.indexOf('?') === -1 ? '?' : '&') + 'staging=1';
+        input = typeof input === 'string' ? url : new Request(url, input);
+      }
+    } catch (e) {}
+    return origFetch.call(this, input, init);
+  };
+  document.addEventListener('DOMContentLoaded', function(){
+    var b = document.createElement('div');
+    b.textContent = '\u25C6 STAGING';
+    b.style.cssText = 'position:fixed;bottom:14px;right:14px;z-index:9999;'
+      + 'font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:11px;font-weight:700;'
+      + 'padding:7px 12px;border-radius:2px;letter-spacing:.03em;pointer-events:none;'
+      + 'box-shadow:0 2px 8px rgba(0,0,0,.25);color:#fff;background:#E2173B;';
+    document.body.appendChild(b);
+  });
+})();
+</script>
+
 
 <header>
   <div class="meta-row">
@@ -863,35 +897,5 @@
 })();
 </script>
 
-<!-- Mode staging/prod (demande explicite, 9/2026) : bascule la base
-     Metabase interrogée par TOUTES les pages, via un cookie lu côté
-     serveur (index.js) sur chaque requête /api/*. Widget identique sur
-     toutes les pages du projet. -->
-<div id="dbModeBadge" onclick="__dbModeToggle()" title="Cliquer pour basculer Production / Staging"></div>
-<script>
-(function(){
-  function dbMode(){
-    var m = document.cookie.match(/(?:^|;\s*)dashboard_db_mode=(staging|prod)/);
-    return m ? m[1] : 'prod';
-  }
-  function paint(){
-    var mode = dbMode();
-    var el = document.getElementById('dbModeBadge');
-    if(!el) return;
-    el.textContent = mode === 'staging' ? '◆ STAGING' : '◇ PROD';
-    el.style.cssText = 'position:fixed;bottom:14px;right:14px;z-index:9999;'
-      + 'font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:11px;font-weight:700;'
-      + 'padding:7px 12px;border-radius:2px;cursor:pointer;letter-spacing:.03em;'
-      + 'box-shadow:0 2px 8px rgba(0,0,0,.25);color:#fff;background:'
-      + (mode === 'staging' ? '#E2173B' : '#1A1A1D') + ';';
-  }
-  window.__dbModeToggle = function(){
-    var next = dbMode() === 'staging' ? 'prod' : 'staging';
-    document.cookie = 'dashboard_db_mode=' + next + '; path=/; max-age=31536000';
-    location.reload();
-  };
-  paint();
-})();
-</script>
 </body>
 </html>

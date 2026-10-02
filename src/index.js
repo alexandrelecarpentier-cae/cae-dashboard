@@ -58,16 +58,20 @@ import { isExcludedClient, buildMissionClientQuery, EXCLUDED_CLIENT_NAMES } from
 // défaut (3 = Production). 4 = Staging, cf. demande explicite de
 // l'utilisateur (URL Metabase .../databases/4-staging).
 const STAGING_DATABASE_ID = 4;
-function resolveDatabaseId(request) {
-  const cookie = request.headers.get('Cookie') || '';
-  const match = cookie.match(/(?:^|;\s*)dashboard_db_mode=(staging|prod)/);
-  return match && match[1] === 'staging' ? STAGING_DATABASE_ID : null;
+// Mode staging déclenché par un paramètre d'URL (?staging=1), présent sur
+// la page du dashboard ET propagé automatiquement par le front à tous ses
+// appels /api/* (cf. script injecté dans chaque page public/*.html).
+// Le précédent mécanisme par cookie + bouton de bascule a été retiré
+// (9/2026) : seul le lien direct avec paramètre reste, voir /all.
+function resolveDatabaseId(url) {
+  const v = url.searchParams.get('staging');
+  return v === '1' || v === 'true' ? STAGING_DATABASE_ID : null;
 }
 
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
-    const stagingDbId = resolveDatabaseId(request);
+    const stagingDbId = resolveDatabaseId(url);
     if (stagingDbId) env = { ...env, METABASE_DATABASE_ID: stagingDbId };
     try {
       if (url.pathname === '/api/client') return await handleClient(url, env);

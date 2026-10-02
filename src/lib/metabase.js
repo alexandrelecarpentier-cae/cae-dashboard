@@ -31,9 +31,8 @@ export function sanitizeFreeText(value, maxLen = 100) {
 }
 
 export async function runQuery(env, sql) {
-  // env.METABASE_DATABASE_ID est posé par index.js quand le mode staging est
-  // actif (cookie dashboard_db_mode=staging) — sinon on reste sur la base
-  // Production par défaut.
+  // env.METABASE_DATABASE_ID est posé par index.js quand l'URL contient
+  // ?staging=1 — sinon on reste sur la base Production par défaut.
   const database = env.METABASE_DATABASE_ID || DATABASE_ID;
   const res = await fetch(`${env.METABASE_URL}/api/dataset`, {
     method: 'POST',
@@ -64,9 +63,9 @@ export async function runQuery(env, sql) {
 // question Metabase "Missions en cours" (id 514, toutes missions tous
 // clients confondus) plutôt que de réécrire cette agrégation en SQL.
 // NB : une carte Metabase est liée à sa propre base au moment de sa
-// création — le mode staging/prod (cookie dashboard_db_mode, cf. index.js)
-// n'a donc aucun effet ici, contrairement à runQuery(). /rm reste toujours
-// branché sur la carte 514 de Production.
+// création — le mode staging (paramètre ?staging=1, cf. index.js) n'a donc
+// aucun effet ici, contrairement à runQuery(). /rm reste toujours branché
+// sur la carte 514 de Production.
 export async function runCardQuery(env, cardId, missionId) {
   const payload = {};
   if (missionId) {
