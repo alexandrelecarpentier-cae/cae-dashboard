@@ -9,6 +9,7 @@ Un badge cliquable en bas à droite de chaque page (`◇ PROD` / `◆ STAGING`) 
 - **Dons valides** : statut ∈ (`nouveau`, `en_attente`, `transmis`).
 - **BS au sens large** : statut ∈ (`nouveau`, `en_attente`, `transmis`, `incomplet`, `annule`).
 - **Présence d'un lot (règle 10/2026)** : un lot est *présent* si ses heures rémunérées (`nombre_horaires_remuneration`) sont non nulles, *absent* sinon. Le champ `presence_recruteur` n'est **jamais** utilisé (ni pour les heures, ni pour les jours de présence/absence).
+- **Lots futurs exclus (10/2026)** : les lots sont pré-créés sur toute la durée de la mission ; tous les calculs (taux de présence, absentéisme, jours) ignorent les lots dont la date est postérieure à aujourd'hui (`l.date <= CURRENT_DATE`). Sans cela, le taux de présence « mission entière » était sous-estimé (ex. 5 jours présents / 25 lots = 20 % au lieu de 100 %).
 - **Heures de rue / heures rémunérées** : sommées uniquement sur les lots *présents* (heures rémunérées ≠ 0).
 - **Âge d'un donateur** : `(date de signature du don − date de naissance) / 365.25`, toujours calculé par rapport à `dons.created_at`, jamais par rapport à la date du jour.
 - **Score qualité** : `don moyen × % donateurs +25 ans`, calculé sur les dons valides. Barème identique sur tous les dashboards qui l'affichent (`/rd`, `/re-collecte`, `/mission`, `/rm-collecte`, `/salarie`) :

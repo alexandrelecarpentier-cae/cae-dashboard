@@ -79,7 +79,7 @@ lots_u as (
   from lots l
   join u on l.utilisateur_id = u.id
   join missions m on m.id = l.mission_id
-  where 1=1 ${excludeClientsClause('m')}
+  where l.date <= CURRENT_DATE ${excludeClientsClause('m')} -- lots futurs (pré-créés) exclus
 ),
 heures as (
   -- heures_remuneration ne compte que les heures rémunérées déclarées :
@@ -144,7 +144,7 @@ lots_u as (
   from lots l
   join u on l.utilisateur_id = u.id
   join missions m on m.id = l.mission_id
-  where 1=1 ${excludeClientsClause('m')}
+  where l.date <= CURRENT_DATE ${excludeClientsClause('m')} -- lots futurs (pré-créés) exclus
 ),
 heures as (
   -- cf. buildPerformanceParMissionQuery : heures_remuneration ne compte

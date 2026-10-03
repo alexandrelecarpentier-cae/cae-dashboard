@@ -15,7 +15,7 @@ import { excludeClientsClause } from './excluded-clients.js';
 const STATUTS_VALIDES = "('nouveau','en_attente','transmis')";
 
 function filtersClause(p) {
-  const clauses = ['1=1'];
+  const clauses = ['1=1', 'l.date <= CURRENT_DATE']; // lots futurs (pré-créés) exclus
   if (p.id_client) clauses.push(`m.client_id = '${p.id_client}'`);
   if (p.statut_mission) clauses.push(`m.statut_mission = '${p.statut_mission}'`);
   if (p.date_from) clauses.push(`l.date >= '${p.date_from}'`);

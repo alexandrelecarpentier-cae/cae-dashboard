@@ -11,7 +11,11 @@ const STATUTS_VALIDES = "('nouveau','en_attente','transmis')";
 const STATUTS_RUE = "('nouveau','en_attente','transmis','incomplet','annule')";
 
 function dateFilterClause(col, dateRange) {
-  return dateRange ? `AND ${col} BETWEEN '${dateRange.from}' AND '${dateRange.to}'` : '';
+  // Les lots sont pré-créés pour toute la durée de la mission : les jours
+  // futurs ne sont ni des présences ni des absences -> toujours exclus.
+  return dateRange
+    ? `AND ${col} BETWEEN '${dateRange.from}' AND '${dateRange.to}' AND ${col} <= CURRENT_DATE`
+    : `AND ${col} <= CURRENT_DATE`;
 }
 
 function buildRdInfoQuery(id_mission) {

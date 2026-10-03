@@ -24,7 +24,10 @@ import { excludeClientsClause, excludeClientsDirectClause } from './excluded-cli
 const MANUALLY_CANCELLED_MISSIONS = ['26SAM04PAR'];
 
 function dateRangeClause(col, dateRange) {
-  return dateRange ? `AND ${col} BETWEEN '${dateRange.from}' AND '${dateRange.to}'` : '';
+  // Lots futurs (pré-créés sur toute la mission) toujours exclus.
+  return dateRange
+    ? `AND ${col} BETWEEN '${dateRange.from}' AND '${dateRange.to}' AND ${col} <= CURRENT_DATE`
+    : `AND ${col} <= CURRENT_DATE`;
 }
 
 // Par défaut "jusqu'à aujourd'hui" quand aucune plage n'est fournie —
