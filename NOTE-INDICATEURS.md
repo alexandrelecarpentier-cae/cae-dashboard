@@ -65,7 +65,7 @@ Règles communes à tous les dashboards (demande explicite, 9/2026) ; les écart
 - **Âge médian** : médiane (`percentile_cont(0.5)`) de l'âge des donateurs (dons valides), affiché à 1 décimale.
 - **% donateurs −25 ans (`pct_moins_25`)** : `100 × (nb dons valides avec âge < 25) / (nb dons valides dont la date de naissance du donateur est connue)` (affiché en pourcentage, 1 décimale). **Formule harmonisée le 9/2026** (audit) : avant cette date, le dénominateur était le BS réel total (y compris les dons sans date de naissance connue, qui ne peuvent jamais compter au numérateur), ce qui sous-estimait mécaniquement le % sur les missions où la donnée d'âge est incomplète — voir "Complétude des données d'âge" sous `/client`. Cette correction rend `pct_moins_25` cohérent avec `pct_plus_25` de `/salarie` et `/direction`, qui utilisaient déjà ce dénominateur. Sur les missions récentes (couverture ~100 %), le chiffre ne change pas ; sur les missions anciennes ou incomplètes, il peut augmenter sensiblement (ex. observé : 28,1 % → 37,7 % sur une mission à 75 % de couverture ; `null`/« — » au lieu de `0 %` quand aucune date de naissance n'est connue sur le périmètre).
 - **Ratio heures (`ratio_h`)** : `heures_rue / heures_rem` (affiché en pourcentage, 1 décimale — ex : `71,0 %`).
-- **Taux de présence** (champ `taux_presence` ; anciennement nommé à tort "taux d'absence" — corrigé le 9/2026, la formule mesure bien une présence : plus la valeur est haute, plus la personne est présente sur les heures prévues, ce qui est l'inverse de ce que le nom "absence" laissait penser) : `100 × heures rémunérées / (nombre de lots × 7)` (affiché en pourcentage, 1 décimale).
+- **Taux de présence** (champ `taux_presence` ; anciennement nommé à tort "taux d'absence" — corrigé le 9/2026, la formule mesure bien une présence : plus la valeur est haute, plus la personne est présente sur les heures prévues, ce qui est l'inverse de ce que le nom "absence" laissait penser) : `100 × jours avec heures rémunérées ≠ 0 / nombre de lots` (donc ≤ 100 %) (affiché en pourcentage, 1 décimale).
 - **Score qualité** : `don moyen × % donateurs +25 ans` (voir barème commun dans Définitions communes) ; affiché à 1 décimale, accompagné du badge textuel du barème.
 - **Badge FPE** : `'FPE'` si le contrat le plus récent du recruteur sur la mission porte un avenant de catégorie `fin_period_essai`.
 - **Répartition par tranche d'âge** : mêmes bornes que `/client` (18-20, 21-25, 26-35, 36-50, 50+).
@@ -105,7 +105,7 @@ Règles communes à tous les dashboards (demande explicite, 9/2026) ; les écart
 - **Liste des bulletins suspects** : mêmes 13 règles de motif que `/rd`, sur le périmètre statut ∈ (`nouveau`, `en_attente`, `annule`) — les dons déjà `transmis` sont exclus (contrôle qualité considéré comme fait).
 - **Suivi quotidien** (par mission et par jour, jusqu'à aujourd'hui, demande explicite 10/2026) :
   - **RD attendus** : RD distincts (hors responsable d'équipe de la mission) ayant un lot ce jour-là ; **RD présents** : parmi eux, ceux dont les heures rémunérées du lot sont non nulles (un lot du jour sans heures encore saisies compte donc comme absent).
-  - **Taux de présence des RD** : `100 × Σ RD présents / Σ RD attendus` (KPI global sur la période + par jour). À ne pas confondre avec le « taux de présence » en heures de `/rd` (`heures rémunérées / (lots × 7)`).
+  - **Taux de présence des RD** : `100 × Σ RD présents / Σ RD attendus` (KPI global sur la période + par jour). À ne pas confondre avec le « taux de présence » en heures de `/rd` (`jours présents / lots`).
   - **BS RE** : dons valides saisis sur les lots du responsable d'équipe de la mission (`missions.responsable_equipe_id`), par jour.
   - **Horaires 1er / dernier BS** : heure de Paris du premier et du dernier don valide du jour (`dons.created_at`, hypothèse : l'heure de création = l'heure de réalisation du BS).
   - **Objectif jour / semaine** : `missions.objectif_bulletin_theorique` réparti à parts égales sur les jours de lots de la mission (tous lots, y compris à venir) ; objectif d'une semaine ISO = objectif × (jours de lots de la semaine / jours de lots de la mission). Approximation, la base ne porte pas d'objectif par jour. % atteint = BS réel / objectif.
@@ -125,13 +125,13 @@ Règles communes à tous les dashboards (demande explicite, 9/2026) ; les écart
 
 - **Taux réel** : `BS réel / heures de rue` (affiché brut, 3 décimales).
 - **Taux h (`taux_h`)** : `heures de rue / heures rémunérées` (heures rémunérées limitées aux lots où `heures_remuneration_completes` est vrai ou non renseigné), affiché en pourcentage, 1 décimale.
-- **Taux d'absence** : `heures rémunérées / (nombre de lots × 7)`, affiché en pourcentage, 1 décimale.
+- **Taux d'absence** : `jours avec heures rémunérées ≠ 0 / nombre de lots` (≤ 100 %), affiché en pourcentage, 1 décimale.
 - **Don moyen** : `avg(montant)` (dons valides), affiché en euros à 2 décimales.
 - **% donateurs +25 ans (`pct_plus_25`)** : `(nb dons valides avec âge ≥ 25) / (nb dons valides dont la date de naissance du donateur est connue)`, affiché en pourcentage, 1 décimale.
 - **Score qualité** : `don moyen × % donateurs +25 ans` (voir barème commun dans Définitions communes), affiché à 1 décimale avec le badge du barème.
 - **Depuis la dernière mission** : aujourd'hui − date du dernier lot passé (`lots.date <= aujourd'hui`) du salarié ; « Aujourd'hui » si 0 ; « — » si aucun lot (remplace « depuis le dernier contrat », 10/2026).
 - Les 5 indicateurs ci-dessus existent en 3 déclinaisons : par mission, en cumul sur toute la carrière ("résumé"), et en cumul sur les 270 dernières heures rémunérées déclarées ("statut global").
-- Note : le champ nommé "Taux d'absence" dans cette section de la note utilise en réalité la même formule que le "Taux de présence" de `/rd`/`/re-collecte`/`/mission`/`/rh` (`heures rémunérées / (nombre de lots × 7)`) ; le champ SQL sous-jacent (`taux_presence`) et le libellé affiché sur `/salarie.html` ont déjà été corrigés en ce sens (9/2026, cf. tâche #158/#186) — coquille de nom corrigée dans cette note.
+- Note : le champ nommé "Taux d'absence" dans cette section de la note utilise en réalité la même formule que le "Taux de présence" de `/rd`/`/re-collecte`/`/mission`/`/rh` (`jours avec heures rémunérées ≠ 0 / nombre de lots` (≤ 100 %)) ; le champ SQL sous-jacent (`taux_presence`) et le libellé affiché sur `/salarie.html` ont déjà été corrigés en ce sens (9/2026, cf. tâche #158/#186) — coquille de nom corrigée dans cette note.
 
 ## /emplacement
 
@@ -167,7 +167,7 @@ Version restreinte de `/site-prive` à destination des ASP (assistant(e)s site p
 ## /rh
 
 - **Taux réel** (global et par mission) : `BS réel / heures de rue` (affiché brut, 3 décimales).
-- **Taux de présence** (global, par mission, par recruteur) : `heures rémunérées / (nombre de lots × 7)` (affiché en pourcentage, 1 décimale). Champ SQL et libellé affiché corrigés le 9/2026 (audit) : portait auparavant le nom `taux_absence` alors que la formule mesure l'inverse (bug identique à celui déjà corrigé sur `/rd` et `/salarie`, propagation manquée à l'époque).
+- **Taux de présence** (global, par mission, par recruteur) : `jours avec heures rémunérées ≠ 0 / nombre de lots` (≤ 100 %) (affiché en pourcentage, 1 décimale). Champ SQL et libellé affiché corrigés le 9/2026 (audit) : portait auparavant le nom `taux_absence` alors que la formule mesure l'inverse (bug identique à celui déjà corrigé sur `/rd` et `/salarie`, propagation manquée à l'époque).
 - **Taux de complétion de saisie — emplacement** : `(nb lots où emplacement_id est renseigné) / (nb lots total)`, affiché en pourcentage, 1 décimale.
 - **Taux de FPE** (global, par initiative employeur/salarié) : `nb contrats avec avenant "fin de période d'essai" (par initiative) / nb contrats du périmètre`, basé sur `contrats.date_debut`.
 - **Nb recrutements par jour/semaine/mois** : `count(distinct contrats.id)` par période, sur `contrats.date_debut`.

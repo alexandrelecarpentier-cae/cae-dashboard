@@ -39,7 +39,7 @@ order by nom;`;
 // handler (cf. buildRdBsSuspectsQuery) car c'est une requête séparée plus
 // coûteuse.
 //
-// taux_presence = heures rémunérées / (nb jours prévus * 7h) : c'était
+// taux_presence = jours avec heures rémunérées ≠ 0 / nb jours (lots) : c'était
 // auparavant appelé "taux_absence" alors que la formule mesure l'inverse
 // (plus la valeur est haute, moins la personne est absente) — corrigé le
 // 9/2026 suite à un signalement..
@@ -108,7 +108,7 @@ rd_rows AS (
     round((a.heures_rue::numeric / NULLIF(a.heures_rem, 0))::numeric, 2) AS ratio_h,
     round(a.heures_rue::numeric, 2) AS heures_rue,
     round(a.heures_rem::numeric, 2) AS heures_rem,
-    round((100.0 * a.heures_rem / NULLIF(a.nb_jours * 7, 0))::numeric, 1) AS taux_presence,
+    round((100.0 * a.jours_presence / NULLIF(a.nb_jours, 0))::numeric, 1) AS taux_presence,
     CASE WHEN cr.grade = 'RE' THEN 1 WHEN cr.grade='RDE' THEN 2 WHEN cr.grade='RDC' THEN 3 WHEN cr.grade='RD' THEN 4 ELSE 5 END AS grade_order
   FROM agg a
   LEFT JOIN dons_agg da ON da.utilisateur_id = a.utilisateur_id
@@ -150,7 +150,7 @@ total_row AS (
     round((ta.heures_rue::numeric / NULLIF(ta.heures_rem, 0))::numeric, 2) AS ratio_h,
     round(ta.heures_rue::numeric, 2) AS heures_rue,
     round(ta.heures_rem::numeric, 2) AS heures_rem,
-    round((100.0 * ta.heures_rem / NULLIF(ta.nb_lots * 7, 0))::numeric, 1) AS taux_presence,
+    round((100.0 * ta.jours_presence / NULLIF(ta.nb_lots, 0))::numeric, 1) AS taux_presence,
     0 AS grade_order
   FROM total_agg ta, total_dons td
 )
