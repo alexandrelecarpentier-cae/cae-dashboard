@@ -564,16 +564,23 @@
       { v: row.ratio_h != null ? fmtRatioPct(row.ratio_h) : '—', l: 'Ratio h rue/rém' },
       { v: row.age_median != null ? fmtNum(row.age_median, 1) : '—', l: 'Âge médian' },
     ];
-    // BS réalisés sur la mission (cumul depuis le début, hors filtre de
-    // période/RD) comparés à l'objectif de la mission (demande explicite,
-    // 10/2026).
+    // Objectif de la mission sur la période affichée (demande explicite 10/2026) :
+    // objectif réparti uniformément sur les jours avec lot ; "attendu à ce jour"
+    // = jours de la période déjà écoulés. Indépendant du filtre RD.
     if (lastObjectif && lastObjectif.objectif != null) {
       const obj = Number(lastObjectif.objectif) || 0;
-      const reel = Number(lastObjectif.bs_reel_cumul) || 0;
-      perf.push({ v: fmtNum(reel) + ' / ' + fmtNum(obj), l: 'BS réalisés / objectif mission' });
-      perf.push({ v: obj > 0 ? fmtPct1(100 * reel / obj) : '—', l: 'Objectif atteint' });
+      const jt = Number(lastObjectif.jours_total) || 0;
+      const jp = Number(lastObjectif.jours_periode) || 0;
+      const jc = Number(lastObjectif.jours_a_ce_jour) || 0;
+      const reel = Number(lastObjectif.bs_reel_periode) || 0;
+      const objPer = jt > 0 ? obj * jp / jt : 0;
+      const attendu = jt > 0 ? obj * jc / jt : 0;
+      perf.push({ v: fmtNum(reel) + ' / ' + fmtNum(attendu, 1), l: 'Réalisé / attendu à ce jour' });
+      perf.push({ v: attendu > 0 ? fmtPct1(100 * reel / attendu) : '—', l: 'Atteinte vs attendu à ce jour' });
+      perf.push({ v: fmtNum(objPer, 0), l: 'Objectif de la période' });
+      perf.push({ v: obj > 0 ? fmtPct1(100 * Number(lastObjectif.bs_reel_cumul) / obj) : '—', l: 'Objectif mission atteint (cumul)' });
     } else if (lastObjectif) {
-      perf.push({ v: fmtNum(lastObjectif.bs_reel_cumul), l: 'BS réalisés (objectif non renseigné)' });
+      perf.push({ v: fmtNum(lastObjectif.bs_reel_periode), l: 'BS réalisés (objectif non renseigné)' });
     }
     document.getElementById('kpiPerf').innerHTML = perf.map((k) => `
       <div class="kpi"><div class="val">${k.v}</div><div class="lbl">${k.l}</div></div>`).join('');

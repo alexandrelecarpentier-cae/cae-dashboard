@@ -92,8 +92,29 @@ ORDER BY t.date DESC, t.montant DESC;`;
 // Objectif de la mission et BS réels cumulés depuis son début (toutes dates,
 // hors filtre de période ou de RD) — demande explicite 10/2026 : comparer
 // les BS réalisés sur la mission à l'objectif (objectif_bulletin_theorique).
-function buildObjectifQuery(id_mission) {
-  return `select m.objectif_bulletin_theorique as objectif,
+function buildObjectifQuery(id_mission, dateRange) {
+  // Période : filtre de dates si fourni, sinon toute la mission. Objectif de
+  // période = objectif mission × (jours de lot de la période / jours de lot de
+  // la mission) ; "attendu à ce jour" = idem mais limité aux jours <= aujourd'hui.
+  // Approximation : l'objectif n'existe qu'au niveau mission, il est réparti
+  // uniformément sur les jours distincts avec lot. Indépendant du filtre RD.
+  const per = dateRange ? `and l.date between '${dateRange.from}' and '${dateRange.to}'` : '';
+  return `with jours as (
+  select distinct l.date from lots l where l.mission_id = '${id_mission}' and l.date is not null
+),
+j as (
+  select count(*) as total,
+    count(*) filter (where true ${per.replace(/l\.date/g, 'date')}) as periode,
+    count(*) filter (where date <= current_date ${per.replace(/l\.date/g, 'date')}) as a_ce_jour
+  from jours
+)
+select m.objectif_bulletin_theorique as objectif,
+  (select total from j) as jours_total,
+  (select periode from j) as jours_periode,
+  (select a_ce_jour from j) as jours_a_ce_jour,
+  (select count(distinct d.id) from lots l
+    join dons d on d.lot_id = l.id and d.statut in ('nouveau','en_attente','transmis')
+    where l.mission_id = m.id and l.date <= current_date ${per}) as bs_reel_periode,
   (select count(distinct d.id) from lots l
     join dons d on d.lot_id = l.id and d.statut in ('nouveau','en_attente','transmis')
     where l.mission_id = m.id) as bs_reel_cumul
@@ -124,7 +145,7 @@ function buildReCollecteQueries(id_mission, id_utilisateur, dateRange) {
     bulletins: buildRdBulletinsParJourQuery(id_mission, id_utilisateur, dateRange),
     suspects: buildRdBsSuspectsQuery(id_mission, dateRange),
     suspectsList: buildBulletinsSuspectsListQuery(id_mission, id_utilisateur, dateRange),
-    objectif: buildObjectifQuery(id_mission),
+    objectif: buildObjectifQuery(id_mission, dateRange),
     contrats: buildContratsRdQuery(id_mission),
   };
 }

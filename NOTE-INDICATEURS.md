@@ -92,7 +92,7 @@ Règles communes à tous les dashboards (demande explicite, 9/2026) ; les écart
 ## /re-collecte
 
 - Reprend telles quelles les requêtes de `/rd` (table, âge, genre, bulletins/jour, motif de don suspect, taux de présence) et de `/mission` (taux réel par semaine).
-- **BS réalisés / objectif mission** (KPI, demande explicite 10/2026) : BS réels cumulés depuis le début de la mission (hors filtre de période ou de RD) / `objectif_bulletin_theorique`.
+- **Objectif sur la période** (KPI, 10/2026) : l'objectif `objectif_bulletin_theorique` est réparti à parts égales sur les jours distincts avec lot de la mission. *Attendu à ce jour* = objectif × (jours de lot de la période déjà écoulés, ≤ aujourd'hui / jours de lot de la mission) ; *Réalisé* = BS valides (`nouveau`/`en_attente`/`transmis`) sur la période, jusqu'à aujourd'hui. KPI « Réalisé / attendu à ce jour » + % d'atteinte ; « Objectif de la période » = objectif × jours période / jours mission ; « Objectif mission atteint (cumul) » = BS cumulés depuis le début / objectif. Sans filtre de dates, la période = toute la mission. Approximation (pas d'objectif par jour en base) ; indépendant du filtre RD.
 - **Début / fin de contrat** (table équipe, 10/2026) : dates du contrat le plus récent du RD sur la mission (même règle que le badge FPE).
 - Sur `/re-collecte` et `/mission`, possibilité de filtrer sur un RD en cliquant sur sa ligne dans la table équipe, en plus du select déjà existant (demande explicite, 9/2026).
 - **Liste des bulletins suspects** : mêmes 13 règles de motif que `/rd`, sur le périmètre statut ∈ (`nouveau`, `en_attente`, `transmis`, `annule`). Colonnes affichées (restreint le 9/2026, demande explicite) : Date / Statut / Motif / Montant / Donateur / RD (prénom + NOM) — l'adresse et l'email du donateur ne sont ni affichés ni remontés par la requête.
@@ -121,6 +121,8 @@ Règles communes à tous les dashboards (demande explicite, 9/2026) ; les écart
 
 ## /salarie
 
+- **Missions** (10/2026) : union des missions issues des contrats et des lots (anciennes données : lots sans contrat). **Fin du dernier contrat** = `max(date_fin)` des contrats ; « En cours » si un contrat n'est pas terminé. Villes de mission dédoublonnées sans tenir compte de la casse.
+
 - **Taux réel** : `BS réel / heures de rue` (affiché brut, 3 décimales).
 - **Taux h (`taux_h`)** : `heures de rue / heures rémunérées` (heures rémunérées limitées aux lots où `heures_remuneration_completes` est vrai ou non renseigné), affiché en pourcentage, 1 décimale.
 - **Taux d'absence** : `heures rémunérées / (nombre de lots × 7)`, affiché en pourcentage, 1 décimale.
@@ -132,6 +134,8 @@ Règles communes à tous les dashboards (demande explicite, 9/2026) ; les écart
 - Note : le champ nommé "Taux d'absence" dans cette section de la note utilise en réalité la même formule que le "Taux de présence" de `/rd`/`/re-collecte`/`/mission`/`/rh` (`heures rémunérées / (nombre de lots × 7)`) ; le champ SQL sous-jacent (`taux_presence`) et le libellé affiché sur `/salarie.html` ont déjà été corrigés en ce sens (9/2026, cf. tâche #158/#186) — coquille de nom corrigée dans cette note.
 
 ## /emplacement
+
+- **Filtre de dates** (10/2026) : `date_from`/`date_to` filtrent sur `lots.date` (missions passées, stats globales, graphiques, horaires). Section « Missions passées ici » avant « Suivi — horaires » ; cliquer une mission filtre le suivi sur celle-ci (re-clic = retire le filtre).
 
 - **Taux réel** (par mission ayant utilisé cet emplacement, et global tous jours confondus) : `BS réel / heures de rue` (affiché brut, 3 décimales).
 - **Don moyen** (par mission, et global) : `avg(montant)` (dons valides), affiché en euros à 2 décimales.

@@ -264,7 +264,10 @@
     // Uniquement le statut du dernier contrat (missions déjà triées par
     // date_debut desc côté backend, donc missions[0] = le plus récent).
     const missions = data.missions || [];
-    const dernierRole = missions.length ? roleLabel(missions[0]) : null;
+    // Rôle de la mission la plus récente pour laquelle un rôle est connu
+    // (les missions anciennes migrées n'ont pas toujours de contrat en base).
+    const missionAvecRole = missions.find((m) => roleLabel(m) !== '—');
+    const dernierRole = missionAvecRole ? roleLabel(missionAvecRole) : null;
     const badgeHtml = dernierRole
       ? (() => {
           const cls = dernierRole === 'RM' ? 'rm' : dernierRole === 'RE' ? 're' : '';
@@ -279,7 +282,11 @@
     // à la date du jour, ville de résidence, villes de mission (emplacements),
     // permis, nombre de jours depuis le dernier contrat (0 = contrat en cours).
     const actifTxt = profil.actif == null ? '—' : (profil.actif ? 'Actif' : 'Inactif');
-    const permisTxt = profil.permis === true ? 'Oui' : profil.permis === false ? 'Non' : '—';
+    const permisTxt = profil.permis === true ? 'Oui' : profil.permis === false ? 'Non' : 'Non renseigné';
+    // Fin du dernier contrat = date de fin du contrat le plus tardif ;
+    // « En cours » si un contrat n'est pas terminé (demande explicite, 10/2026).
+    const finContratTxt = profil.contrat_en_cours ? 'En cours'
+      : (profil.fin_dernier_contrat ? fmtDate(profil.fin_dernier_contrat) : '—');
     const joursTxt = profil.jours_depuis_dernier_contrat == null ? '—'
       : (Number(profil.jours_depuis_dernier_contrat) === 0 ? 'En cours' : fmtNum(profil.jours_depuis_dernier_contrat) + ' j');
     const escTxt = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;');
@@ -300,7 +307,7 @@
         <div class="kpi" style="grid-column:1 / -1;">${txtVal(profil.villes_mission)}<div class="lbl">Villes de mission</div></div>
         <div class="kpi"><div class="val">${resume.nb_missions != null ? fmtNum(resume.nb_missions) : '—'}</div><div class="lbl">Missions</div></div>
         <div class="kpi"><div class="val">${fmtDate(resume.premiere_mission_le)}</div><div class="lbl">Première mission</div></div>
-        <div class="kpi"><div class="val">${fmtDate(resume.derniere_mission_le)}</div><div class="lbl">Dernière mission</div></div>
+        <div class="kpi"><div class="val">${finContratTxt}</div><div class="lbl">Fin du dernier contrat</div></div>
         <div class="kpi"><div class="val">${resume.bs_reel_total != null ? fmtNum(resume.bs_reel_total) : '—'}</div><div class="lbl">BS réel cumulé</div></div>
         <div class="kpi"><div class="val">${resume.heures_rue_total != null ? fmtNum(resume.heures_rue_total, 1) : '—'}</div><div class="lbl">Heures de rue totales</div></div>
         <div class="kpi"><div class="val">${resume.heures_remuneration_total != null ? fmtNum(resume.heures_remuneration_total, 1) : '—'}</div><div class="lbl">Heures rémunérées totales</div></div>

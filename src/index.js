@@ -984,7 +984,14 @@ async function handleEmplacement(url, env) {
   const configError = requireConfig(env);
   if (configError) return jsonResponse({ error: configError }, 500);
 
-  const queries = buildEmplacementQueries(id_emplacement);
+  // Filtre de période optionnel (demande explicite, 10/2026) sur la date des lots.
+  const date_from = url.searchParams.get('date_from') || '';
+  const date_to = url.searchParams.get('date_to') || '';
+  if (date_from && !RE_DATE.test(date_from)) return jsonResponse({ error: 'date_from invalide' }, 400);
+  if (date_to && !RE_DATE.test(date_to)) return jsonResponse({ error: 'date_to invalide' }, 400);
+  const dateRange = date_from && date_to ? { from: date_from, to: date_to } : null;
+
+  const queries = buildEmplacementQueries(id_emplacement, dateRange);
 
   try {
     const [info, missions, globalStats, tauxParJourSemaine, tauxParMois, horairesBs] = await Promise.all([

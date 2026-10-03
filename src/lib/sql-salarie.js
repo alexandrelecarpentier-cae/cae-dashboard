@@ -22,8 +22,24 @@ where u.id = '${id_utilisateur}'
 limit 1;`;
 }
 
+// Missions de la personne = missions où elle a un contrat OU au moins un lot
+// (10/2026 : l'historique ancien — migration depuis l'ancien système — a des
+// lots mais pas de contrat ; partir des seuls contrats masquait la majorité
+// des missions de certains salariés). Une ligne par mission ; grade/fonction
+// et dates de contrat viennent du contrat le plus récent sur la mission
+// (null si aucun contrat n'existe en base pour cette mission).
 function buildMissionsQuery(id_utilisateur) {
-  return `with u as (select '${id_utilisateur}'::uuid as id)
+  return `with u as (select '${id_utilisateur}'::uuid as id),
+ms as (
+  select c.mission_id from contrats c join u on c.utilisateur_id = u.id
+  union
+  select l.mission_id from lots l join u on l.utilisateur_id = u.id
+),
+ctr as (
+  select distinct on (c.mission_id) c.mission_id, c.statut, c.fonction, c.date_debut, c.date_fin
+  from contrats c join u on c.utilisateur_id = u.id
+  order by c.mission_id, c.date_debut desc nulls last
+)
 select m.id as mission_id, m.code_mission, m.code_mission_client, m.statut_mission,
   m.date_debut, m.date_fin, m.format, cl.nom as client_nom,
   ctr.statut as grade, ctr.fonction, ctr.date_debut as contrat_debut, ctr.date_fin as contrat_fin,
@@ -31,9 +47,10 @@ select m.id as mission_id, m.code_mission, m.code_mission_client, m.statut_missi
   (m.responsable_equipe_id = u.id) as est_re,
   coalesce(uip_rm.prenom || ' ' || uip_rm.nom, u_rm.email) as rm,
   coalesce(uip_re.prenom || ' ' || uip_re.nom, u_re.email) as re
-from contrats ctr
-join u on ctr.utilisateur_id = u.id
-join missions m on m.id = ctr.mission_id
+from ms
+join u on true
+join missions m on m.id = ms.mission_id
+left join ctr on ctr.mission_id = m.id
 left join clients cl on cl.id = m.client_id
 left join utilisateurs u_rm on u_rm.id = m.responsable_mission_id
 left join utilisateur_informations_personnelles uip_rm on uip_rm.utilisateur_id = m.responsable_mission_id
@@ -117,6 +134,11 @@ left join dons_u d on d.mission_id = h.mission_id;`;
 // heures de rue (cf. demande utilisateur), donc calculé séparément.
 function buildResumeQuery(id_utilisateur) {
   return `with u as (select '${id_utilisateur}'::uuid as id),
+ms as (
+  select c.mission_id from contrats c join u on c.utilisateur_id = u.id
+  union
+  select l.mission_id from lots l join u on l.utilisateur_id = u.id
+),
 lots_u as (
   select l.id, l.nombre_horaires_rue, l.nombre_horaires_remuneration, l.presence_recruteur, l.heures_remuneration_completes
   from lots l
@@ -139,9 +161,9 @@ dons_u as (
   from lots_u l join dons d on d.lot_id = l.id and d.statut in ${STATUTS_VALIDES}
 )
 select
-  (select min(c.date_debut) from contrats c join u on c.utilisateur_id = u.id join missions m on m.id = c.mission_id where 1=1 ${excludeClientsClause('m')}) as premiere_mission_le,
-  (select max(c.date_debut) from contrats c join u on c.utilisateur_id = u.id join missions m on m.id = c.mission_id where 1=1 ${excludeClientsClause('m')}) as derniere_mission_le,
-  (select count(distinct mission_id) from contrats c join u on c.utilisateur_id = u.id join missions m on m.id = c.mission_id where 1=1 ${excludeClientsClause('m')}) as nb_missions,
+  (select min(m.date_debut) from missions m join ms on ms.mission_id = m.id where 1=1 ${excludeClientsClause('m')}) as premiere_mission_le,
+  (select max(m.date_debut) from missions m join ms on ms.mission_id = m.id where 1=1 ${excludeClientsClause('m')}) as derniere_mission_le,
+  (select count(distinct m.id) from missions m join ms on ms.mission_id = m.id where 1=1 ${excludeClientsClause('m')}) as nb_missions,
   h.heures_rue_total, h.heures_remuneration_total, h.nb_lots_total,
   case when coalesce(h.heures_remuneration_total,0) > 0 then coalesce(h.heures_rue_total,0)::float / h.heures_remuneration_total else null end as taux_h_total,
   case when h.nb_lots_total > 0 then coalesce(h.heures_remuneration_total,0)::float / (h.nb_lots_total * 7) else null end as taux_presence_total,
@@ -202,6 +224,8 @@ from dons_270 d;`;
 //   écartés ; ville_residence : utilisateur_informations_contact.ville.
 // - permis : utilisateur_situations.permis_de_conduire (true/false, null si
 //   non renseigné).
+// - fin_dernier_contrat / contrat_en_cours : date de fin du dernier contrat
+//   (max date_fin) ; contrat_en_cours = un contrat n'est pas terminé.
 // - jours_depuis_dernier_contrat : 0 si un contrat n'est pas terminé
 //   (date_fin vide ou >= aujourd'hui), sinon aujourd'hui - dernière date_fin.
 // - actif : au jour de la recherche, un lot à venir (aujourd'hui compris) sur
@@ -228,19 +252,24 @@ flags as (
 )
 select
   (select ct.ville from utilisateur_informations_contact ct join u on ct.utilisateur_id = u.id limit 1) as ville_residence,
-  (select string_agg(v.ville, ', ' order by v.ville) from (
-    select distinct e.ville
+  (select string_agg(v.ville, ', ' order by lower(v.ville)) from (
+    -- une ville par nom (casse ignorée : « PARIS » et « Paris » = même ville),
+    -- en préférant la graphie qui n'est pas tout en majuscules
+    select distinct on (lower(trim(e.ville))) trim(e.ville) as ville
     from lots l
     join u on l.utilisateur_id = u.id
     join missions m on m.id = l.mission_id
     join emplacements e on e.id = l.emplacement_id
-    where e.ville is not null and e.ville <> '' ${excludeClientsClause('m')}
+    where e.ville is not null and trim(e.ville) <> '' ${excludeClientsClause('m')}
+    order by lower(trim(e.ville)), (trim(e.ville) = upper(trim(e.ville))), trim(e.ville)
   ) v) as villes_mission,
   (select s.permis_de_conduire from utilisateur_situations s join u on s.utilisateur_id = u.id order by s.updated_at desc nulls last limit 1) as permis,
   case
     when f.contrat_non_termine then 0
     when f.derniere_fin is not null then (current_date - f.derniere_fin)
     else null end as jours_depuis_dernier_contrat,
+  f.derniere_fin as fin_dernier_contrat,
+  f.contrat_non_termine as contrat_en_cours,
   (f.contrat_non_termine or f.lot_a_venir) as actif
 from flags f;`;
 }

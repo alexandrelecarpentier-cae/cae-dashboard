@@ -9,6 +9,12 @@ import { excludeClientsClause } from './excluded-clients.js';
 
 const STATUTS_VALIDES = "('nouveau','en_attente','transmis')";
 
+// Filtre de période optionnel (AAAA-MM-JJ, déjà validé par l'appelant) sur la
+// date des lots — appliqué à toutes les requêtes sauf la fiche d'identité.
+function dateClause(dateRange) {
+  return dateRange ? `and l.date between '${dateRange.from}' and '${dateRange.to}'` : '';
+}
+
 function buildInfoQuery(id_emplacement) {
   return `select id, nom, type_emplacement, categorie, adresse, code_postal, ville, pays
 from emplacements
@@ -21,11 +27,12 @@ where id = '${id_emplacement}';`;
 // côté front) et le nombre moyen de recruteurs par jour. Le taux réel de
 // la mission se compare au taux réel global du site (calculé séparément
 // par buildGlobalStatsQuery) plutôt qu'à une dispersion jour par jour.
-function buildMissionsQuery(id_emplacement) {
+function buildMissionsQuery(id_emplacement, dateRange) {
   return `with e as (select '${id_emplacement}'::uuid as id),
 lots_e as (
   select l.id, l.mission_id, l.date, l.utilisateur_id, l.nombre_horaires_rue, l.presence_recruteur
   from lots l join e on l.emplacement_id = e.id
+  where 1=1 ${dateClause(dateRange)}
 ),
 jours_mission as (
   select mission_id, date,
@@ -71,14 +78,14 @@ order by pm.derniere_date desc;`;
 // s'appliquer AVANT le regroupement par date, sinon un jour où deux
 // missions différentes seraient passées au même endroit mélangerait des
 // heures d'un client exclu dans un total global.
-function globalDaysCtePrefix(id_emplacement) {
+function globalDaysCtePrefix(id_emplacement, dateRange) {
   return `with e as (select '${id_emplacement}'::uuid as id),
 lots_e as (
   select l.id, l.mission_id, l.date, l.utilisateur_id, l.nombre_horaires_rue, l.presence_recruteur
   from lots l
   join e on l.emplacement_id = e.id
   join missions m on m.id = l.mission_id
-  where 1=1 ${excludeClientsClause('m')}
+  where 1=1 ${excludeClientsClause('m')} ${dateClause(dateRange)}
 ),
 dons_e as (
   select d.id, d.montant, l.date
@@ -114,8 +121,8 @@ jours_full as (
 // total de recruteurs distincts, moins parlant), taux réel global et don
 // moyen global (tous dons valides confondus, pas la moyenne des dons
 // moyens par mission).
-function buildGlobalStatsQuery(id_emplacement) {
-  const cte = globalDaysCtePrefix(id_emplacement);
+function buildGlobalStatsQuery(id_emplacement, dateRange) {
+  const cte = globalDaysCtePrefix(id_emplacement, dateRange);
   return `${cte}
 select
   count(*) as nb_jours_total,
@@ -130,8 +137,8 @@ from jours_full;`;
 // (somme BS réel / somme heures rue par jour de semaine), pas une moyenne
 // de taux journaliers, pour rester cohérent avec le calcul du taux réel
 // utilisé partout ailleurs dans ce projet.
-function buildTauxParJourSemaineQuery(id_emplacement) {
-  const cte = globalDaysCtePrefix(id_emplacement);
+function buildTauxParJourSemaineQuery(id_emplacement, dateRange) {
+  const cte = globalDaysCtePrefix(id_emplacement, dateRange);
   return `${cte}
 select jour_semaine,
   sum(bs_reel_jour) as bs_reel, sum(heures_rue_jour) as heures_rue,
@@ -144,8 +151,8 @@ order by 1;`;
 // Évolution du taux réel par mois de l'année (1=janvier..12=décembre),
 // toutes années confondues (saisonnalité), même logique de moyenne
 // pondérée que ci-dessus.
-function buildTauxParMoisQuery(id_emplacement) {
-  const cte = globalDaysCtePrefix(id_emplacement);
+function buildTauxParMoisQuery(id_emplacement, dateRange) {
+  const cte = globalDaysCtePrefix(id_emplacement, dateRange);
   return `${cte}
 select mois,
   sum(bs_reel_jour) as bs_reel, sum(heures_rue_jour) as heures_rue,
@@ -159,14 +166,14 @@ order by 1;`;
 // emplacement (demande explicite, 10/2026) : une ligne par jour et par
 // mission, heure de création des dons valides (dons.created_at) convertie
 // en heure de Paris. Même périmètre que buildMissionsQuery (clients exclus).
-function buildHorairesBsQuery(id_emplacement) {
+function buildHorairesBsQuery(id_emplacement, dateRange) {
   return `with e as (select '${id_emplacement}'::uuid as id),
 lots_e as (
   select l.id, l.mission_id, l.date
   from lots l
   join e on l.emplacement_id = e.id
   join missions m on m.id = l.mission_id
-  where 1=1 ${excludeClientsClause('m')}
+  where 1=1 ${excludeClientsClause('m')} ${dateClause(dateRange)}
 )
 select l.date, m.code_mission,
   to_char(min(d.created_at) at time zone 'Europe/Paris', 'HH24:MI') as premier_bs,
@@ -179,14 +186,14 @@ group by 1, 2
 order by 1 desc, 2;`;
 }
 
-function buildEmplacementQueries(id_emplacement) {
+function buildEmplacementQueries(id_emplacement, dateRange) {
   return {
     info: buildInfoQuery(id_emplacement),
-    missions: buildMissionsQuery(id_emplacement),
-    globalStats: buildGlobalStatsQuery(id_emplacement),
-    tauxParJourSemaine: buildTauxParJourSemaineQuery(id_emplacement),
-    tauxParMois: buildTauxParMoisQuery(id_emplacement),
-    horairesBs: buildHorairesBsQuery(id_emplacement),
+    missions: buildMissionsQuery(id_emplacement, dateRange),
+    globalStats: buildGlobalStatsQuery(id_emplacement, dateRange),
+    tauxParJourSemaine: buildTauxParJourSemaineQuery(id_emplacement, dateRange),
+    tauxParMois: buildTauxParMoisQuery(id_emplacement, dateRange),
+    horairesBs: buildHorairesBsQuery(id_emplacement, dateRange),
   };
 }
 

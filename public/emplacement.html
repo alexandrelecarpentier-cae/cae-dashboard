@@ -91,6 +91,17 @@
   .date-chip{font-size:10.5px; font-family:ui-monospace,SFMono-Regular,Consolas,monospace; background:var(--surface-2);
     border:1px solid var(--line); border-radius:var(--sharp); padding:3px 7px; color:var(--text); white-space:nowrap;}
 
+  .filters{display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end; margin-top:10px;}
+  .filter-label{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; font-weight:700;}
+  input.control, button.control{background:var(--surface-2); color:var(--text); border:1px solid var(--line);
+    border-radius:var(--sharp); padding:6px 9px; font-size:12.5px; font-weight:600;
+    font-family:ui-monospace,SFMono-Regular,Consolas,monospace;}
+  button.control{cursor:pointer; font-family:inherit;}
+  button.control.active{background:var(--red); border-color:var(--red); color:#fff;}
+  .mission-card.clickable{cursor:pointer;}
+  .mission-card.clickable:hover{background:var(--surface-2);}
+  .mission-card.selected{border-color:var(--red); box-shadow:inset 3px 0 0 var(--red);}
+  .section-sub{font-size:11px; color:var(--muted); margin:-4px 2px 8px; line-height:1.4;}
   .empty{padding:24px 16px; text-align:center; color:var(--muted); font-size:13px;}
 </style>
 </head>
@@ -136,6 +147,11 @@
     <div class="sync mono" id="countdown">5:00</div>
   </div>
   <div id="refreshBar"><div id="refreshFill"></div></div>
+  <div class="filters">
+    <div><div class="filter-label">Du</div><input class="control" type="date" id="dateFrom"></div>
+    <div><div class="filter-label">Au</div><input class="control" type="date" id="dateTo"></div>
+    <button type="button" class="control active" id="resetDates">Total</button>
+  </div>
   <div class="error-banner" id="errorBanner">
     <b>Connexion impossible.</b> <span id="errorDetail"></span> La page réessaiera automatiquement.
   </div>
@@ -242,6 +258,24 @@
   const idEmplacement = qs.get('id_emplacement');
 
   let weekdayChart = null, monthChart = null;
+  // Filtres (demande explicite, 10/2026) : période sur la date des lots, et
+  // mission sélectionnée par un clic sur une carte « Missions passées ici »
+  // (filtre le tableau de suivi des horaires).
+  let dateFrom = '', dateTo = '';
+  let selectedMission = '';
+  let lastData = null;
+  const dateFromEl = document.getElementById('dateFrom');
+  const dateToEl = document.getElementById('dateTo');
+  const resetDatesEl = document.getElementById('resetDates');
+  function onDatesChange() {
+    dateFrom = dateFromEl.value; dateTo = dateToEl.value;
+    resetDatesEl.classList.toggle('active', !dateFrom && !dateTo);
+    selectedMission = '';
+    if (idEmplacement) loadFiche(idEmplacement);
+  }
+  dateFromEl.addEventListener('change', onDatesChange);
+  dateToEl.addEventListener('change', onDatesChange);
+  resetDatesEl.addEventListener('click', () => { dateFromEl.value = ''; dateToEl.value = ''; onDatesChange(); });
 
   ensureChartJs().then(() => {
     if (idEmplacement) {
@@ -254,7 +288,12 @@
 
   async function loadFiche(id) {
     try {
-      const res = await fetch('/api/emplacement?id_emplacement=' + encodeURIComponent(id), { cache: 'no-store' });
+      let q = '/api/emplacement?id_emplacement=' + encodeURIComponent(id);
+      if (dateFrom || dateTo) {
+        // une seule borne renseignée : l'autre est ouverte
+        q += '&date_from=' + encodeURIComponent(dateFrom || '2000-01-01') + '&date_to=' + encodeURIComponent(dateTo || '2100-12-31');
+      }
+      const res = await fetch(q, { cache: 'no-store' });
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data.message || data.error || 'Erreur inconnue');
       clearError();
@@ -277,6 +316,9 @@
 
     const missions = data.missions || [];
     const stats = data.globalStats || {};
+    lastData = data;
+    // La mission sélectionnée peut avoir disparu après un changement de période.
+    if (selectedMission && !missions.some((m) => m.code_mission === selectedMission)) selectedMission = '';
 
     area.innerHTML = `
       <div class="profile-card">
@@ -300,7 +342,10 @@
         </div></div>
       </div>
 
-      <div class="section-label"><span class="diamond"></span>Horaires du premier et du dernier BS</div>
+      <div class="section-label"><span class="diamond"></span>Missions passées ici</div>
+      <div id="missionList"></div>
+      <div class="section-label"><span class="diamond"></span>Suivi — horaires du premier et du dernier BS</div>
+      <div class="section-sub" id="horairesSub"></div>
       <div class="card"><div class="card-inner">
         <div class="table-wrap"><table class="horaires">
           <thead><tr><th>Date</th><th>Mission</th><th class="num">Premier BS</th><th class="num">Dernier BS</th><th class="num">BS réel</th></tr></thead>
@@ -308,8 +353,6 @@
         </table></div>
       </div></div>
 
-      <div class="section-label"><span class="diamond"></span>Missions passées ici</div>
-      <div id="missionList"></div>
     `;
 
     renderKpis(stats, missions);
@@ -319,10 +362,22 @@
     renderHoraires(data.horairesBs || []);
   }
 
+  // Clic sur une mission : filtre le suivi ; reclic : retire le filtre.
+  function toggleMission(code) {
+    selectedMission = (selectedMission === code) ? '' : code;
+    if (!lastData) return;
+    renderMissions(lastData.missions || [], (lastData.globalStats || {}).taux_reel_global);
+    renderHoraires(lastData.horairesBs || []);
+  }
+
   // Horaires du premier et du dernier BS réalisés chaque jour à cet
   // emplacement (heure de création des bulletins valides, heure de Paris).
-  function renderHoraires(rows) {
+  function renderHoraires(allRows) {
     const tbody = document.getElementById('horairesBody');
+    const rows = selectedMission ? allRows.filter((r) => r.code_mission === selectedMission) : allRows;
+    document.getElementById('horairesSub').textContent = selectedMission
+      ? 'Filtré sur la mission ' + selectedMission + ' — cliquer à nouveau sur la mission pour retirer le filtre.'
+      : 'Toutes missions confondues — cliquer sur une mission ci-dessus pour filtrer.';
     if (!rows.length) {
       tbody.innerHTML = '<tr><td colspan="5" class="empty">Aucun bulletin enregistré à cet emplacement</td></tr>';
       return;
@@ -418,8 +473,9 @@
       const missionLabel = m.code_mission || m.code_mission_client || 'Mission';
       const sub = [m.client_nom, fmtNum(m.nb_jours) + ' j'].filter(Boolean).join(' · ');
       const dates = (m.dates_lots || '').split(',').filter(Boolean);
+      const code = m.code_mission || '';
       return `
-      <div class="mission-card">
+      <div class="mission-card clickable${code && code === selectedMission ? ' selected' : ''}" data-code="${esc(code)}">
         <div class="mission-head">
           ${clientAvatarHtml(m.client_nom)}
           <div class="mission-body">
@@ -440,6 +496,9 @@
         </div>` : ''}
       </div>`;
     }).join('');
+    el.querySelectorAll('.mission-card.clickable').forEach((card) => {
+      card.addEventListener('click', () => { if (card.dataset.code) toggleMission(card.dataset.code); });
+    });
   }
 })();
 </script>
