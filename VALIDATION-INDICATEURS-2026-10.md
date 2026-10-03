@@ -1,4 +1,4 @@
-# Validation des indicateurs — Dashboard CAE (03/10/2026)
+# Validation des indicateurs — Dashboard CAE (03/10/2026, mise à jour lot 2)
 
 Périmètre de test : septembre 2026 (01/09 → 30/09), base **Production** (Metabase database 3), clients de test exclus. Chaque indicateur clé a été comparé à une **requête de référence indépendante écrite directement sur les tables** (`lots`, `missions`, `dons`, `donateurs`, `contrats`…), pas à une autre requête du projet.
 
@@ -37,23 +37,29 @@ Aucune erreur SQL, aucune division par zéro, aucun taux de présence > 100 %. E
 - **Correctif** : lots futurs exclus dans `sql-rd.js`, `sql-rh.js`, `sql-direction.js`, `sql-salarie.js`, `sql-rm-collecte.js`.
 - **Vérification** : mission entière = 41 présents / 41 lots = **100 %**, identique à la semaine 1.
 
-## 4. Points ouverts (non corrigés — décisions à prendre)
+## 4. Corrections du lot 2 (demandées par Alex, validées sur Production)
+| # | Sujet | Correction | Validation (sept. 2026 sauf mention) |
+|---|---|---|---|
+| A13 | /direction objectifMissions tronquée à 300 | Limite supprimée ; filtrée par période ; missions `en_cours`/`terminee` uniquement ; tri début décroissant ; avancement = BS réel / objectif prorata (objectif × jours réalisés dans la période / jours de la mission) | 42 missions ; 26GP007MON : 17 j / 25, prorata 204, 407 BS, avancement 1,995 ; aucune mission sans date de début ; sans période : 1 191 missions listées, 0 incohérence jours réalisés > jours totaux |
+| A3 | Taux réel arrondi à 2 décimales | 3 décimales dans `sql-rd.js` et `sql-mission-suivi.js` (déjà 3 ailleurs) ; ratios /direction (anciens/nouveaux, RDC/RD, RDE/RDC) affichés en % | Syntaxe + relecture des formatteurs front (tous les écrans utilisent déjà 3 décimales) |
+| A9 | /client nb_missions sans recouvrement | Mission retenue si ≥ 1 lot dans la période (compteur + liste « Suivi des missions ») | Greenpeace : 4 missions (référence indépendante : 4 ; 9 sans filtre) |
+| A6/A10 | Trous aux bornes des tranches d'âge | Bornes semi-ouvertes (≥18 <21, ≥21 <26, ≥26 <36, ≥36 <51, ≥51) dans /client, /rd, /rm-collecte ; filtre « Autre » = inconnu ou < 18 ans | Greenpeace : 194 + 313 + 206 + 51 + 34 = 798 = total dons, « Autre » = 0, aucun < 18 ans |
+| A1 | /salarie taux_h : périmètres différents | Heures non complétées ignorées le jour même, prises en compte dès le lendemain (0 si jamais complétées) ; même périmètre pour heures de rue et rémunérées | A. Picaud : 229 h / 295 h = 0,776 (référence indépendante identique ; 0,818 avant) |
+| — | Lots futurs (bug signalé sur /mission) | Exclus partout | Mission 55bc04fe… : 41 présents / 41 lots = 100 % |
+
+## 5. Points toujours ouverts (non corrigés)
 | # | Sujet | Gravité |
 |---|---|---|
-| A13 | `/direction` objectifMissions : `limit 300` tronque 1 191 missions → avancement non représentatif | Importante |
-| A3 | taux réel arrondi à 2 décimales dans /rd, /mission (convention : 3) → 0,527 s'affiche 0,53 | Moyenne |
-| A9 | `/client` nb_missions : 9 au lieu de 4 (recouvrement de période absent) | Moyenne |
-| A6/A10 | tranches d'âge : trous aux bornes (1 don en « Autre » ; filtre « Autre » ≠ graphe) | Faible |
-| A1 | `/salarie` taux_h : heures rue incluent les lots « heures non complètes », heures rém. les excluent (0,818 vs 0,776) | À trancher |
-| A4/A5 | bulletins/jour sur `created_at` plutôt que date du lot ; `donateur_stats` compte des lignes donateurs | Faible |
-| A2/A11 | classements sans seuil d'heures minimal (taux jusqu'à 1,5) ; listes tronquées 100/300 | Faible |
+| A4/A5 | bulletins/jour sur `created_at` plutôt que date du lot (0 écart observé en sept.) ; `donateur_stats` compte des lignes donateurs | Faible |
+| A2/A11 | classements sans seuil d'heures minimal (taux jusqu'à 1,5) ; listes tronquées à 100/300 (site privé) | Faible |
 | A7/A8/A12/A14 | libellés `nb_rd` vs « RD attendus » ; objectif/jour sur toute la mission ; FPE 61 vs 60 ; vue RD mobilisation | Mineure |
 
-## 5. Limites de la validation
+## 6. Limites de la validation
 - Pour /client, suspects de /rm-collecte et variantes filtrées RD, une version agrégée équivalente (mêmes CTE) a été exécutée et non le texte littéral.
 - `suspectsList` de /rm-collecte et `rdInfoQuery` (mobilisation) : syntaxe seulement.
 - /challenge repose sur `current_date` : plausibilité, pas de comparaison à un mois figé.
 - **`/rm` (carte Metabase 514)** : non vérifiée (hors code du projet).
-- Le correctif « lots futurs » a été testé sur la mission signalée ; les autres dashboards ont été validés avant ce correctif (septembre étant passé, il ne change pas leurs résultats, mais un re-test post-déploiement est recommandé).
+- Les corrections du lot 2 ont été validées par requêtes de référence sur Production (cf. §4), pas par un test de l'affichage. Le correctif « lots futurs » ne change pas les résultats de septembre (mois passé) ; un re-test post-déploiement est recommandé.
+- /salarie : la correction a été validée par une requête de référence équivalente (même filtre), pas par le texte littéral de `buildResumeQuery`.
 - Les écrans eux-mêmes (rendu HTML) n'ont pas été testés ; la validation porte sur le SQL et les API.
 - Tests faits sur Production uniquement (pas Staging).
