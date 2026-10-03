@@ -186,7 +186,8 @@ Vue COMEX cross-clients (aucun `id_client`/`id_mission` de filtrage — porte su
 - **Absentéisme** : `1 − (taux de présence hors arrêts maladie)`, où seuls les jours d'absence au motif "maladie" sont exclus du numérateur (les absences "autorisées" restent comptées comme de l'absentéisme). Définition **différente** de `taux_absence_injustifiee` de `/rd` (qui exclut à la fois "maladie" ET "autorisée"). Règle non tranchée sur le périmètre exact des arrêts maladie à exclure — signalé dans le code comme non définitif.
 - **Ratios d'effectif** : part des recruteurs "anciens" (≥ 3 missions) vs "nouveaux" ; répartition RD/RDC/RDE d'après le grade du contrat le plus récent de chaque personne.
 - **Taux de FPE** : `nb contrats avec avenant fin de période d'essai / nb contrats du périmètre`, sans distinction employeur/salarié (contrairement à `/rh` qui distingue les deux).
-- **Avancement des missions à objectif** : `BS réel / objectif de bulletins théorique`, limité aux missions où cet objectif est renseigné, triées par avancement croissant (les moins avancées en premier).
+- **Avancement des missions à objectif** (10/2026) : `BS réel (jusqu'à aujourd'hui) / objectif prorata`, où `objectif prorata = objectif × jours réalisés / jours de la mission` (jours = dates distinctes des lots ; réalisés = date ≤ aujourd'hui ; avancement vide si aucun jour réalisé). Toutes les missions avec objectif sont listées (plus de limite à 300), triées par code mission.
+- **Ratios /direction** (anciens/nouveaux, RDC/RD, RDE/RDC, heures rue/rém.) : affichés en **pourcentage** (1 décimale). Le taux réel reste un nombre brut à 3 décimales partout (arrondi SQL corrigé à 3 décimales sur /rd, /mission, /re-collecte).
 
 ## /rm
 

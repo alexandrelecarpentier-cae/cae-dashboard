@@ -50,7 +50,7 @@ bs_semaine AS (
   FROM mission_lots lf LEFT JOIN dons d ON d.lot_id = lf.id GROUP BY 1
 )
 SELECT hs.semaine AS semaine, bs.bs_reel AS bs_reel,
-  ROUND(bs.bs_reel::numeric / NULLIF(hs.h_rue::numeric, 0), 2) AS taux_reel
+  ROUND(bs.bs_reel::numeric / NULLIF(hs.h_rue::numeric, 0), 3) AS taux_reel
 FROM heures_semaine hs LEFT JOIN bs_semaine bs ON bs.semaine = hs.semaine
 ORDER BY hs.semaine;`;
 }
@@ -87,7 +87,7 @@ dons_jour AS (
 )
 SELECT hj.date AS date,
   coalesce(dj.bs_reel, 0) AS bs_reel,
-  round(coalesce(dj.bs_reel,0)::numeric / NULLIF(hj.heures_rue,0)::numeric, 2) AS taux_reel,
+  round(coalesce(dj.bs_reel,0)::numeric / NULLIF(hj.heures_rue,0)::numeric, 3) AS taux_reel,
   round(hj.heures_rue::numeric / NULLIF(hj.heures_rem,0)::numeric, 2) AS ratio_h,
   round(dj.don_moyen::numeric, 2) AS don_moyen,
   round((100.0 * coalesce(dj.nb_moins_25,0)) / NULLIF(dj.nb_dons_avec_naissance,0)::numeric, 1) AS pct_moins_25

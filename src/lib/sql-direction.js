@@ -215,17 +215,34 @@ dons_mission as (
   from lots l
   join dons d on d.lot_id = l.id and d.statut in ${STATUTS_VALIDES}
   where l.mission_id in (select id from scoped_missions)
+    and l.date <= current_date
+  group by 1
+),
+jours_mission as (
+  -- Les lots sont pré-créés sur toute la durée de la mission : jours_total =
+  -- jours distincts planifiés, jours_realises = ceux déjà échus (<= aujourd'hui).
+  select l.mission_id,
+    count(distinct l.date) as jours_total,
+    count(distinct l.date) filter (where l.date <= current_date) as jours_realises
+  from lots l
+  where l.mission_id in (select id from scoped_missions)
   group by 1
 )
 select sm.id as mission_id, sm.code_mission, sm.client_nom, sm.statut_mission, sm.objectif_bulletin_theorique,
+  coalesce(jm.jours_total, 0) as jours_total,
+  coalesce(jm.jours_realises, 0) as jours_realises,
+  case when coalesce(jm.jours_total, 0) > 0
+    then sm.objectif_bulletin_theorique::float * jm.jours_realises / jm.jours_total
+    else null end as objectif_prorata,
   coalesce(dm.bs_reel, 0) as bs_reel,
-  case when sm.objectif_bulletin_theorique > 0
-    then coalesce(dm.bs_reel, 0)::float / sm.objectif_bulletin_theorique
+  case when sm.objectif_bulletin_theorique > 0 and coalesce(jm.jours_realises, 0) > 0
+    then coalesce(dm.bs_reel, 0)::float
+         / (sm.objectif_bulletin_theorique::float * jm.jours_realises / jm.jours_total)
     else null end as avancement
 from scoped_missions sm
 left join dons_mission dm on dm.mission_id = sm.id
-order by avancement asc nulls last
-limit 300;`;
+left join jours_mission jm on jm.mission_id = sm.id
+order by sm.code_mission;`;
 }
 
 function buildClientListQuery() {

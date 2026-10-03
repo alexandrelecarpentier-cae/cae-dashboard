@@ -213,7 +213,7 @@
   <div class="kpi-scroll" id="kpiEffectif"></div>
 
   <div class="section-label"><span class="diamond"></span>Avancement objectif BS
-    <span class="note">BS réel cumulé depuis le début de la mission / objectif théorique — indépendant du filtre de période, missions avec objectif renseigné</span>
+    <span class="note">BS réel cumulé / objectif prorata (objectif × jours réalisés / jours de la mission) — indépendant du filtre de période, missions avec objectif renseigné</span>
   </div>
   <div class="card"><div class="card-inner">
     <div class="table-scroll">
@@ -222,7 +222,7 @@
           <thead>
             <tr>
               <th>Mission</th><th>Association</th><th>Statut</th>
-              <th class="num">Objectif</th><th class="num">BS réel</th><th class="num">Avancement</th>
+              <th class="num">Objectif</th><th class="num">Jours</th><th class="num">Objectif prorata</th><th class="num">BS réel</th><th class="num">Avancement</th>
             </tr>
           </thead>
           <tbody id="tbl-objectif"></tbody>
@@ -439,12 +439,12 @@
       { v: fmtNum(e.nb_recruteurs_actifs), l: 'Recruteurs actifs' },
       { v: fmtNum(e.nb_anciens), l: 'Anciens (≥3 missions)' },
       { v: fmtNum(e.nb_nouveaux), l: 'Nouveaux (<3 missions)' },
-      { v: fmtRatio(e.ratio_anciens_nouveaux, 2), l: 'Ratio anciens/nouveaux' },
+      { v: fmtPct(e.ratio_anciens_nouveaux), l: 'Ratio anciens/nouveaux' },
       { v: fmtNum(e.nb_rd), l: 'Grade RD' },
       { v: fmtNum(e.nb_rdc), l: 'Grade RDC' },
       { v: fmtNum(e.nb_rde), l: 'Grade RDE' },
-      { v: fmtRatio(e.ratio_rdc_rd, 2), l: 'Ratio RDC/RD' },
-      { v: fmtRatio(e.ratio_rde_rdc, 2), l: 'Ratio RDE/RDC' },
+      { v: fmtPct(e.ratio_rdc_rd), l: 'Ratio RDC/RD' },
+      { v: fmtPct(e.ratio_rde_rdc), l: 'Ratio RDE/RDC' },
     ];
     document.getElementById('kpiEffectif').innerHTML = kpis.map((k) => `
       <div class="kpi"><div class="val">${k.v}</div><div class="lbl">${k.l}</div></div>`).join('');
@@ -453,7 +453,7 @@
   function renderObjectifTable(rows) {
     const el = document.getElementById('tbl-objectif');
     if (!rows.length) {
-      el.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);">Aucune mission avec objectif renseigné pour ces filtres</td></tr>';
+      el.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);">Aucune mission avec objectif renseigné pour ces filtres</td></tr>';
       return;
     }
     el.innerHTML = rows.map((m) => {
@@ -465,6 +465,8 @@
         <td>${esc(m.client_nom || '—')}</td>
         <td>${esc(statutLabel(m.statut_mission))}</td>
         <td class="num">${fmtNum(m.objectif_bulletin_theorique)}</td>
+        <td class="num">${fmtNum(m.jours_realises)} / ${fmtNum(m.jours_total)}</td>
+        <td class="num">${m.objectif_prorata != null ? fmtNum(m.objectif_prorata, 0) : '—'}</td>
         <td class="num">${fmtNum(m.bs_reel)}</td>
         <td class="num">
           <div class="bar-wrap">
