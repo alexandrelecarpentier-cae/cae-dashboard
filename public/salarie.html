@@ -287,8 +287,8 @@
     // « En cours » si un contrat n'est pas terminé (demande explicite, 10/2026).
     const finContratTxt = profil.contrat_en_cours ? 'En cours'
       : (profil.fin_dernier_contrat ? fmtDate(profil.fin_dernier_contrat) : '—');
-    const joursTxt = profil.jours_depuis_dernier_contrat == null ? '—'
-      : (Number(profil.jours_depuis_dernier_contrat) === 0 ? 'En cours' : fmtNum(profil.jours_depuis_dernier_contrat) + ' j');
+    const joursTxt = profil.jours_depuis_derniere_mission == null ? '—'
+      : (Number(profil.jours_depuis_derniere_mission) === 0 ? 'Aujourd\'hui' : fmtNum(profil.jours_depuis_derniere_mission) + ' j');
     const escTxt = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;');
     const txtVal = (v) => `<div class="val" style="font-size:14px;line-height:1.3;">${escTxt(v || '—')}</div>`;
 
@@ -302,7 +302,7 @@
       <div class="kpi-grid">
         <div class="kpi"><div class="val">${actifTxt}</div><div class="lbl">Statut à ce jour</div></div>
         <div class="kpi"><div class="val">${permisTxt}</div><div class="lbl">Permis</div></div>
-        <div class="kpi"><div class="val">${joursTxt}</div><div class="lbl">Depuis le dernier contrat</div></div>
+        <div class="kpi"><div class="val">${joursTxt}</div><div class="lbl">Depuis la dernière mission</div></div>
         <div class="kpi">${txtVal(profil.ville_residence)}<div class="lbl">Ville de résidence</div></div>
         <div class="kpi" style="grid-column:1 / -1;">${txtVal(profil.villes_mission)}<div class="lbl">Villes de mission</div></div>
         <div class="kpi"><div class="val">${resume.nb_missions != null ? fmtNum(resume.nb_missions) : '—'}</div><div class="lbl">Missions</div></div>

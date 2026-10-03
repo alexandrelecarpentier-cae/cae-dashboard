@@ -226,8 +226,8 @@ from dons_270 d;`;
 //   non renseigné).
 // - fin_dernier_contrat / contrat_en_cours : date de fin du dernier contrat
 //   (max date_fin) ; contrat_en_cours = un contrat n'est pas terminé.
-// - jours_depuis_dernier_contrat : 0 si un contrat n'est pas terminé
-//   (date_fin vide ou >= aujourd'hui), sinon aujourd'hui - dernière date_fin.
+// - jours_depuis_derniere_mission : aujourd'hui - date du dernier lot passé
+//   (date <= aujourd'hui) du salarié ; null s'il n'a jamais eu de lot.
 // - actif : au jour de la recherche, un lot à venir (aujourd'hui compris) sur
 //   une mission en cours OU un contrat non terminé ; sinon inactif.
 function buildProfilQuery(id_utilisateur) {
@@ -264,10 +264,9 @@ select
     order by lower(trim(e.ville)), (trim(e.ville) = upper(trim(e.ville))), trim(e.ville)
   ) v) as villes_mission,
   (select s.permis_de_conduire from utilisateur_situations s join u on s.utilisateur_id = u.id order by s.updated_at desc nulls last limit 1) as permis,
-  case
-    when f.contrat_non_termine then 0
-    when f.derniere_fin is not null then (current_date - f.derniere_fin)
-    else null end as jours_depuis_dernier_contrat,
+  (select current_date - max(l.date) from lots l join u on l.utilisateur_id = u.id
+    join missions m on m.id = l.mission_id
+    where l.date <= current_date AND m.client_id NOT IN ('0990fd74-bd60-4bd9-9d28-dbf941c72567', '8f732ffd-ffa7-44ab-a741-f51d92a9c4a9', 'f17e1174-b8a3-4d73-a7ed-ea6f81cb3e3d')) as jours_depuis_derniere_mission,
   f.derniere_fin as fin_dernier_contrat,
   f.contrat_non_termine as contrat_en_cours,
   (f.contrat_non_termine or f.lot_a_venir) as actif

@@ -245,7 +245,6 @@
 <header>
   <div class="head-row">
     <h1 id="pageTitle">Dashboard <em>Client</em></h1>
-    <button class="btn-export" id="btnExportPdf" type="button">Exporter PDF</button>
   </div>
   <div class="meta-row">
     <div class="sync"><span class="live-diamond off" id="liveDiamond"></span>Synchro <b id="syncTime">—</b></div>
@@ -1062,7 +1061,6 @@
   // externe (jsPDF/html2canvas), et les graphiques (canvas Chart.js)
   // s'impriment nativement.
   // ---------------------------------------------------------------
-  document.getElementById('btnExportPdf').addEventListener('click', () => window.print());
 
   // Les canvas Chart.js gardent les dimensions calculées pour l'écran tant
   // qu'on ne les force pas à se redimensionner : sans ça, à l'impression,
