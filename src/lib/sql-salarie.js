@@ -66,8 +66,7 @@ order by m.date_debut desc nulls last;`;
 //   canonique du projet (alignée le 9/2026 sur sql-rd.js et sql-rh.js, qui
 //   utilisaient auparavant jours_absence/(jours_presence+jours_absence) ;
 //   heures_remuneration/(nb_lots*7) est désormais la même formule partout ;
-//   champ renommé taux_absence -> taux_presence pour éviter la confusion
-//   avec taux_absence_injustifiee, cf. sql-rd.js).
+//   champ renommé taux_absence -> taux_presence pour éviter la confusion).
 // - don_moyen et pct_plus_25 = % de dons dont le donateur avait plus de
 //   25 ans au moment du don (date du don - date de naissance, pas l'âge
 //   actuel — même convention que sql-mission.js pour bs_moins_25)

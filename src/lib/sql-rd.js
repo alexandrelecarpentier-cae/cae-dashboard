@@ -35,17 +35,14 @@ order by nom;`;
 // Table principale : une ligne par RD ayant travaillé sur la mission (dans
 // la plage de dates éventuelle), plus une ligne TOTAL. Reprend telle quelle
 // la logique du dashboard Metabase "Suivi Qualité" (grade, FPE, taux réel,
-// transfo, don moyen, âge médian, %+25/-25, ratio heures, taux de présence,
-// taux d'absence injustifiée) — bs_suspects est ajouté après-coup côté
+// transfo, don moyen, âge médian, %+25/-25, ratio heures, taux de présence) — bs_suspects est ajouté après-coup côté
 // handler (cf. buildRdBsSuspectsQuery) car c'est une requête séparée plus
 // coûteuse.
 //
 // taux_presence = heures rémunérées / (nb jours prévus * 7h) : c'était
 // auparavant appelé "taux_absence" alors que la formule mesure l'inverse
 // (plus la valeur est haute, moins la personne est absente) — corrigé le
-// 9/2026 suite à un signalement. taux_absence_injustifiee, lui, mesure
-// bien une absence (jours d'absence injustifiée / total de jours) et reste
-// inchangé.
+// 9/2026 suite à un signalement..
 function buildRdTableQuery(id_mission, dateRange) {
   const dateFilter = dateFilterClause('l.date', dateRange);
   return `WITH lots_mission AS (
@@ -67,14 +64,6 @@ agg AS (
     sum(CASE WHEN lm.presence_recruteur = FALSE THEN 1 ELSE 0 END) AS jours_absence,
     sum(lm.heures_rue) AS heures_rue, sum(lm.heures_rem) AS heures_rem
   FROM lots_mission lm GROUP BY lm.utilisateur_id
-),
-absence_agg AS (
-  SELECT lm.utilisateur_id,
-    SUM(CASE WHEN lm.presence_recruteur = FALSE AND (tya.libelle IS NULL OR (tya.libelle NOT ILIKE '%maladie%' AND tya.code <> '620')) THEN 1 ELSE 0 END) AS jours_absence_injustifiee
-  FROM lots_mission lm
-  LEFT JOIN absences ab ON ab.id = lm.absence_id
-  LEFT JOIN types_absences tya ON tya.id = ab.type_absence_id
-  GROUP BY lm.utilisateur_id
 ),
 dons_agg AS (
   SELECT utilisateur_id,
@@ -120,11 +109,9 @@ rd_rows AS (
     round(a.heures_rue::numeric, 2) AS heures_rue,
     round(a.heures_rem::numeric, 2) AS heures_rem,
     round((100.0 * a.heures_rem / NULLIF(a.nb_jours * 7, 0))::numeric, 1) AS taux_presence,
-    round((100.0 * coalesce(aa.jours_absence_injustifiee, 0) / NULLIF(a.jours_presence + a.jours_absence, 0))::numeric, 1) AS taux_absence_injustifiee,
     CASE WHEN cr.grade = 'RE' THEN 1 WHEN cr.grade='RDE' THEN 2 WHEN cr.grade='RDC' THEN 3 WHEN cr.grade='RD' THEN 4 ELSE 5 END AS grade_order
   FROM agg a
   LEFT JOIN dons_agg da ON da.utilisateur_id = a.utilisateur_id
-  LEFT JOIN absence_agg aa ON aa.utilisateur_id = a.utilisateur_id
   LEFT JOIN contrat_rd cr ON cr.utilisateur_id = a.utilisateur_id
   LEFT JOIN fpe_rd fpe ON fpe.utilisateur_id = a.utilisateur_id
   LEFT JOIN utilisateurs u ON u.id = a.utilisateur_id
@@ -135,12 +122,6 @@ total_agg AS (
     sum(CASE WHEN presence_recruteur = TRUE THEN 1 ELSE 0 END) AS jours_presence,
     sum(CASE WHEN presence_recruteur = FALSE THEN 1 ELSE 0 END) AS jours_absence
   FROM lots_mission
-),
-total_absence_agg AS (
-  SELECT SUM(CASE WHEN lm.presence_recruteur = FALSE AND (tya.libelle IS NULL OR (tya.libelle NOT ILIKE '%maladie%' AND tya.code <> '620')) THEN 1 ELSE 0 END) AS jours_absence_injustifiee
-  FROM lots_mission lm
-  LEFT JOIN absences ab ON ab.id = lm.absence_id
-  LEFT JOIN types_absences tya ON tya.id = ab.type_absence_id
 ),
 total_dons AS (
   SELECT
@@ -170,9 +151,8 @@ total_row AS (
     round(ta.heures_rue::numeric, 2) AS heures_rue,
     round(ta.heures_rem::numeric, 2) AS heures_rem,
     round((100.0 * ta.heures_rem / NULLIF(ta.nb_lots * 7, 0))::numeric, 1) AS taux_presence,
-    round((100.0 * coalesce(taa.jours_absence_injustifiee, 0) / NULLIF(ta.jours_presence + ta.jours_absence, 0))::numeric, 1) AS taux_absence_injustifiee,
     0 AS grade_order
-  FROM total_agg ta, total_dons td, total_absence_agg taa
+  FROM total_agg ta, total_dons td
 )
 SELECT * FROM rd_rows
 UNION ALL

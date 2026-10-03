@@ -44,9 +44,8 @@ absences_f as (
   -- "Absentéisme = 1 - taux de présence (hors AM)" (fichier source, règle
   -- non tranchée sur le périmètre exact des AM = arrêts maladie) : on
   -- exclut du numérateur les seuls jours d'absence dont le motif contient
-  -- "maladie" (types_absences.libelle), pas les absences "autorisées"
-  -- (contrairement à taux_absence_injustifiee de sql-rd.js, qui exclut
-  -- les deux) — à ajuster si la définition métier de "AM" est précisée.
+  -- "maladie" (types_absences.libelle) — à ajuster si la définition
+  -- métier de "AM" est précisée.
   select l.id,
     case when l.presence_recruteur = true then 1 else 0 end as jour_presence,
     case when l.presence_recruteur = false then 1 else 0 end as jour_absence,

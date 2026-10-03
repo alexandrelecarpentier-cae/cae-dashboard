@@ -492,7 +492,6 @@
       { v: row.heures_rem != null ? fmtNum(row.heures_rem, 1) : '—', l: 'Heures rémunérées' },
       { v: row.heures_rue != null ? fmtNum(row.heures_rue, 1) : '—', l: 'Heures de rue' },
       { v: row.taux_presence != null ? fmtPct1(row.taux_presence) : '—', l: 'Taux de présence' },
-      { v: row.taux_absence_injustifiee != null ? fmtPct1(row.taux_absence_injustifiee) : '—', l: 'Absence injustifiée' },
     ];
     document.getElementById('kpiPresence').innerHTML = presence.map((k) => `
       <div class="kpi"><div class="val">${k.v}</div><div class="lbl">${k.l}</div></div>`).join('');
