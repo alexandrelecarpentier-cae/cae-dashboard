@@ -57,7 +57,7 @@ function buildRdTableQuery(id_mission, dateRange) {
 ),
 dons_mission AS (
   SELECT d.id, d.statut, d.montant, d.lot_id, d.created_at, lm.utilisateur_id,
-    CAST((CAST(d.created_at AS DATE) - CAST(dn.date_de_naissance AS DATE)) AS DOUBLE PRECISION) / 365.0 AS age
+    CAST((CAST(d.created_at AS DATE) - CAST(dn.date_de_naissance AS DATE)) AS DOUBLE PRECISION) / 365.25 AS age
   FROM dons d JOIN lots_mission lm ON lm.id = d.lot_id
   LEFT JOIN donateurs dn ON dn.id = d.donateur_id
 ),
@@ -70,7 +70,7 @@ agg AS (
 ),
 absence_agg AS (
   SELECT lm.utilisateur_id,
-    SUM(CASE WHEN lm.presence_recruteur = FALSE AND (tya.libelle IS NULL OR (tya.libelle NOT ILIKE '%maladie%' AND tya.libelle NOT ILIKE '%autorisée%')) THEN 1 ELSE 0 END) AS jours_absence_injustifiee
+    SUM(CASE WHEN lm.presence_recruteur = FALSE AND (tya.libelle IS NULL OR (tya.libelle NOT ILIKE '%maladie%' AND tya.code <> '620')) THEN 1 ELSE 0 END) AS jours_absence_injustifiee
   FROM lots_mission lm
   LEFT JOIN absences ab ON ab.id = lm.absence_id
   LEFT JOIN types_absences tya ON tya.id = ab.type_absence_id
@@ -137,7 +137,7 @@ total_agg AS (
   FROM lots_mission
 ),
 total_absence_agg AS (
-  SELECT SUM(CASE WHEN lm.presence_recruteur = FALSE AND (tya.libelle IS NULL OR (tya.libelle NOT ILIKE '%maladie%' AND tya.libelle NOT ILIKE '%autorisée%')) THEN 1 ELSE 0 END) AS jours_absence_injustifiee
+  SELECT SUM(CASE WHEN lm.presence_recruteur = FALSE AND (tya.libelle IS NULL OR (tya.libelle NOT ILIKE '%maladie%' AND tya.code <> '620')) THEN 1 ELSE 0 END) AS jours_absence_injustifiee
   FROM lots_mission lm
   LEFT JOIN absences ab ON ab.id = lm.absence_id
   LEFT JOIN types_absences tya ON tya.id = ab.type_absence_id
@@ -195,7 +195,7 @@ ages AS (
   -- convention que partout ailleurs dans le projet (age_median de la
   -- table RD, /mission-suivi, /salarie, /rm-collecte).
   SELECT
-    (d.created_at::date - don.date_de_naissance)::float / 365.0 AS age
+    (d.created_at::date - don.date_de_naissance)::float / 365.25 AS age
   FROM lots_f lf
   JOIN dons d ON d.lot_id = lf.id
   JOIN donateurs don ON don.id = d.donateur_id

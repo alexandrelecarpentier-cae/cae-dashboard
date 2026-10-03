@@ -107,7 +107,7 @@ scoped_dons_all as (
   -- Âge au moment du don (date de signature), pas l'âge actuel — même
   -- convention que partout ailleurs dans le projet.
   select d.*, don.civilite,
-         (d.created_at::date - don.date_de_naissance)::float / 365.0 as age_donateur
+         (d.created_at::date - don.date_de_naissance)::float / 365.25 as age_donateur
   from dons d
   join scoped_lots l on l.id = d.lot_id
   left join donateurs don on don.id = d.donateur_id

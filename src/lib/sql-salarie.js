@@ -105,7 +105,7 @@ dons_u as (
     count(distinct d.id) as bs_reel,
     count(distinct d.id) filter (where don.date_de_naissance is not null) as nb_dons_avec_naissance,
     avg(d.montant) as don_moyen,
-    count(distinct d.id) filter (where (d.created_at::date - don.date_de_naissance) / 365.0 >= 25) as nb_dons_plus_25
+    count(distinct d.id) filter (where (d.created_at::date - don.date_de_naissance) / 365.25 >= 25) as nb_dons_plus_25
   from lots_u l
   join dons d on d.lot_id = l.id and d.statut in ${STATUTS_VALIDES}
   left join donateurs don on don.id = d.donateur_id
@@ -202,7 +202,7 @@ dons_270 as (
     count(distinct d.id) as bs_reel,
     count(distinct d.id) filter (where don.date_de_naissance is not null) as nb_dons_avec_naissance,
     avg(d.montant) as don_moyen,
-    count(distinct d.id) filter (where (d.created_at::date - don.date_de_naissance) / 365.0 >= 25) as nb_dons_plus_25
+    count(distinct d.id) filter (where (d.created_at::date - don.date_de_naissance) / 365.25 >= 25) as nb_dons_plus_25
   from lots_270 l
   join dons d on d.lot_id = l.id and d.statut in ${STATUTS_VALIDES}
   left join donateurs don on don.id = d.donateur_id

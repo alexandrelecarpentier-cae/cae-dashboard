@@ -80,9 +80,9 @@ select
     then (select sum(nombre_horaires_rue) filter (where coalesce(presence_recruteur,true)) from lots_f)::float / (select sum(nombre_horaires_remuneration) filter (where coalesce(presence_recruteur,true)) from lots_f)
     else null end as ratio_h,
   (select avg(montant) from dons_f) as don_moyen,
-  (select percentile_cont(0.5) within group (order by (created_at::date - date_de_naissance)::float / 365.0) from dons_f where date_de_naissance is not null) as age_median,
+  (select percentile_cont(0.5) within group (order by (created_at::date - date_de_naissance)::float / 365.25) from dons_f where date_de_naissance is not null) as age_median,
   case when (select count(*) from dons_f where date_de_naissance is not null) > 0
-    then (select count(*) from dons_f where date_de_naissance is not null and (created_at::date - date_de_naissance)::float / 365.0 >= 25)::float
+    then (select count(*) from dons_f where date_de_naissance is not null and (created_at::date - date_de_naissance)::float / 365.25 >= 25)::float
          / (select count(*) from dons_f where date_de_naissance is not null)
     else null end as pct_plus_25,
   case when (select sum(jour_presence) + sum(jour_absence) from absences_f) > 0

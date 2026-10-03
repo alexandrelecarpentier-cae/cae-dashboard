@@ -69,7 +69,7 @@ function buildAllDaysStatsQuery(id_mission, id_utilisateur, dateRange) {
 ),
 dons_all AS (
   SELECT d.id, d.statut, d.montant, la.date AS date,
-    CAST((CAST(d.created_at AS DATE) - CAST(dn.date_de_naissance AS DATE)) AS DOUBLE PRECISION) / 365.0 AS age
+    CAST((CAST(d.created_at AS DATE) - CAST(dn.date_de_naissance AS DATE)) AS DOUBLE PRECISION) / 365.25 AS age
   FROM dons d JOIN lots_all la ON la.id = d.lot_id
   LEFT JOIN donateurs dn ON dn.id = d.donateur_id
 ),

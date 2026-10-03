@@ -88,7 +88,7 @@ lots_mission AS (
 ),
 dons_mission AS (
   SELECT d.id, d.statut, d.montant, d.lot_id, d.created_at, lm.mission_id,
-    CAST((CAST(d.created_at AS DATE) - CAST(dn.date_de_naissance AS DATE)) AS DOUBLE PRECISION) / 365.0 AS age
+    CAST((CAST(d.created_at AS DATE) - CAST(dn.date_de_naissance AS DATE)) AS DOUBLE PRECISION) / 365.25 AS age
   FROM dons d JOIN lots_mission lm ON lm.id = d.lot_id
   LEFT JOIN donateurs dn ON dn.id = d.donateur_id
 ),
@@ -207,7 +207,7 @@ ages AS (
   -- Âge au moment du don (date de signature), pas l'âge actuel — même
   -- convention que partout ailleurs dans le projet.
   SELECT
-    (d.created_at::date - don.date_de_naissance)::float / 365.0 AS age
+    (d.created_at::date - don.date_de_naissance)::float / 365.25 AS age
   FROM lots_f lf
   JOIN dons d ON d.lot_id = lf.id
   JOIN donateurs don ON don.id = d.donateur_id
