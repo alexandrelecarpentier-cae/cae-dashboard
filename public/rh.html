@@ -276,7 +276,7 @@
               <th>Mission</th><th>Association</th><th>Statut</th>
               <th class="num">Recruteurs</th><th class="num">Heures rue</th><th class="num">BS réel</th>
               <th class="num">Taux réel</th><th class="num">Taux de présence</th>
-              <th class="num">Compl. présence</th><th class="num">Compl. emplacement</th>
+              <th class="num">Compl. emplacement</th>
               <th class="num">Jours compl. équipe</th>
             </tr>
           </thead>
@@ -299,7 +299,7 @@
               <tr>
                 <th>Recruteur</th><th class="num">Jours</th><th class="num">Heures rue</th><th class="num">BS réel</th>
                 <th class="num">Taux réel</th><th class="num">Taux de présence</th>
-                <th class="num">Compl. présence</th><th class="num">Compl. emplacement</th><th class="num">Don moyen</th>
+                <th class="num">Compl. emplacement</th><th class="num">Don moyen</th>
               </tr>
             </thead>
             <tbody id="tbl-recruteurs"></tbody>
@@ -696,7 +696,6 @@
       { v: fmtNum(s.bs_reel), l: 'BS réel' },
       { v: fmtRatio(s.taux_reel), l: 'Taux réel' },
       { v: fmtPct(s.taux_presence), l: 'Taux de présence' },
-      { v: fmtPct(s.taux_completion_presence), l: 'Compl. présence' },
       { v: fmtPct(s.taux_completion_emplacement), l: 'Compl. emplacement' },
       { v: (() => { const a = avgCompletionEquipe(completionEquipeRows); return a != null ? fmtNum(a, 1) + ' j' : '—'; })(), l: 'Jours compl. équipe (moy.)' },
     ];
@@ -802,7 +801,7 @@
   function renderMissionsTable(rows) {
     const el = document.getElementById('tbl-missions');
     if (!rows.length) {
-      el.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--muted);">Aucune mission pour ces filtres</td></tr>';
+      el.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--muted);">Aucune mission pour ces filtres</td></tr>';
       return;
     }
     el.innerHTML = rows.map((m) => {
@@ -819,7 +818,6 @@
         <td class="num">${fmtNum(m.bs_reel)}</td>
         <td class="num">${fmtRatio(m.taux_reel)}</td>
         <td class="num">${fmtPct(m.taux_presence)}</td>
-        <td class="num">${fmtPct(m.taux_completion_presence)}</td>
         <td class="num">${fmtPct(m.taux_completion_emplacement)}</td>
         <td class="num">${fmtSignedDays(joursCompletion)}</td>
       </tr>`;
@@ -845,7 +843,7 @@
   function renderRecruteursTable(rows) {
     const el = document.getElementById('tbl-recruteurs');
     if (!rows.length) {
-      el.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--muted);">Aucune donnée</td></tr>';
+      el.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);">Aucune donnée</td></tr>';
       return;
     }
     el.innerHTML = rows.map((r) => {
@@ -858,7 +856,6 @@
         <td class="num">${fmtNum(r.bs_reel)}</td>
         <td class="num">${fmtRatio(r.taux_reel)}</td>
         <td class="num">${fmtPct(r.taux_presence)}</td>
-        <td class="num">${fmtPct(r.taux_completion_presence)}</td>
         <td class="num">${fmtPct(r.taux_completion_emplacement)}</td>
         <td class="num">${r.don_moyen != null ? fmtEuro(r.don_moyen) : '—'}</td>
       </tr>`;

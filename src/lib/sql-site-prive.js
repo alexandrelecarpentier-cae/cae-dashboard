@@ -62,7 +62,7 @@ function filtersClause(p) {
 // mission/client/emplacement/période si demandé, hors clients exclus.
 function baseCte(p) {
   return `with lots_f as (
-  select l.id, l.mission_id, l.emplacement_id, l.date, l.nombre_horaires_rue, l.presence_recruteur,
+  select l.id, l.mission_id, l.emplacement_id, l.date, l.nombre_horaires_rue, l.nombre_horaires_remuneration,
     l.utilisateur_id, m.responsable_equipe_id,
     e.categorie, e.nom as emplacement_nom
   from lots l
@@ -85,7 +85,7 @@ dons_f as (
 function buildGlobalStatsQuery(p) {
   return `${baseCte(p)},
 heures as (
-  select sum(nombre_horaires_rue) filter (where coalesce(presence_recruteur,true)) as heures_rue
+  select sum(nombre_horaires_rue) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) as heures_rue
   from lots_f
 ),
 dons_agg as (
@@ -111,7 +111,7 @@ function buildParTypologieQuery(p) {
 par_cat as (
   select categorie,
     count(distinct emplacement_id) as nb_emplacements,
-    sum(nombre_horaires_rue) filter (where coalesce(presence_recruteur,true)) as heures_rue
+    sum(nombre_horaires_rue) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) as heures_rue
   from lots_f
   where categorie is not null
   group by 1
@@ -150,7 +150,7 @@ function buildEmplacementsActiviteQuery(p) {
   return `${baseCte(p)},
 jours_ei as (
   select l.date, l.emplacement_id, l.mission_id, l.emplacement_nom, l.categorie,
-    sum(l.nombre_horaires_rue) filter (where coalesce(l.presence_recruteur,true)) as heures_rue,
+    sum(l.nombre_horaires_rue) filter (where coalesce(l.nombre_horaires_remuneration, 0) <> 0) as heures_rue,
     count(distinct l.utilisateur_id) filter (where l.responsable_equipe_id is null or l.utilisateur_id <> l.responsable_equipe_id) as nb_rd,
     count(distinct l.utilisateur_id) filter (where l.responsable_equipe_id is not null and l.utilisateur_id = l.responsable_equipe_id) as nb_re
   from lots_f l
@@ -190,7 +190,7 @@ function buildTauxEvolutionQuery(p, granularity) {
   return `${baseCte(p)},
 jours as (
   select ${bucketSql(granularity, 'date')} as periode,
-    sum(nombre_horaires_rue) filter (where coalesce(presence_recruteur,true)) as heures_rue
+    sum(nombre_horaires_rue) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) as heures_rue
   from lots_f
   group by 1
 ),
@@ -269,14 +269,14 @@ function enseigneCaseSql(nomExpr) {
 function buildParEnseigneQuery(p) {
   return `${baseCte(p)},
 lots_ens as (
-  select id, emplacement_id, nombre_horaires_rue, presence_recruteur,
+  select id, emplacement_id, nombre_horaires_rue, nombre_horaires_remuneration,
     ${enseigneCaseSql('emplacement_nom')} as enseigne
   from lots_f
 ),
 par_ens as (
   select enseigne,
     count(distinct emplacement_id) as nb_emplacements,
-    sum(nombre_horaires_rue) filter (where coalesce(presence_recruteur,true)) as heures_rue
+    sum(nombre_horaires_rue) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) as heures_rue
   from lots_ens
   group by 1
 ),
@@ -305,7 +305,7 @@ function buildParMissionQuery(p) {
 par_mission as (
   select l.mission_id,
     count(distinct l.emplacement_id) as nb_emplacements,
-    sum(l.nombre_horaires_rue) filter (where coalesce(l.presence_recruteur,true)) as heures_rue
+    sum(l.nombre_horaires_rue) filter (where coalesce(l.nombre_horaires_remuneration, 0) <> 0) as heures_rue
   from lots_f l
   group by 1
 ),
@@ -339,7 +339,7 @@ function buildClassementSpQuery(p) {
 par_site as (
   select l.emplacement_id, l.emplacement_nom,
     count(distinct l.date) as nb_jours,
-    sum(l.nombre_horaires_rue) filter (where coalesce(l.presence_recruteur,true)) as heures_rue
+    sum(l.nombre_horaires_rue) filter (where coalesce(l.nombre_horaires_remuneration, 0) <> 0) as heures_rue
   from lots_f l
   group by 1,2
 ),

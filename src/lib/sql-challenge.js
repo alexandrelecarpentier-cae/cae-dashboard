@@ -46,7 +46,7 @@ function buildTopEquipesQuery() {
 ),
 lot_stats as (
   select mission_id,
-    sum(nombre_horaires_rue) filter (where coalesce(presence_recruteur, true)) as heures_rue
+    sum(nombre_horaires_rue) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) as heures_rue
   from scoped_lots group by 1
 ),
 don_stats as (

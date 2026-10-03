@@ -30,13 +30,13 @@ where id = '${id_emplacement}';`;
 function buildMissionsQuery(id_emplacement, dateRange) {
   return `with e as (select '${id_emplacement}'::uuid as id),
 lots_e as (
-  select l.id, l.mission_id, l.date, l.utilisateur_id, l.nombre_horaires_rue, l.presence_recruteur
+  select l.id, l.mission_id, l.date, l.utilisateur_id, l.nombre_horaires_rue, l.nombre_horaires_remuneration
   from lots l join e on l.emplacement_id = e.id
   where 1=1 ${dateClause(dateRange)}
 ),
 jours_mission as (
   select mission_id, date,
-    sum(nombre_horaires_rue) filter (where coalesce(presence_recruteur,true)) as heures_rue_jour,
+    sum(nombre_horaires_rue) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) as heures_rue_jour,
     count(distinct utilisateur_id) as nb_recruteurs_jour
   from lots_e
   group by 1,2
@@ -81,7 +81,7 @@ order by pm.derniere_date desc;`;
 function globalDaysCtePrefix(id_emplacement, dateRange) {
   return `with e as (select '${id_emplacement}'::uuid as id),
 lots_e as (
-  select l.id, l.mission_id, l.date, l.utilisateur_id, l.nombre_horaires_rue, l.presence_recruteur
+  select l.id, l.mission_id, l.date, l.utilisateur_id, l.nombre_horaires_rue, l.nombre_horaires_remuneration
   from lots l
   join e on l.emplacement_id = e.id
   join missions m on m.id = l.mission_id
@@ -95,7 +95,7 @@ dons_e as (
 ),
 jours as (
   select l.date,
-    sum(l.nombre_horaires_rue) filter (where coalesce(l.presence_recruteur,true)) as heures_rue_jour,
+    sum(l.nombre_horaires_rue) filter (where coalesce(l.nombre_horaires_remuneration, 0) <> 0) as heures_rue_jour,
     count(distinct l.utilisateur_id) as nb_recruteurs_jour
   from lots_e l
   group by 1

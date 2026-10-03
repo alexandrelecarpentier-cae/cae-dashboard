@@ -27,7 +27,7 @@ function filtersClause(p) {
 // jours de présence/absence (avec motif d'absence, pour l'absentéisme).
 function baseCte(p) {
   return `with lots_f as (
-  select l.id, l.mission_id, l.presence_recruteur, l.nombre_horaires_rue, l.nombre_horaires_remuneration, l.absence_id
+  select l.id, l.mission_id, l.nombre_horaires_rue, l.nombre_horaires_remuneration, l.absence_id
   from lots l
   join missions m on m.id = l.mission_id
   where ${filtersClause(p)}
@@ -47,9 +47,9 @@ absences_f as (
   -- "maladie" (types_absences.libelle) — à ajuster si la définition
   -- métier de "AM" est précisée.
   select l.id,
-    case when l.presence_recruteur = true then 1 else 0 end as jour_presence,
-    case when l.presence_recruteur = false then 1 else 0 end as jour_absence,
-    case when l.presence_recruteur = false and (tya.libelle is null or tya.libelle not ilike '%maladie%') then 1 else 0 end as jour_absence_hors_am
+    case when coalesce(l.nombre_horaires_remuneration, 0) <> 0 then 1 else 0 end as jour_presence,
+    case when coalesce(l.nombre_horaires_remuneration, 0) = 0 then 1 else 0 end as jour_absence,
+    case when coalesce(l.nombre_horaires_remuneration, 0) = 0 and (tya.libelle is null or tya.libelle not ilike '%maladie%') then 1 else 0 end as jour_absence_hors_am
   from lots_f l
   left join absences ab on ab.id = l.absence_id
   left join types_absences tya on tya.id = ab.type_absence_id
@@ -69,14 +69,14 @@ function buildGlobalStatsQuery(p) {
 select
   (select count(*) from lots_f) as nb_lots,
   (select count(distinct mission_id) from lots_f) as nb_missions,
-  (select sum(nombre_horaires_rue) filter (where coalesce(presence_recruteur,true)) from lots_f) as heures_rue,
-  (select sum(nombre_horaires_remuneration) filter (where coalesce(presence_recruteur,true)) from lots_f) as heures_remuneration,
+  (select sum(nombre_horaires_rue) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) from lots_f) as heures_rue,
+  (select sum(nombre_horaires_remuneration) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) from lots_f) as heures_remuneration,
   (select count(distinct id) from dons_f) as bs_reel,
-  case when (select sum(nombre_horaires_rue) filter (where coalesce(presence_recruteur,true)) from lots_f) > 0
-    then (select count(distinct id) from dons_f)::float / (select sum(nombre_horaires_rue) filter (where coalesce(presence_recruteur,true)) from lots_f)
+  case when (select sum(nombre_horaires_rue) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) from lots_f) > 0
+    then (select count(distinct id) from dons_f)::float / (select sum(nombre_horaires_rue) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) from lots_f)
     else null end as taux_reel,
-  case when (select sum(nombre_horaires_remuneration) filter (where coalesce(presence_recruteur,true)) from lots_f) > 0
-    then (select sum(nombre_horaires_rue) filter (where coalesce(presence_recruteur,true)) from lots_f)::float / (select sum(nombre_horaires_remuneration) filter (where coalesce(presence_recruteur,true)) from lots_f)
+  case when (select sum(nombre_horaires_remuneration) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) from lots_f) > 0
+    then (select sum(nombre_horaires_rue) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) from lots_f)::float / (select sum(nombre_horaires_remuneration) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) from lots_f)
     else null end as ratio_h,
   (select avg(montant) from dons_f) as don_moyen,
   (select percentile_cont(0.5) within group (order by (created_at::date - date_de_naissance)::float / 365.25) from dons_f where date_de_naissance is not null) as age_median,

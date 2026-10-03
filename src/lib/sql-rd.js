@@ -46,9 +46,9 @@ order by nom;`;
 function buildRdTableQuery(id_mission, dateRange) {
   const dateFilter = dateFilterClause('l.date', dateRange);
   return `WITH lots_mission AS (
-  SELECT l.id, l.utilisateur_id, l.date, l.presence_recruteur, l.absence_id,
-    CASE WHEN (l.presence_recruteur <> FALSE OR l.presence_recruteur IS NULL) THEN l.nombre_horaires_rue ELSE 0 END AS heures_rue,
-    CASE WHEN (l.presence_recruteur <> FALSE OR l.presence_recruteur IS NULL) THEN l.nombre_horaires_remuneration ELSE 0 END AS heures_rem
+  SELECT l.id, l.utilisateur_id, l.date, (coalesce(l.nombre_horaires_remuneration, 0) <> 0) AS present, l.absence_id,
+    CASE WHEN coalesce(l.nombre_horaires_remuneration, 0) <> 0 THEN l.nombre_horaires_rue ELSE 0 END AS heures_rue,
+    CASE WHEN coalesce(l.nombre_horaires_remuneration, 0) <> 0 THEN l.nombre_horaires_remuneration ELSE 0 END AS heures_rem
   FROM lots l WHERE l.mission_id = '${id_mission}'
     ${dateFilter}
 ),
@@ -60,8 +60,8 @@ dons_mission AS (
 ),
 agg AS (
   SELECT lm.utilisateur_id, count(DISTINCT lm.id) AS nb_jours,
-    sum(CASE WHEN lm.presence_recruteur = TRUE THEN 1 ELSE 0 END) AS jours_presence,
-    sum(CASE WHEN lm.presence_recruteur = FALSE THEN 1 ELSE 0 END) AS jours_absence,
+    sum(CASE WHEN lm.present THEN 1 ELSE 0 END) AS jours_presence,
+    sum(CASE WHEN NOT lm.present THEN 1 ELSE 0 END) AS jours_absence,
     sum(lm.heures_rue) AS heures_rue, sum(lm.heures_rem) AS heures_rem
   FROM lots_mission lm GROUP BY lm.utilisateur_id
 ),
@@ -119,8 +119,8 @@ rd_rows AS (
 ),
 total_agg AS (
   SELECT count(*) AS nb_lots, sum(heures_rue) AS heures_rue, sum(heures_rem) AS heures_rem,
-    sum(CASE WHEN presence_recruteur = TRUE THEN 1 ELSE 0 END) AS jours_presence,
-    sum(CASE WHEN presence_recruteur = FALSE THEN 1 ELSE 0 END) AS jours_absence
+    sum(CASE WHEN present THEN 1 ELSE 0 END) AS jours_presence,
+    sum(CASE WHEN NOT present THEN 1 ELSE 0 END) AS jours_absence
   FROM lots_mission
 ),
 total_dons AS (

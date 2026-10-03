@@ -79,9 +79,9 @@ function buildMissionsDataQuery(rmId, clientId, dateRange, missionId) {
   ${missionScopeCTE(rmId, clientId, dateRange, missionId)}
 ),
 lots_mission AS (
-  SELECT l.id, l.mission_id, l.utilisateur_id, l.date, l.presence_recruteur,
-    CASE WHEN (l.presence_recruteur <> FALSE OR l.presence_recruteur IS NULL) THEN l.nombre_horaires_rue ELSE 0 END AS heures_rue,
-    CASE WHEN (l.presence_recruteur <> FALSE OR l.presence_recruteur IS NULL) THEN l.nombre_horaires_remuneration ELSE 0 END AS heures_rem
+  SELECT l.id, l.mission_id, l.utilisateur_id, l.date,
+    CASE WHEN coalesce(l.nombre_horaires_remuneration, 0) <> 0 THEN l.nombre_horaires_rue ELSE 0 END AS heures_rue,
+    CASE WHEN coalesce(l.nombre_horaires_remuneration, 0) <> 0 THEN l.nombre_horaires_remuneration ELSE 0 END AS heures_rem
   FROM lots l
   WHERE l.mission_id IN (SELECT id FROM filtered_missions)
     ${dateFilter}
@@ -338,8 +338,8 @@ ORDER BY t.date DESC, t.montant DESC;`;
 // Suivi quotidien par mission (demande explicite, 10/2026) : une ligne par
 // mission et par jour (jusqu'à aujourd'hui si aucune plage n'est choisie).
 // - rd_attendus : RD (hors responsable d'équipe de la mission) ayant un lot
-//   ce jour-là ; rd_presents : parmi eux, ceux dont presence_recruteur n'est
-//   pas FALSE (même convention que partout : NULL = présent).
+//   ce jour-là ; rd_presents : parmi eux, ceux dont les heures rémunérées
+//   du lot sont non nulles (présence = heures rémunérées <> 0, partout).
 // - bs_reel / bs_re : dons valides du jour, dont ceux réalisés par le
 //   responsable d'équipe de la mission (BS RE).
 // - premier_bs / dernier_bs : heure de création (Paris) du premier et du
@@ -367,7 +367,7 @@ jours_calc AS (
 ),
 lots_f AS (
   SELECT l.id, l.mission_id, l.date, l.utilisateur_id,
-    coalesce(l.presence_recruteur, TRUE) AS present,
+    (coalesce(l.nombre_horaires_remuneration, 0) <> 0) AS present,
     coalesce(l.utilisateur_id = m.responsable_equipe_id, FALSE) AS est_re
   FROM lots l
   JOIN missions m ON m.id = l.mission_id

@@ -75,7 +75,7 @@ order by m.date_debut desc nulls last;`;
 function buildPerformanceParMissionQuery(id_utilisateur) {
   return `with u as (select '${id_utilisateur}'::uuid as id),
 lots_u as (
-  select l.id, l.mission_id, l.nombre_horaires_rue, l.nombre_horaires_remuneration, l.presence_recruteur, l.heures_remuneration_completes
+  select l.id, l.mission_id, l.nombre_horaires_rue, l.nombre_horaires_remuneration, l.heures_remuneration_completes
   from lots l
   join u on l.utilisateur_id = u.id
   join missions m on m.id = l.mission_id
@@ -87,8 +87,8 @@ heures as (
   -- mise en place de cette déclaration) mais exclut les lots explicitement
   -- marqués comme non déclarés (heures_remuneration_completes = false).
   select mission_id,
-    sum(nombre_horaires_rue) filter (where coalesce(presence_recruteur,true)) as heures_rue,
-    sum(nombre_horaires_remuneration) filter (where coalesce(presence_recruteur,true) and coalesce(heures_remuneration_completes,true)) as heures_remuneration,
+    sum(nombre_horaires_rue) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) as heures_rue,
+    sum(nombre_horaires_remuneration) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0 and coalesce(heures_remuneration_completes,true)) as heures_remuneration,
     count(*) as nb_lots
   from lots_u group by 1
 ),
@@ -139,7 +139,7 @@ ms as (
   select l.mission_id from lots l join u on l.utilisateur_id = u.id
 ),
 lots_u as (
-  select l.id, l.nombre_horaires_rue, l.nombre_horaires_remuneration, l.presence_recruteur, l.heures_remuneration_completes
+  select l.id, l.nombre_horaires_rue, l.nombre_horaires_remuneration, l.heures_remuneration_completes
   from lots l
   join u on l.utilisateur_id = u.id
   join missions m on m.id = l.mission_id
@@ -150,8 +150,8 @@ heures as (
   -- que les heures rémunérées déclarées (coalesce(...,true) préserve
   -- l'historique où ce flag n'existait pas encore).
   select
-    sum(nombre_horaires_rue) filter (where coalesce(presence_recruteur,true)) as heures_rue_total,
-    sum(nombre_horaires_remuneration) filter (where coalesce(presence_recruteur,true) and coalesce(heures_remuneration_completes,true)) as heures_remuneration_total,
+    sum(nombre_horaires_rue) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) as heures_rue_total,
+    sum(nombre_horaires_remuneration) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0 and coalesce(heures_remuneration_completes,true)) as heures_remuneration_total,
     count(*) as nb_lots_total
   from lots_u
 ),
@@ -184,7 +184,7 @@ lots_u as (
   from lots l
   join u on l.utilisateur_id = u.id
   join missions m on m.id = l.mission_id
-  where coalesce(l.presence_recruteur, true) and coalesce(l.heures_remuneration_completes, true)
+  where coalesce(l.nombre_horaires_remuneration, 0) <> 0 and coalesce(l.heures_remuneration_completes, true)
     ${excludeClientsClause('m')}
 ),
 lots_cumul as (

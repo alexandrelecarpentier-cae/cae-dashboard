@@ -33,7 +33,7 @@ function buildWeeklyQuery(id_mission, id_utilisateur, dateRange) {
   const rdFilter = id_utilisateur ? `AND l.utilisateur_id = '${id_utilisateur}'` : '';
   const dateFilter = dateFilterClause('l.date', dateRange);
   return `WITH mission_lots AS (
-  SELECT l.id, l.date, l.nombre_horaires_rue, l.presence_recruteur
+  SELECT l.id, l.date, l.nombre_horaires_rue, l.nombre_horaires_remuneration
   FROM lots l
   WHERE l.mission_id = '${id_mission}'
     ${rdFilter}
@@ -41,7 +41,7 @@ function buildWeeklyQuery(id_mission, id_utilisateur, dateRange) {
 ),
 heures_semaine AS (
   SELECT DATE_TRUNC('week', date)::date AS semaine,
-    SUM(CASE WHEN (presence_recruteur <> FALSE) OR (presence_recruteur IS NULL) THEN nombre_horaires_rue ELSE 0 END) AS h_rue
+    SUM(CASE WHEN coalesce(nombre_horaires_remuneration, 0) <> 0 THEN nombre_horaires_rue ELSE 0 END) AS h_rue
   FROM mission_lots GROUP BY 1
 ),
 bs_semaine AS (
@@ -59,9 +59,9 @@ function buildAllDaysStatsQuery(id_mission, id_utilisateur, dateRange) {
   const rdFilter = id_utilisateur ? `AND l.utilisateur_id = '${id_utilisateur}'` : '';
   const dateFilter = dateUpToTodayClause('l.date', dateRange);
   return `WITH lots_all AS (
-  SELECT l.id, l.date, l.utilisateur_id, l.presence_recruteur,
-    CASE WHEN (l.presence_recruteur <> FALSE OR l.presence_recruteur IS NULL) THEN l.nombre_horaires_rue ELSE 0 END AS heures_rue,
-    CASE WHEN (l.presence_recruteur <> FALSE OR l.presence_recruteur IS NULL) THEN l.nombre_horaires_remuneration ELSE 0 END AS heures_rem
+  SELECT l.id, l.date, l.utilisateur_id,
+    CASE WHEN coalesce(l.nombre_horaires_remuneration, 0) <> 0 THEN l.nombre_horaires_rue ELSE 0 END AS heures_rue,
+    CASE WHEN coalesce(l.nombre_horaires_remuneration, 0) <> 0 THEN l.nombre_horaires_remuneration ELSE 0 END AS heures_rem
   FROM lots l
   WHERE l.mission_id = '${id_mission}'
     ${dateFilter}

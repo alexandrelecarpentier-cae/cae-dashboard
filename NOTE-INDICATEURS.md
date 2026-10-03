@@ -8,7 +8,8 @@ Un badge cliquable en bas à droite de chaque page (`◇ PROD` / `◆ STAGING`) 
 
 - **Dons valides** : statut ∈ (`nouveau`, `en_attente`, `transmis`).
 - **BS au sens large** : statut ∈ (`nouveau`, `en_attente`, `transmis`, `incomplet`, `annule`).
-- **Heures de rue / heures rémunérées** : sommées uniquement sur les lots où `presence_recruteur` est `TRUE` ou `NULL` (exclus si `FALSE`).
+- **Présence d'un lot (règle 10/2026)** : un lot est *présent* si ses heures rémunérées (`nombre_horaires_remuneration`) sont non nulles, *absent* sinon. Le champ `presence_recruteur` n'est **jamais** utilisé (ni pour les heures, ni pour les jours de présence/absence).
+- **Heures de rue / heures rémunérées** : sommées uniquement sur les lots *présents* (heures rémunérées ≠ 0).
 - **Âge d'un donateur** : `(date de signature du don − date de naissance) / 365.25`, toujours calculé par rapport à `dons.created_at`, jamais par rapport à la date du jour.
 - **Score qualité** : `don moyen × % donateurs +25 ans`, calculé sur les dons valides. Barème identique sur tous les dashboards qui l'affichent (`/rd`, `/re-collecte`, `/mission`, `/rm-collecte`, `/salarie`) :
   - 0 à 3 : Très Faible
@@ -103,7 +104,7 @@ Règles communes à tous les dashboards (demande explicite, 9/2026) ; les écart
 - **Répartition par tranche d'âge** et **par genre** : mêmes formules que `/rd`.
 - **Liste des bulletins suspects** : mêmes 13 règles de motif que `/rd`, sur le périmètre statut ∈ (`nouveau`, `en_attente`, `annule`) — les dons déjà `transmis` sont exclus (contrôle qualité considéré comme fait).
 - **Suivi quotidien** (par mission et par jour, jusqu'à aujourd'hui, demande explicite 10/2026) :
-  - **RD attendus** : RD distincts (hors responsable d'équipe de la mission) ayant un lot ce jour-là ; **RD présents** : parmi eux, ceux dont `presence_recruteur` n'est pas `FALSE` (NULL = présent).
+  - **RD attendus** : RD distincts (hors responsable d'équipe de la mission) ayant un lot ce jour-là ; **RD présents** : parmi eux, ceux dont les heures rémunérées du lot sont non nulles (un lot du jour sans heures encore saisies compte donc comme absent).
   - **Taux de présence des RD** : `100 × Σ RD présents / Σ RD attendus` (KPI global sur la période + par jour). À ne pas confondre avec le « taux de présence » en heures de `/rd` (`heures rémunérées / (lots × 7)`).
   - **BS RE** : dons valides saisis sur les lots du responsable d'équipe de la mission (`missions.responsable_equipe_id`), par jour.
   - **Horaires 1er / dernier BS** : heure de Paris du premier et du dernier don valide du jour (`dons.created_at`, hypothèse : l'heure de création = l'heure de réalisation du BS).
@@ -167,7 +168,6 @@ Version restreinte de `/site-prive` à destination des ASP (assistant(e)s site p
 
 - **Taux réel** (global et par mission) : `BS réel / heures de rue` (affiché brut, 3 décimales).
 - **Taux de présence** (global, par mission, par recruteur) : `heures rémunérées / (nombre de lots × 7)` (affiché en pourcentage, 1 décimale). Champ SQL et libellé affiché corrigés le 9/2026 (audit) : portait auparavant le nom `taux_absence` alors que la formule mesure l'inverse (bug identique à celui déjà corrigé sur `/rd` et `/salarie`, propagation manquée à l'époque).
-- **Taux de complétion de saisie — présence** : `(nb lots où presence_recruteur est renseigné) / (nb lots total)`, affiché en pourcentage, 1 décimale.
 - **Taux de complétion de saisie — emplacement** : `(nb lots où emplacement_id est renseigné) / (nb lots total)`, affiché en pourcentage, 1 décimale.
 - **Taux de FPE** (global, par initiative employeur/salarié) : `nb contrats avec avenant "fin de période d'essai" (par initiative) / nb contrats du périmètre`, basé sur `contrats.date_debut`.
 - **Nb recrutements par jour/semaine/mois** : `count(distinct contrats.id)` par période, sur `contrats.date_debut`.
