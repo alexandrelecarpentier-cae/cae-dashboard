@@ -259,6 +259,7 @@
         <thead>
           <tr>
             <th>Mission</th><th>Asso</th><th>Début</th><th>Fin</th>
+            <th class="num">Objectif BS</th><th class="num">% atteint</th>
             <th class="num">BS rue</th><th class="num">BS réel</th><th class="num">Taux réel</th>
             <th class="num">Tx transfo</th><th class="num">H rue/H rém</th>
             <th class="num">Score quali</th><th class="num">Don moyen</th><th class="num">Âge médian</th>
@@ -266,6 +267,38 @@
           </tr>
         </thead>
         <tbody id="missionsTableBody"></tbody>
+      </table>
+    </div>
+  </div></div>
+
+  <div class="section-label"><span class="diamond"></span>Objectif de BS par semaine</div>
+  <div class="section-sub">BS réels de la période comparés à l'objectif de la mission (objectif réparti à parts égales sur les jours de lots de la mission). Objectif et % atteint de la mission entière : tableau « Suivi des missions » ci-dessus (BS cumulés depuis le début).</div>
+  <div class="card"><div class="card-inner">
+    <div class="table-wrap">
+      <table id="weeklyTable">
+        <thead>
+          <tr>
+            <th>Semaine du</th><th>Mission</th><th class="num">BS réel</th><th class="num">Objectif</th><th class="num">% atteint</th>
+          </tr>
+        </thead>
+        <tbody id="weeklyTableBody"></tbody>
+      </table>
+    </div>
+  </div></div>
+
+  <div class="section-label"><span class="diamond"></span>Suivi quotidien</div>
+  <div class="section-sub">Par jour et par mission, jusqu'à aujourd'hui. RD attendus = RD (hors RE) ayant un lot ce jour-là ; présents = ceux non marqués absents. Horaires 1er / dernier BS = heure de création des bulletins valides (heure de Paris).</div>
+  <div class="card"><div class="card-inner">
+    <div class="table-wrap">
+      <table id="dailyTable">
+        <thead>
+          <tr>
+            <th>Date</th><th>Mission</th><th class="num">RD présents / attendus</th><th class="num">Taux présence RD</th>
+            <th class="num">BS réel</th><th class="num">Objectif jour</th><th class="num">% atteint</th>
+            <th class="num">BS RE</th><th class="num">1er BS</th><th class="num">Dernier BS</th>
+          </tr>
+        </thead>
+        <tbody id="dailyTableBody"></tbody>
       </table>
     </div>
   </div></div>
@@ -477,14 +510,16 @@
 
     const missions = data.missions || [];
     const total = missions.find((r) => r.code_mission === 'TOTAL') || {};
-    renderKpis(total);
+    renderKpis(total, data.suiviJour || [], data.fpe || null);
     renderAgePie(data.age || []);
     renderGenderPie(data.gender || []);
     renderMissionsTable(missions);
+    renderWeeklyTable(data.suiviJour || []);
+    renderDailyTable(data.suiviJour || []);
     renderSuspectsTable(data.suspectsList || []);
   }
 
-  function renderKpis(row) {
+  function renderKpis(row, suiviJour, fpe) {
     const perf = [
       { v: fmtNum(row.bs_reel), l: 'BS réel' },
       { v: fmtNum(row.bs_rue), l: 'BS rue' },
@@ -495,6 +530,16 @@
       { v: row.ratio_h != null ? fmtRatioPct(row.ratio_h) : '—', l: 'Ratio h rue/rém' },
       { v: fmtNum(row.nb_rd), l: 'RD actifs' },
     ];
+    // Taux de présence des RD (demande explicite, 10/2026) : somme des RD
+    // présents / somme des RD attendus sur tous les jours affichés.
+    const att = suiviJour.reduce((s, r) => s + (Number(r.rd_attendus) || 0), 0);
+    const pre = suiviJour.reduce((s, r) => s + (Number(r.rd_presents) || 0), 0);
+    perf.push({ v: att > 0 ? fmtPct1(100 * pre / att) : '—', l: 'Taux de présence RD' });
+    // Taux de FPE employeur / salarié = contrats avec FPE de cette
+    // initiative / contrats des missions du périmètre.
+    const nbC = fpe ? Number(fpe.nb_contrats) || 0 : 0;
+    perf.push({ v: nbC > 0 ? fmtPct1(100 * (Number(fpe.nb_fpe_employeur) || 0) / nbC) : '—', l: 'Taux FPE employeur' });
+    perf.push({ v: nbC > 0 ? fmtPct1(100 * (Number(fpe.nb_fpe_salarie) || 0) / nbC) : '—', l: 'Taux FPE salarié' });
     document.getElementById('kpiPerf').innerHTML = perf.map((k) => `
       <div class="kpi"><div class="val">${k.v}</div><div class="lbl">${k.l}</div></div>`).join('');
 
@@ -577,7 +622,7 @@
   function renderMissionsTable(rows) {
     const tbody = document.getElementById('missionsTableBody');
     if (!rows.length) {
-      tbody.innerHTML = '<tr><td colspan="15" class="table-empty">Aucune mission ne correspond aux filtres sélectionnés</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="17" class="table-empty">Aucune mission ne correspond aux filtres sélectionnés</td></tr>';
       return;
     }
     tbody.innerHTML = rows.map((r) => {
@@ -593,6 +638,8 @@
         <td>${esc(r.client || '')}</td>
         <td>${isTotal ? '' : fmtDate(r.date_debut)}</td>
         <td>${isTotal ? '' : fmtDate(r.date_fin)}</td>
+        <td class="num">${r.objectif != null ? fmtNum(r.objectif) : '—'}</td>
+        <td class="num">${r.pct_objectif != null ? fmtPct1(r.pct_objectif) : '—'}</td>
         <td class="num">${fmtNum(r.bs_rue)}</td>
         <td class="num">${fmtNum(r.bs_reel)}</td>
         <td class="num">${fmtNum(r.taux_reel, 3)}</td>
@@ -614,6 +661,57 @@
         refreshData();
       });
     });
+  }
+
+  // Objectif par semaine : regroupe les lignes quotidiennes par mission et
+  // semaine ISO (lundi) ; l'objectif de semaine est identique sur toutes les
+  // lignes d'une même mission/semaine, on prend donc la première valeur.
+  function renderWeeklyTable(rows) {
+    const tbody = document.getElementById('weeklyTableBody');
+    const map = new Map();
+    rows.forEach((r) => {
+      const k = r.mission_id + '|' + r.semaine;
+      if (!map.has(k)) map.set(k, { semaine: r.semaine, mission: r.code_mission, bs: 0, obj: r.objectif_semaine });
+      map.get(k).bs += Number(r.bs_reel) || 0;
+    });
+    const weeks = Array.from(map.values()).sort((a, b) => (a.semaine < b.semaine ? 1 : a.semaine > b.semaine ? -1 : a.mission.localeCompare(b.mission)));
+    if (!weeks.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="table-empty">Aucune donnée pour la période sélectionnée</td></tr>';
+      return;
+    }
+    tbody.innerHTML = weeks.map((w) => `<tr>
+      <td>${fmtDate(w.semaine)}</td>
+      <td>${esc(w.mission)}</td>
+      <td class="num">${fmtNum(w.bs)}</td>
+      <td class="num">${w.obj != null ? fmtNum(w.obj, 0) : '—'}</td>
+      <td class="num">${w.obj ? fmtPct1(100 * w.bs / w.obj) : '—'}</td>
+    </tr>`).join('');
+  }
+
+  function renderDailyTable(rows) {
+    const tbody = document.getElementById('dailyTableBody');
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="10" class="table-empty">Aucune donnée pour la période sélectionnée</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map((r) => {
+      const att = Number(r.rd_attendus) || 0;
+      const pre = Number(r.rd_presents) || 0;
+      const bs = Number(r.bs_reel) || 0;
+      const obj = r.objectif_jour != null ? Number(r.objectif_jour) : null;
+      return `<tr>
+        <td>${fmtDate(r.date)}</td>
+        <td>${esc(r.code_mission)}</td>
+        <td class="num">${pre} / ${att}</td>
+        <td class="num">${att > 0 ? fmtPct1(100 * pre / att) : '—'}</td>
+        <td class="num">${fmtNum(bs)}</td>
+        <td class="num">${obj != null ? fmtNum(obj, 1) : '—'}</td>
+        <td class="num">${obj ? fmtPct1(100 * bs / obj) : '—'}</td>
+        <td class="num">${fmtNum(r.bs_re)}</td>
+        <td class="num">${r.premier_bs || '—'}</td>
+        <td class="num">${r.dernier_bs || '—'}</td>
+      </tr>`;
+    }).join('');
   }
 
   function renderSuspectsTable(rows) {

@@ -155,6 +155,30 @@ group by 1
 order by 1;`;
 }
 
+// Horaires du premier et du dernier BS réalisés chaque jour à cet
+// emplacement (demande explicite, 10/2026) : une ligne par jour et par
+// mission, heure de création des dons valides (dons.created_at) convertie
+// en heure de Paris. Même périmètre que buildMissionsQuery (clients exclus).
+function buildHorairesBsQuery(id_emplacement) {
+  return `with e as (select '${id_emplacement}'::uuid as id),
+lots_e as (
+  select l.id, l.mission_id, l.date
+  from lots l
+  join e on l.emplacement_id = e.id
+  join missions m on m.id = l.mission_id
+  where 1=1 ${excludeClientsClause('m')}
+)
+select l.date, m.code_mission,
+  to_char(min(d.created_at) at time zone 'Europe/Paris', 'HH24:MI') as premier_bs,
+  to_char(max(d.created_at) at time zone 'Europe/Paris', 'HH24:MI') as dernier_bs,
+  count(distinct d.id) as bs_reel
+from lots_e l
+join missions m on m.id = l.mission_id
+join dons d on d.lot_id = l.id and d.statut in ${STATUTS_VALIDES}
+group by 1, 2
+order by 1 desc, 2;`;
+}
+
 function buildEmplacementQueries(id_emplacement) {
   return {
     info: buildInfoQuery(id_emplacement),
@@ -162,6 +186,7 @@ function buildEmplacementQueries(id_emplacement) {
     globalStats: buildGlobalStatsQuery(id_emplacement),
     tauxParJourSemaine: buildTauxParJourSemaineQuery(id_emplacement),
     tauxParMois: buildTauxParMoisQuery(id_emplacement),
+    horairesBs: buildHorairesBsQuery(id_emplacement),
   };
 }
 

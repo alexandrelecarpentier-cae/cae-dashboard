@@ -468,7 +468,7 @@ async function handleReCollecte(url, env) {
   const queries = buildReCollecteQueries(id_mission, id_utilisateur || null, dateRange);
 
   try {
-    const [info, roster, table, weekly, age, gender, bulletins, suspects, suspectsList] = await Promise.all([
+    const [info, roster, table, weekly, age, gender, bulletins, suspects, suspectsList, objectif, contrats] = await Promise.all([
       runQuery(env, queries.info),
       runQuery(env, queries.roster),
       runQuery(env, queries.table),
@@ -478,7 +478,17 @@ async function handleReCollecte(url, env) {
       runQuery(env, queries.bulletins),
       runQuery(env, queries.suspects),
       runQuery(env, queries.suspectsList),
+      runQuery(env, queries.objectif),
+      runQuery(env, queries.contrats),
     ]);
+
+    const contratByRd = {};
+    contrats.forEach((c) => { contratByRd[c.utilisateur_id] = c; });
+    table.forEach((r) => {
+      const c = contratByRd[r.utilisateur_id];
+      r.contrat_debut = c ? c.contrat_debut : null;
+      r.contrat_fin = c ? c.contrat_fin : null;
+    });
 
     const suspectsByRd = {};
     let suspectsTotal = 0;
@@ -500,6 +510,7 @@ async function handleReCollecte(url, env) {
       gender,
       bulletins,
       suspectsList,
+      objectif: objectif[0] || null,
     });
   } catch (e) {
     return jsonResponse({ error: String(e.message || e) }, 502);
@@ -539,16 +550,18 @@ async function handleRmCollecte(url, env) {
   const queries = buildRmCollecteQueries(id_rm || null, id_client || null, dateRange, id_mission || null);
 
   try {
-    const [missions, age, gender, suspectsList, rmList, clientList] = await Promise.all([
+    const [missions, age, gender, suspectsList, suiviJour, fpe, rmList, clientList] = await Promise.all([
       runQuery(env, queries.missions),
       runQuery(env, queries.age),
       runQuery(env, queries.gender),
       runQuery(env, queries.suspectsList),
+      runQuery(env, queries.suiviJour),
+      runQuery(env, queries.fpe),
       runQuery(env, buildRmListQuery()),
       runQuery(env, buildClientListQuery()),
     ]);
 
-    return jsonResponse({ missions, age, gender, suspectsList, rmList, clientList });
+    return jsonResponse({ missions, age, gender, suspectsList, suiviJour, fpe: fpe[0] || null, rmList, clientList });
   } catch (e) {
     return jsonResponse({ error: String(e.message || e) }, 502);
   }
@@ -928,12 +941,13 @@ async function handleSalarie(url, env) {
   const queries = buildSalarieQueries(id_utilisateur);
 
   try {
-    const [identite, missions, performance, resume, statutGlobal] = await Promise.all([
+    const [identite, missions, performance, resume, statutGlobal, profil] = await Promise.all([
       runQuery(env, queries.identite),
       runQuery(env, queries.missions),
       runQuery(env, queries.performance),
       runQuery(env, queries.resume),
       runQuery(env, queries.statutGlobal),
+      runQuery(env, queries.profil),
     ]);
 
     const perfByMission = new Map(performance.map((p) => [p.mission_id, p]));
@@ -951,6 +965,7 @@ async function handleSalarie(url, env) {
       missions: missionsAvecPerf,
       resume: resume[0] || null,
       statutGlobal: statutGlobal[0] || null,
+      profil: profil[0] || null,
     });
   } catch (e) {
     return jsonResponse({ error: String(e.message || e) }, 502);
@@ -972,12 +987,13 @@ async function handleEmplacement(url, env) {
   const queries = buildEmplacementQueries(id_emplacement);
 
   try {
-    const [info, missions, globalStats, tauxParJourSemaine, tauxParMois] = await Promise.all([
+    const [info, missions, globalStats, tauxParJourSemaine, tauxParMois, horairesBs] = await Promise.all([
       runQuery(env, queries.info),
       runQuery(env, queries.missions),
       runQuery(env, queries.globalStats),
       runQuery(env, queries.tauxParJourSemaine),
       runQuery(env, queries.tauxParMois),
+      runQuery(env, queries.horairesBs),
     ]);
     return jsonResponse({
       info: info[0] || null,
@@ -985,6 +1001,7 @@ async function handleEmplacement(url, env) {
       globalStats: globalStats[0] || null,
       tauxParJourSemaine,
       tauxParMois,
+      horairesBs,
     });
   } catch (e) {
     return jsonResponse({ error: String(e.message || e) }, 502);

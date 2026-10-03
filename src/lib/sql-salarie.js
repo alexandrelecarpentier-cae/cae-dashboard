@@ -196,6 +196,55 @@ select
 from dons_270 d;`;
 }
 
+// Profil de recherche (demande explicite 10/2026) :
+// - villes_mission : villes distinctes des emplacements où la personne a eu
+//   un lot (lots.emplacement_id -> emplacements.ville), clients exclus
+//   écartés ; ville_residence : utilisateur_informations_contact.ville.
+// - permis : utilisateur_situations.permis_de_conduire (true/false, null si
+//   non renseigné).
+// - jours_depuis_dernier_contrat : 0 si un contrat n'est pas terminé
+//   (date_fin vide ou >= aujourd'hui), sinon aujourd'hui - dernière date_fin.
+// - actif : au jour de la recherche, un lot à venir (aujourd'hui compris) sur
+//   une mission en cours OU un contrat non terminé ; sinon inactif.
+function buildProfilQuery(id_utilisateur) {
+  return `with u as (select '${id_utilisateur}'::uuid as id),
+contrats_u as (
+  select c.date_debut, c.date_fin
+  from contrats c
+  join u on c.utilisateur_id = u.id
+  join missions m on m.id = c.mission_id
+  where 1=1 ${excludeClientsClause('m')}
+),
+flags as (
+  select
+    exists(select 1 from contrats_u where date_fin is null or date_fin >= current_date) as contrat_non_termine,
+    (select max(date_fin) from contrats_u where date_fin is not null) as derniere_fin,
+    exists(
+      select 1 from lots l
+      join u on l.utilisateur_id = u.id
+      join missions m on m.id = l.mission_id
+      where l.date >= current_date and m.statut_mission = 'en_cours' ${excludeClientsClause('m')}
+    ) as lot_a_venir
+)
+select
+  (select ct.ville from utilisateur_informations_contact ct join u on ct.utilisateur_id = u.id limit 1) as ville_residence,
+  (select string_agg(v.ville, ', ' order by v.ville) from (
+    select distinct e.ville
+    from lots l
+    join u on l.utilisateur_id = u.id
+    join missions m on m.id = l.mission_id
+    join emplacements e on e.id = l.emplacement_id
+    where e.ville is not null and e.ville <> '' ${excludeClientsClause('m')}
+  ) v) as villes_mission,
+  (select s.permis_de_conduire from utilisateur_situations s join u on s.utilisateur_id = u.id order by s.updated_at desc nulls last limit 1) as permis,
+  case
+    when f.contrat_non_termine then 0
+    when f.derniere_fin is not null then (current_date - f.derniere_fin)
+    else null end as jours_depuis_dernier_contrat,
+  (f.contrat_non_termine or f.lot_a_venir) as actif
+from flags f;`;
+}
+
 function buildSalarieQueries(id_utilisateur) {
   return {
     identite: buildIdentiteQuery(id_utilisateur),
@@ -203,6 +252,7 @@ function buildSalarieQueries(id_utilisateur) {
     performance: buildPerformanceParMissionQuery(id_utilisateur),
     resume: buildResumeQuery(id_utilisateur),
     statutGlobal: buildStatutGlobalQuery(id_utilisateur),
+    profil: buildProfilQuery(id_utilisateur),
   };
 }
 

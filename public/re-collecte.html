@@ -271,6 +271,7 @@
             <th class="num">BS réel</th><th class="num">Tx transfo</th><th class="num">Taux réel</th>
             <th class="num">Don moyen</th><th class="num">Âge médian</th><th class="num">% &lt;25</th>
             <th class="num">H rue/H rém</th><th class="num">Taux présence</th>
+            <th>Début contrat</th><th>Fin contrat</th>
           </tr>
         </thead>
         <tbody id="missionTableBody"></tbody>
@@ -402,6 +403,7 @@
   let dateFrom = '', dateTo = '';
   let missionDebut = null, missionFin = null;
   let lastTable = [];
+  let lastObjectif = null;
 
   const dateFromEl = document.getElementById('dateFrom');
   const dateToEl = document.getElementById('dateTo');
@@ -531,6 +533,7 @@
     buildRoster(data.roster || []);
 
     lastTable = data.table || [];
+    lastObjectif = data.objectif || null;
 
     renderWeeklyChart(data.weekly || []);
     applyGlobalFilter();
@@ -561,6 +564,17 @@
       { v: row.ratio_h != null ? fmtRatioPct(row.ratio_h) : '—', l: 'Ratio h rue/rém' },
       { v: row.age_median != null ? fmtNum(row.age_median, 1) : '—', l: 'Âge médian' },
     ];
+    // BS réalisés sur la mission (cumul depuis le début, hors filtre de
+    // période/RD) comparés à l'objectif de la mission (demande explicite,
+    // 10/2026).
+    if (lastObjectif && lastObjectif.objectif != null) {
+      const obj = Number(lastObjectif.objectif) || 0;
+      const reel = Number(lastObjectif.bs_reel_cumul) || 0;
+      perf.push({ v: fmtNum(reel) + ' / ' + fmtNum(obj), l: 'BS réalisés / objectif mission' });
+      perf.push({ v: obj > 0 ? fmtPct1(100 * reel / obj) : '—', l: 'Objectif atteint' });
+    } else if (lastObjectif) {
+      perf.push({ v: fmtNum(lastObjectif.bs_reel_cumul), l: 'BS réalisés (objectif non renseigné)' });
+    }
     document.getElementById('kpiPerf').innerHTML = perf.map((k) => `
       <div class="kpi"><div class="val">${k.v}</div><div class="lbl">${k.l}</div></div>`).join('');
 
@@ -716,7 +730,7 @@
       ? rows.filter((r) => r.utilisateur_id === selectedRd)
       : rows;
     if (!displayRows.length) {
-      tbody.innerHTML = '<tr><td colspan="11" class="table-empty">Aucune donnée pour cette mission</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="13" class="table-empty">Aucune donnée pour cette mission</td></tr>';
       return;
     }
     tbody.innerHTML = displayRows.map((r) => {
@@ -738,6 +752,8 @@
         <td class="num">${fmtPct1(r.pct_moins_25)}</td>
         <td class="num">${fmtRatioPct(r.ratio_h)}</td>
         <td class="num">${fmtPct1(r.taux_presence)}</td>
+        <td>${r.contrat_debut ? fmtDate(r.contrat_debut) : (isTotal ? '' : '—')}</td>
+        <td>${r.contrat_fin ? fmtDate(r.contrat_fin) : (isTotal ? '' : '—')}</td>
       </tr>`;
     }).join('');
     tbody.querySelectorAll('tr.clickable').forEach((tr) => {

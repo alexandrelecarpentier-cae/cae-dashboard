@@ -89,6 +89,30 @@ WHERE t.motif <> '✅ Ok'
 ORDER BY t.date DESC, t.montant DESC;`;
 }
 
+// Objectif de la mission et BS réels cumulés depuis son début (toutes dates,
+// hors filtre de période ou de RD) — demande explicite 10/2026 : comparer
+// les BS réalisés sur la mission à l'objectif (objectif_bulletin_theorique).
+function buildObjectifQuery(id_mission) {
+  return `select m.objectif_bulletin_theorique as objectif,
+  (select count(distinct d.id) from lots l
+    join dons d on d.lot_id = l.id and d.statut in ('nouveau','en_attente','transmis')
+    where l.mission_id = m.id) as bs_reel_cumul
+from missions m
+where m.id = '${id_mission}'
+limit 1;`;
+}
+
+// Dates de contrat des RD de la mission (demande explicite 10/2026) : même
+// règle que la table équipe (contrat le plus récent par recruteur sur la
+// mission, cf. contrat_rd dans sql-rd.js). Jointure côté handler sur
+// utilisateur_id pour ne pas toucher à la requête partagée avec /rd.
+function buildContratsRdQuery(id_mission) {
+  return `select distinct on (c.utilisateur_id) c.utilisateur_id, c.date_debut as contrat_debut, c.date_fin as contrat_fin
+from contrats c
+where c.mission_id = '${id_mission}'
+order by c.utilisateur_id, c.date_debut desc;`;
+}
+
 function buildReCollecteQueries(id_mission, id_utilisateur, dateRange) {
   return {
     info: buildRdInfoQuery(id_mission),
@@ -100,6 +124,8 @@ function buildReCollecteQueries(id_mission, id_utilisateur, dateRange) {
     bulletins: buildRdBulletinsParJourQuery(id_mission, id_utilisateur, dateRange),
     suspects: buildRdBsSuspectsQuery(id_mission, dateRange),
     suspectsList: buildBulletinsSuspectsListQuery(id_mission, id_utilisateur, dateRange),
+    objectif: buildObjectifQuery(id_mission),
+    contrats: buildContratsRdQuery(id_mission),
   };
 }
 

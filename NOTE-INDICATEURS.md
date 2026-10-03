@@ -92,6 +92,8 @@ Règles communes à tous les dashboards (demande explicite, 9/2026) ; les écart
 ## /re-collecte
 
 - Reprend telles quelles les requêtes de `/rd` (table, âge, genre, bulletins/jour, motif de don suspect, taux de présence) et de `/mission` (taux réel par semaine).
+- **BS réalisés / objectif mission** (KPI, demande explicite 10/2026) : BS réels cumulés depuis le début de la mission (hors filtre de période ou de RD) / `objectif_bulletin_theorique`.
+- **Début / fin de contrat** (table équipe, 10/2026) : dates du contrat le plus récent du RD sur la mission (même règle que le badge FPE).
 - Sur `/re-collecte` et `/mission`, possibilité de filtrer sur un RD en cliquant sur sa ligne dans la table équipe, en plus du select déjà existant (demande explicite, 9/2026).
 - **Liste des bulletins suspects** : mêmes 13 règles de motif que `/rd`, sur le périmètre statut ∈ (`nouveau`, `en_attente`, `transmis`, `annule`). Colonnes affichées (restreint le 9/2026, demande explicite) : Date / Statut / Motif / Montant / Donateur / RD (prénom + NOM) — l'adresse et l'email du donateur ne sont ni affichés ni remontés par la requête.
 
@@ -101,6 +103,14 @@ Règles communes à tous les dashboards (demande explicite, 9/2026) ; les écart
 - **Taux de transformation (`tx_transfo`)**, **Taux réel**, **Don moyen**, **Âge médian**, **% donateurs −25 ans (`pct_moins_25`)**, **Ratio heures (`ratio_h`)** : mêmes formules et mêmes formats d'affichage que `/rd` (voir ci-dessus, y compris le dénominateur harmonisé de `pct_moins_25`), agrégées par mission (et une ligne TOTAL toutes missions confondues). Possibilité de filtrer la table "Suivi des missions" sur une seule mission en cliquant sur sa ligne (demande explicite, 9/2026).
 - **Répartition par tranche d'âge** et **par genre** : mêmes formules que `/rd`.
 - **Liste des bulletins suspects** : mêmes 13 règles de motif que `/rd`, sur le périmètre statut ∈ (`nouveau`, `en_attente`, `annule`) — les dons déjà `transmis` sont exclus (contrôle qualité considéré comme fait).
+- **Suivi quotidien** (par mission et par jour, jusqu'à aujourd'hui, demande explicite 10/2026) :
+  - **RD attendus** : RD distincts (hors responsable d'équipe de la mission) ayant un lot ce jour-là ; **RD présents** : parmi eux, ceux dont `presence_recruteur` n'est pas `FALSE` (NULL = présent).
+  - **Taux de présence des RD** : `100 × Σ RD présents / Σ RD attendus` (KPI global sur la période + par jour). À ne pas confondre avec le « taux de présence » en heures de `/rd` (`heures rémunérées / (lots × 7)`).
+  - **BS RE** : dons valides saisis sur les lots du responsable d'équipe de la mission (`missions.responsable_equipe_id`), par jour.
+  - **Horaires 1er / dernier BS** : heure de Paris du premier et du dernier don valide du jour (`dons.created_at`, hypothèse : l'heure de création = l'heure de réalisation du BS).
+  - **Objectif jour / semaine** : `missions.objectif_bulletin_theorique` réparti à parts égales sur les jours de lots de la mission (tous lots, y compris à venir) ; objectif d'une semaine ISO = objectif × (jours de lots de la semaine / jours de lots de la mission). Approximation, la base ne porte pas d'objectif par jour. % atteint = BS réel / objectif.
+- **Objectif BS mission / % atteint** (table « Suivi des missions ») : BS réels cumulés depuis le début de la mission (hors filtre de période) / `objectif_bulletin_theorique` ; la ligne TOTAL se limite aux missions ayant un objectif.
+- **Taux de FPE employeur / salarié** : `nb contrats avec FPE de cette initiative / nb contrats` des missions du périmètre (avenant de catégorie `fin_period_essai`, initiative détectée sur le libellé « employeur » / « salarié », comme `sql-rh.js`).
 
 ## /challenge
 
@@ -117,6 +127,7 @@ Règles communes à tous les dashboards (demande explicite, 9/2026) ; les écart
 - **Don moyen** : `avg(montant)` (dons valides), affiché en euros à 2 décimales.
 - **% donateurs +25 ans (`pct_plus_25`)** : `(nb dons valides avec âge ≥ 25) / (nb dons valides dont la date de naissance du donateur est connue)`, affiché en pourcentage, 1 décimale.
 - **Score qualité** : `don moyen × % donateurs +25 ans` (voir barème commun dans Définitions communes), affiché à 1 décimale avec le badge du barème.
+- **Profil de recherche** (10/2026, demande explicite) : **ville de résidence** (`utilisateur_informations_contact.ville`), **villes de mission** (villes distinctes des `emplacements` de ses lots), **permis** (`utilisateur_situations.permis_de_conduire`, « — » si non renseigné), **jours depuis le dernier contrat** (0 / « En cours » si un contrat n'est pas terminé, sinon aujourd'hui − dernière `date_fin`), **statut actif/inactif à la date du jour** : actif si un lot à venir (aujourd'hui compris) existe sur une mission `en_cours` OU si un contrat n'est pas terminé (`date_fin` vide ou ≥ aujourd'hui).
 - Les 5 indicateurs ci-dessus existent en 3 déclinaisons : par mission, en cumul sur toute la carrière ("résumé"), et en cumul sur les 270 dernières heures rémunérées déclarées ("statut global").
 - Note : le champ nommé "Taux d'absence" dans cette section de la note utilise en réalité la même formule que le "Taux de présence" de `/rd`/`/re-collecte`/`/mission`/`/rh` (`heures rémunérées / (nombre de lots × 7)`) ; le champ SQL sous-jacent (`taux_presence`) et le libellé affiché sur `/salarie.html` ont déjà été corrigés en ce sens (9/2026, cf. tâche #158/#186) — coquille de nom corrigée dans cette note.
 
@@ -125,6 +136,7 @@ Règles communes à tous les dashboards (demande explicite, 9/2026) ; les écart
 - **Taux réel** (par mission ayant utilisé cet emplacement, et global tous jours confondus) : `BS réel / heures de rue` (affiché brut, 3 décimales).
 - **Don moyen** (par mission, et global) : `avg(montant)` (dons valides), affiché en euros à 2 décimales.
 - **Nombre moyen de recruteurs par jour** : `avg(nb recruteurs distincts par jour)`.
+- **Horaires du premier et du dernier BS par jour** (10/2026) : par jour et par mission, heure de Paris du premier et du dernier don valide (`dons.created_at`) aux lots de cet emplacement.
 - **Taux réel par jour de la semaine** (1=lundi..7=dimanche, toutes missions/années confondues) : `sum(BS réel du jour de semaine) / sum(heures de rue du jour de semaine)`.
 - **Taux réel par mois calendaire** (1=janvier..12=décembre, toutes années confondues) : `sum(BS réel du mois) / sum(heures de rue du mois)`.
 
