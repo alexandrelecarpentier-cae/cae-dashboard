@@ -219,10 +219,10 @@ ages AS (
 )
 SELECT
   CASE
-    WHEN age BETWEEN 18 AND 20.999 THEN '18-20'
-    WHEN age BETWEEN 21 AND 25.999 THEN '21-25'
-    WHEN age BETWEEN 26 AND 35.999 THEN '26-35'
-    WHEN age BETWEEN 36 AND 50.999 THEN '36-50'
+    WHEN age >= 18 AND age < 21 THEN '18-20'
+    WHEN age >= 21 and age < 26 THEN '21-25'
+    WHEN age >= 26 and age < 36 THEN '26-35'
+    WHEN age >= 36 and age < 51 THEN '36-50'
     WHEN age >= 51                 THEN '50+'
     ELSE 'Autre'
   END AS tranche_age,

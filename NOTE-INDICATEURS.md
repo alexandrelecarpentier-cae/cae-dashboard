@@ -186,7 +186,7 @@ Vue COMEX cross-clients (aucun `id_client`/`id_mission` de filtrage — porte su
 - **Absentéisme** : `1 − (taux de présence hors arrêts maladie)`, où seuls les jours d'absence au motif "maladie" sont exclus du numérateur (les absences "autorisées" restent comptées comme de l'absentéisme). Définition **différente** de `taux_absence_injustifiee` de `/rd` (qui exclut à la fois "maladie" ET "autorisée"). Règle non tranchée sur le périmètre exact des arrêts maladie à exclure — signalé dans le code comme non définitif.
 - **Ratios d'effectif** : part des recruteurs "anciens" (≥ 3 missions) vs "nouveaux" ; répartition RD/RDC/RDE d'après le grade du contrat le plus récent de chaque personne.
 - **Taux de FPE** : `nb contrats avec avenant fin de période d'essai / nb contrats du périmètre`, sans distinction employeur/salarié (contrairement à `/rh` qui distingue les deux).
-- **Avancement des missions à objectif** (10/2026) : `BS réel (jusqu'à aujourd'hui) / objectif prorata`, où `objectif prorata = objectif × jours réalisés / jours de la mission` (jours = dates distinctes des lots ; réalisés = date ≤ aujourd'hui ; avancement vide si aucun jour réalisé). Toutes les missions avec objectif sont listées (plus de limite à 300), triées par code mission.
+- **Avancement des missions à objectif** (10/2026) : filtré par période (`date_from`/`date_to`). Missions retenues : statut `en_cours` ou `terminee` (annulées et en attente exclues), avec objectif renseigné et au moins un lot dans la période. `BS réel (lots de la période, ≤ aujourd'hui) / objectif prorata`, où `objectif prorata = objectif × jours réalisés dans la période / jours de la mission` (jours = dates distinctes des lots). Avancement vide si aucun jour réalisé. Tri : début de mission le plus récent d'abord. Plus de limite de lignes.
 - **Ratios /direction** (anciens/nouveaux, RDC/RD, RDE/RDC, heures rue/rém.) : affichés en **pourcentage** (1 décimale). Le taux réel reste un nombre brut à 3 décimales partout (arrondi SQL corrigé à 3 décimales sur /rd, /mission, /re-collecte).
 
 ## /rm
@@ -209,3 +209,9 @@ Trois clients de démo/test sont exclus de tous les dashboards (cf. `excluded-cl
 - **Taux de rencontre** : `nb passages "porte ouverte" / (nb logements visités − nb logements "non conforme")`.
 - **Taux de traitement** (par habitation) : `nb logements visités / logements_count de l'habitation`.
 - **Nombre moyen de passages par logement** : `avg(logements.passages_count)` sur les logements visités.
+
+
+## Évolutions 10/2026 (lot 2)
+- **/client — nb_missions et « Suivi des missions »** : avec une période sélectionnée, une mission est retenue dès qu'elle a au moins un lot dans la période (plus de simple chevauchement date_debut/date_fin).
+- **Tranches d'âge** (/client, /rd, /rm-collecte) : bornes semi-ouvertes `>= 18 < 21`, `>= 21 < 26`, `>= 26 < 36`, `>= 36 < 51`, `>= 51` (plus de trou aux bornes). « Autre » = âge inconnu ou < 18 ans (le filtre « Autre » de /client est aligné sur le graphe).
+- **/salarie — heures non complétées** (`heures_remuneration_completes = false`) : le lot est ignoré le jour même (encore saisissable), puis pris en compte dès le lendemain avec les heures saisies (0 si jamais complétées → absence). Heures de rue et heures rémunérées sont donc calculées sur le même périmètre (taux heures rue/rém. cohérent).

@@ -79,7 +79,10 @@ lots_u as (
   from lots l
   join u on l.utilisateur_id = u.id
   join missions m on m.id = l.mission_id
-  where l.date <= CURRENT_DATE ${excludeClientsClause('m')} -- lots futurs (pré-créés) exclus
+  where l.date <= CURRENT_DATE
+    -- heures non complétées : ignorées le jour même (encore saisissables), prises en compte dès le lendemain (valeur saisie, 0 si jamais complétées)
+    and (coalesce(l.heures_remuneration_completes, true) or l.date < CURRENT_DATE)
+    ${excludeClientsClause('m')} -- lots futurs (pré-créés) exclus
 ),
 heures as (
   -- heures_remuneration ne compte que les heures rémunérées déclarées :
@@ -88,7 +91,7 @@ heures as (
   -- marqués comme non déclarés (heures_remuneration_completes = false).
   select mission_id,
     sum(nombre_horaires_rue) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) as heures_rue,
-    sum(nombre_horaires_remuneration) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0 and coalesce(heures_remuneration_completes,true)) as heures_remuneration,
+    sum(nombre_horaires_remuneration) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0 ) as heures_remuneration,
     count(*) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) as jours_presence,
     count(*) as nb_lots
   from lots_u group by 1
@@ -144,7 +147,10 @@ lots_u as (
   from lots l
   join u on l.utilisateur_id = u.id
   join missions m on m.id = l.mission_id
-  where l.date <= CURRENT_DATE ${excludeClientsClause('m')} -- lots futurs (pré-créés) exclus
+  where l.date <= CURRENT_DATE
+    -- heures non complétées : ignorées le jour même (encore saisissables), prises en compte dès le lendemain (valeur saisie, 0 si jamais complétées)
+    and (coalesce(l.heures_remuneration_completes, true) or l.date < CURRENT_DATE)
+    ${excludeClientsClause('m')} -- lots futurs (pré-créés) exclus
 ),
 heures as (
   -- cf. buildPerformanceParMissionQuery : heures_remuneration ne compte
@@ -152,7 +158,7 @@ heures as (
   -- l'historique où ce flag n'existait pas encore).
   select
     sum(nombre_horaires_rue) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) as heures_rue_total,
-    sum(nombre_horaires_remuneration) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0 and coalesce(heures_remuneration_completes,true)) as heures_remuneration_total,
+    sum(nombre_horaires_remuneration) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0 ) as heures_remuneration_total,
     count(*) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) as jours_presence_total,
     count(*) as nb_lots_total
   from lots_u
@@ -186,7 +192,8 @@ lots_u as (
   from lots l
   join u on l.utilisateur_id = u.id
   join missions m on m.id = l.mission_id
-  where coalesce(l.nombre_horaires_remuneration, 0) <> 0 and coalesce(l.heures_remuneration_completes, true)
+  where coalesce(l.nombre_horaires_remuneration, 0) <> 0
+    and (coalesce(l.heures_remuneration_completes, true) or l.date < CURRENT_DATE)
     ${excludeClientsClause('m')}
 ),
 lots_cumul as (

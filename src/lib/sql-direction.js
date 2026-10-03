@@ -197,38 +197,52 @@ left join fpe_f on fpe_f.contrat_id = cf.id;`;
 // source, qui seraient deux valeurs distinctes, n'existent pas). Limité
 // aux missions avec un objectif renseigné.
 function missionOnlyFiltersClause(p) {
-  const clauses = ['m.objectif_bulletin_theorique is not null'];
+  // Missions annulées / en attente exclues ; seules les missions ayant au
+  // moins un lot dans la période (date_from/date_to) sont retenues.
+  const clauses = ['m.objectif_bulletin_theorique is not null', "m.statut_mission in ('en_cours','terminee')"];
   if (p.id_client) clauses.push(`m.client_id = '${p.id_client}'`);
   if (p.statut_mission) clauses.push(`m.statut_mission = '${p.statut_mission}'`);
+  const lc = ['l.mission_id = m.id'];
+  if (p.date_from) lc.push(`l.date >= '${p.date_from}'`);
+  if (p.date_to) lc.push(`l.date <= '${p.date_to}'`);
+  if (lc.length > 1) clauses.push(`exists (select 1 from lots l where ${lc.join(' and ')})`);
   return clauses.join(' AND ');
+}
+function periodLotClause(p) {
+  const c = ['l.date <= current_date'];
+  if (p.date_from) c.push(`l.date >= '${p.date_from}'`);
+  if (p.date_to) c.push(`l.date <= '${p.date_to}'`);
+  return c.join(' and ');
 }
 function buildObjectifMissionsQuery(p) {
   return `with scoped_missions as (
-  select m.id, m.code_mission, m.statut_mission, cl.nom as client_nom, m.objectif_bulletin_theorique
+  select m.id, m.code_mission, m.statut_mission, m.date_debut, cl.nom as client_nom, m.objectif_bulletin_theorique
   from missions m
   left join clients cl on cl.id = m.client_id
   where ${missionOnlyFiltersClause(p)}
     ${excludeClientsClause('m')}
 ),
 dons_mission as (
+  -- BS réel sur la période (jusqu'à aujourd'hui)
   select l.mission_id, count(distinct d.id) as bs_reel
   from lots l
   join dons d on d.lot_id = l.id and d.statut in ${STATUTS_VALIDES}
   where l.mission_id in (select id from scoped_missions)
-    and l.date <= current_date
+    and ${periodLotClause(p)}
   group by 1
 ),
 jours_mission as (
   -- Les lots sont pré-créés sur toute la durée de la mission : jours_total =
-  -- jours distincts planifiés, jours_realises = ceux déjà échus (<= aujourd'hui).
+  -- jours distincts planifiés (mission entière), jours_realises = jours
+  -- échus (<= aujourd'hui) tombant dans la période.
   select l.mission_id,
     count(distinct l.date) as jours_total,
-    count(distinct l.date) filter (where l.date <= current_date) as jours_realises
+    count(distinct l.date) filter (where ${periodLotClause(p)}) as jours_realises
   from lots l
   where l.mission_id in (select id from scoped_missions)
   group by 1
 )
-select sm.id as mission_id, sm.code_mission, sm.client_nom, sm.statut_mission, sm.objectif_bulletin_theorique,
+select sm.id as mission_id, sm.code_mission, sm.client_nom, sm.statut_mission, sm.date_debut, sm.objectif_bulletin_theorique,
   coalesce(jm.jours_total, 0) as jours_total,
   coalesce(jm.jours_realises, 0) as jours_realises,
   case when coalesce(jm.jours_total, 0) > 0
@@ -242,7 +256,7 @@ select sm.id as mission_id, sm.code_mission, sm.client_nom, sm.statut_mission, s
 from scoped_missions sm
 left join dons_mission dm on dm.mission_id = sm.id
 left join jours_mission jm on jm.mission_id = sm.id
-order by sm.code_mission;`;
+order by sm.date_debut desc nulls last, sm.code_mission;`;
 }
 
 function buildClientListQuery() {

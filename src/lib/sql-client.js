@@ -43,10 +43,13 @@ function missionFilters(p) {
 // (mission encore en cours) — dans ce cas elle ne peut jamais être exclue
 // par la borne basse (date_min) de la période.
 function missionDateOverlapClause(p) {
-  const clauses = [];
-  if (p.date_min) clauses.push(`(date_fin is null or date_fin >= '${p.date_min}')`);
-  if (p.date_max) clauses.push(`date_debut <= '${p.date_max}'`);
-  return clauses.length ? ` and ${clauses.join(' and ')}` : '';
+  // Mission retenue si elle a au moins un lot dans la période sélectionnée
+  // (et non plus simple chevauchement date_debut/date_fin).
+  if (!p.date_min && !p.date_max) return '';
+  const c = ['l.mission_id = scoped_missions.id'];
+  if (p.date_min) c.push(`l.date >= '${p.date_min}'`);
+  if (p.date_max) c.push(`l.date <= '${p.date_max}'`);
+  return ` and exists (select 1 from lots l where ${c.join(' and ')})`;
 }
 
 function lotFilters(p) {
@@ -68,12 +71,12 @@ function lotFilters(p) {
 // dons que celui affiché sur cette barre.
 function trancheAgeSqlClause(tranche) {
   const clauses = {
-    '18-20': 'd.age_donateur between 18 and 20.999',
-    '21-25': 'd.age_donateur between 21 and 25.999',
-    '26-35': 'd.age_donateur between 26 and 35.999',
-    '36-50': 'd.age_donateur between 36 and 50.999',
+    '18-20': 'd.age_donateur >= 18 and d.age_donateur < 21',
+    '21-25': 'd.age_donateur >= 21 and d.age_donateur < 26',
+    '26-35': 'd.age_donateur >= 26 and d.age_donateur < 36',
+    '36-50': 'd.age_donateur >= 36 and d.age_donateur < 51',
     '50 et +': 'd.age_donateur >= 51',
-    Autre: 'd.age_donateur is null',
+    Autre: '(d.age_donateur is null or d.age_donateur < 18)',
   };
   return clauses[tranche] || '1=0';
 }
@@ -131,7 +134,7 @@ limit 10;`,
     kpis: `${cte},
 kpi_missions as (
   select count(distinct id) as nb_missions
-  from scoped_missions where statut_mission in ('terminee','en_cours','en_attente')
+  from scoped_missions where statut_mission in ('terminee','en_cours','en_attente')${missionDateOverlapClause(p)}
 ),
 kpi_dons as (
   -- bs_transmis = sous-ensemble transmis de nb_dons (BS réalisés = tous
@@ -168,10 +171,10 @@ group by civilite;`,
 
     tranche_age: `${cte}
 select
-  case when age_donateur between 18 and 20.999 then '18-20'
-       when age_donateur between 21 and 25.999 then '21-25'
-       when age_donateur between 26 and 35.999 then '26-35'
-       when age_donateur between 36 and 50.999 then '36-50'
+  case when age_donateur >= 18 and age_donateur < 21 then '18-20'
+       when age_donateur >= 21 and age_donateur < 26 then '21-25'
+       when age_donateur >= 26 and age_donateur < 36 then '26-35'
+       when age_donateur >= 36 and age_donateur < 51 then '36-50'
        when age_donateur >= 51 then '50 et +'
        else 'Autre' end as tranche,
   count(distinct id) as nb
