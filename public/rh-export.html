@@ -268,6 +268,10 @@
     }, 250);
   }
 
+  function filterLabel(a){
+    var n = { date: 'date', code: 'code mission', nom: 'salarié', client: 'client', tr: 'TR' };
+    return 'filtres : ' + (a || []).map(function(k){ return n[k] || k; }).join(', ');
+  }
   function readFilters(){
     var f = state.filters;
     if (el('f-date')) {
@@ -323,7 +327,7 @@
     if (d.note) html += '<div class="section-sub" style="margin-top:14px;">' + esc(d.note) + '</div>';
     d.tables.forEach(function(t, i){
       html += '<div class="block" data-i="' + i + '">'
-        + '<div class="table-head"><span class="ttl">' + esc(t.title) + '</span><span class="cnt" id="cnt' + i + '"></span><span class="spacer"></span>'
+        + '<div class="table-head"><span class="ttl">' + esc(t.title) + '</span><span class="cnt" style="opacity:.7">' + esc(filterLabel(t.applied || t.filters)) + '</span><span class="cnt" id="cnt' + i + '"></span><span class="spacer"></span>'
         + '<input class="control" type="search" placeholder="Rechercher dans le tableau" data-search="' + i + '">'
         + (d.tables.length > 1 && i === 0
           ? '<button class="btn" type="button" data-xlsx="1"' + (d.tables.some(function(x){ return x.rows.length; }) ? '' : ' disabled') + '>Export Excel (' + d.tables.length + ' onglets)</button>'

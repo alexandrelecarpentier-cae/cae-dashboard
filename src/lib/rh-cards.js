@@ -33,7 +33,7 @@ const TABS = {
   export: {
     paie: {
       cards: [
-        { title: 'Export de paie', dashcard: 351, card: 290, filters: ['date'] },
+        { title: 'Export de paie', dashcard: 351, card: 290, filters: ['date'], postFilters: ['nom'] },
         { title: 'Absences (export paie 2)', dashcard: 665, card: 540, filters: ['code', 'date', 'nom', 'client'] },
       ],
     },
@@ -83,6 +83,18 @@ function dropExcludedClients(rows) {
   return rows.filter((r) => !(r && EXCLUDED_CLIENT_NAMES.includes(r['Clients → Nom'])));
 }
 
+function applyPostFilters(rows, url, keys) {
+  if (!keys || !keys.length) return rows;
+  let out = rows;
+  for (const key of keys) {
+    const { value } = readFilterValue(url, key);
+    if (value == null) continue;
+    const needle = String(value).toLowerCase();
+    out = out.filter((r) => Object.values(r || {}).some((x) => x != null && String(x).toLowerCase().includes(needle)));
+  }
+  return out;
+}
+
 async function handleRhCards(url, env, group) {
   const configError = requireConfig(env);
   if (configError) return jsonResponse({ error: configError }, 500);
@@ -102,7 +114,9 @@ async function handleRhCards(url, env, group) {
     const tables = tab.cards.map((c, i) => ({
       title: c.title,
       filters: c.filters,
-      rows: dropExcludedClients(results[i]),
+      // postFilters = filtres que la carte Metabase ignore : appliqués ici sur le texte des lignes.
+      rows: applyPostFilters(dropExcludedClients(results[i]), url, c.postFilters),
+      applied: [...c.filters, ...(c.postFilters || [])],
     }));
     return jsonResponse({ tab: tabKey, note: tab.note || null, tables, generated_at: new Date().toISOString() });
   } catch (e) {
