@@ -48,6 +48,7 @@ import {
 } from './lib/sql-rh.js';
 import { buildDirectionQueries, buildClientListQuery as buildDirectionClientListQuery } from './lib/sql-direction.js';
 import { isExcludedClient, buildMissionClientQuery, EXCLUDED_CLIENT_NAMES } from './lib/excluded-clients.js';
+import { handleRhSuivi, handleRhExport, handleRhValues } from './lib/rh-cards.js';
 
 // Mode staging/prod (demande explicite, 9/2026) : un cookie posé côté
 // navigateur par le petit widget présent sur chaque page (cf. public/*.html)
@@ -92,6 +93,9 @@ export default {
       if (url.pathname === '/api/re-mobilisation') return await handleReMobilisation(url, env);
       if (url.pathname === '/api/rd-mobilisation') return await handleRdMobilisation(url, env);
       if (url.pathname === '/api/rm-missions') return await handleRmMissions(env);
+      if (url.pathname === '/api/rh-suivi') return await handleRhSuivi(url, env);
+      if (url.pathname === '/api/rh-export') return await handleRhExport(url, env);
+      if (url.pathname === '/api/rh-values') return await handleRhValues(url, env);
       if (url.pathname === '/api/logo') return await handleLogo(url, env);
     } catch (err) {
       return jsonResponse({ error: 'worker_exception', message: String((err && err.stack) || err) }, 500);

@@ -85,6 +85,44 @@ export async function runCardQuery(env, cardId, missionId) {
   return res.json();
 }
 
+// Interroge une carte du dashboard Metabase "Dashboard RH" (id 39) en passant
+// par son dashcard, pour pouvoir appliquer les filtres du dashboard (date,
+// code mission, salarié, client, TR attribué) — utilisé par /rh-suivi et
+// /rh-export, qui reprennent le contenu de certains onglets de ce dashboard.
+// Comme pour runCardQuery : ces cartes sont liées à la base Production, le
+// mode staging (?staging=1) n'a aucun effet ici. L'endpoint /query/json n'est
+// pas plafonné à 2000 lignes (contrairement à l'affichage dans Metabase).
+export const RH_DASHBOARD_ID = 39;
+
+export async function runDashcardQuery(env, dashcardId, cardId, parameters) {
+  const res = await fetch(
+    `${env.METABASE_URL}/api/dashboard/${RH_DASHBOARD_ID}/dashcard/${dashcardId}/card/${cardId}/query/json`,
+    {
+      method: 'POST',
+      headers: { 'x-api-key': env.METABASE_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ parameters: parameters || [], format_rows: false }),
+    },
+  );
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Metabase ${res.status}: ${text.slice(0, 300)}`);
+  }
+  return res.json();
+}
+
+// Valeurs proposées par un filtre du dashboard (liste complète ou recherche).
+export async function fetchDashboardParamValues(env, paramId, query) {
+  const base = `${env.METABASE_URL}/api/dashboard/${RH_DASHBOARD_ID}/params/${paramId}`;
+  const url = query ? `${base}/search/${encodeURIComponent(query)}` : `${base}/values`;
+  const res = await fetch(url, { headers: { 'x-api-key': env.METABASE_API_KEY } });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Metabase ${res.status}: ${text.slice(0, 300)}`);
+  }
+  const json = await res.json();
+  return (json.values || []).map((v) => (Array.isArray(v) ? v[0] : v)).filter((v) => v != null && v !== '');
+}
+
 export function requireConfig(env) {
   if (!env.METABASE_URL || !env.METABASE_API_KEY) {
     return 'Configuration serveur incomplète (METABASE_URL / METABASE_API_KEY manquants)';

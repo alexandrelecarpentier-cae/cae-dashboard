@@ -247,9 +247,6 @@
 
 
 <header>
-  <div class="head-row">
-    <h1 id="pageTitle">Dashboard <em>Client</em></h1>
-  </div>
   <div class="meta-row">
     <div class="sync"><span class="live-diamond off" id="liveDiamond"></span>Synchro <b id="syncTime">—</b></div>
     <div class="sync" id="countdown">5:00</div>
@@ -787,7 +784,6 @@
 
     const info = data.info || {};
     const clientName = info.client_nom || info.raison_sociale;
-    if (clientName) document.getElementById('pageTitle').innerHTML = clientName.replace(/</g, '&lt;');
     applyClientColor(info.couleur);
 
     // Ville(s) d'activité du jour — n'a de sens que lorsque la période est

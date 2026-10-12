@@ -153,7 +153,6 @@
 
 
 <header>
-  <h1>Assistant <em>site privé</em></h1>
   <div class="meta-row">
     <div class="sync"><span class="live-diamond off" id="liveDiamond"></span>Synchro <b id="syncTime">—</b></div>
     <div class="sync" id="countdown">5:00</div>
@@ -204,10 +203,6 @@
 <div id="state">Chargement des données depuis Metabase…</div>
 
 <main id="content" class="hidden">
-  <div class="section-label"><span class="diamond"></span>Indicateurs</div>
-  <div class="section-sub">Sur la mission / le site / la période sélectionnés — basé sur la date de collecte (date du lot).</div>
-  <div class="kpi-scroll" id="kpiGlobal"></div>
-
   <div class="section-label"><span class="diamond"></span>Évolution du taux réel</div>
   <div class="card"><div class="card-inner">
     <div class="quick-tags" id="granularityTags" style="margin-bottom:12px;">
@@ -572,25 +567,11 @@
       mois: data.tauxParMois || [],
     };
 
-    renderKpis(data.globalStats || {});
     renderEvolutionChart();
     renderTypoChart(parTypologie);
     renderEnseigneTable(data.parEnseigne || []);
     renderClassementTable(data.classementSp || []);
     renderEmplacementsTable(data.emplacementsActivite || []);
-  }
-
-  function renderKpis(s) {
-    const kpis = [
-      { v: fmtNum(s.nb_emplacements), l: 'Emplacements' },
-      { v: fmtNum(s.nb_missions), l: 'Missions' },
-      { v: s.heures_rue != null ? fmtNum(s.heures_rue) : '—', l: 'Heures rue' },
-      { v: fmtNum(s.bs_reel), l: 'BS réel' },
-      { v: s.taux_reel != null ? fmtNum(s.taux_reel, 3) : '—', l: 'Taux réel' },
-      { v: s.don_moyen != null ? fmtEuro(s.don_moyen) : '—', l: 'Don moyen' },
-    ];
-    document.getElementById('kpiGlobal').innerHTML = kpis.map((k) => `
-      <div class="kpi"><div class="val">${k.v}</div><div class="lbl">${k.l}</div></div>`).join('');
   }
 
   function renderTypoChart(rows) {
