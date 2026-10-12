@@ -71,6 +71,10 @@
 
   #state{padding:60px 16px; text-align:center; color:var(--muted); font-size:14px;}
   #state.error{color:var(--red);}
+  /* Anti-clignotement : l'en-tête (titre, accents) reste invisible tant que les données
+     n'ont pas été reçues et que la couleur du client n'est pas appliquée (le layout est conservé).
+     En cas d'erreur, l'en-tête réapparaît. */
+  body:has(#state:not(.hidden):not(.error)) header{visibility:hidden;}
   .hidden{display:none;}
   .empty{padding:20px 14px; text-align:center; color:var(--muted); font-size:13px; background:#fff; border:1px solid var(--line); border-radius:var(--sharp);}
 </style>
