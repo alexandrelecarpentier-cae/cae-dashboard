@@ -81,7 +81,7 @@ Puis, pour que le changement soit visible en ligne : `npx wrangler deploy`.
 
 - `sql-mission.js` existe encore mais a été vidé de `buildMissionPerformanceQueries`/`buildRecruteurPerformanceQueries` (dashboards Metabase 15 retirés en 9/2026) : il ne sert plus qu'à des requêtes utilitaires mission par id/code, encore utilisées par `mission.html`.
 - `/rm`'s "% < 25 ans" vient d'une carte Metabase externe (514) et n'a pas pu être vérifié comme suivant la même convention de dénominateur que le reste du projet (cf. audit 9/2026) — à garder en tête si un écart apparaît un jour sur ce chiffre précis.
-- Les 3 clients exclus (tests internes) sont filtrés différemment selon le type de dashboard : clause SQL (`excludeClientsClause`) sur les vues cross-missions, validation d'id en amont sur les fiches à id unique. Si un nouveau dashboard est créé, penser à appliquer le bon mécanisme.
+- Les 2 clients exclus (tests internes ; « ONG de test » est autorisé depuis le 12/10/2026) sont filtrés différemment selon le type de dashboard : clause SQL (`excludeClientsClause`) sur les vues cross-missions, validation d'id en amont sur les fiches à id unique. Si un nouveau dashboard est créé, penser à appliquer le bon mécanisme.
 
 ## 7. Comment formuler une demande d'évolution
 

@@ -6,16 +6,16 @@
 const EXCLUDED_CLIENT_IDS = [
   '0990fd74-bd60-4bd9-9d28-dbf941c72567',
   '8f732ffd-ffa7-44ab-a741-f51d92a9c4a9',
-  'f17e1174-b8a3-4d73-a7ed-ea6f81cb3e3d',
 ];
 
-// Noms correspondants (vérifiés en base au moment de l'implémentation :
-// "[Demo] Stores", "AL", "ONG de test" — des comptes de démo/test, cohérent
-// avec la demande d'exclusion). Utilisé uniquement pour /api/rm-missions,
+// Noms correspondants (vérifiés en base : "[Demo] Stores", "AL" — des comptes
+// de démo/test, cohérent avec la demande d'exclusion). Le client "ONG de test"
+// (f17e1174-b8a3-4d73-a7ed-ea6f81cb3e3d) est volontairement AUTORISÉ depuis le
+// 12/10/2026 : il apparaît sur tous les dashboards. Utilisé uniquement pour /api/rm-missions,
 // qui s'appuie sur une question Metabase déjà construite (carte 514) dont on
 // ne contrôle pas le SQL depuis ce projet — on ne peut donc filtrer qu'après
 // coup, sur le nom affiché plutôt que sur l'id.
-const EXCLUDED_CLIENT_NAMES = ['[Demo] Stores', 'AL', 'ONG de test'];
+const EXCLUDED_CLIENT_NAMES = ['[Demo] Stores', 'AL'];
 
 function excludedClientsSqlList() {
   return EXCLUDED_CLIENT_IDS.map((id) => `'${id}'`).join(', ');

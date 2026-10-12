@@ -274,7 +274,7 @@ select
   (select s.permis_de_conduire from utilisateur_situations s join u on s.utilisateur_id = u.id order by s.updated_at desc nulls last limit 1) as permis,
   (select current_date - max(l.date) from lots l join u on l.utilisateur_id = u.id
     join missions m on m.id = l.mission_id
-    where l.date <= current_date AND m.client_id NOT IN ('0990fd74-bd60-4bd9-9d28-dbf941c72567', '8f732ffd-ffa7-44ab-a741-f51d92a9c4a9', 'f17e1174-b8a3-4d73-a7ed-ea6f81cb3e3d')) as jours_depuis_derniere_mission,
+    where l.date <= current_date ${excludeClientsClause('m')}) as jours_depuis_derniere_mission,
   f.derniere_fin as fin_dernier_contrat,
   f.contrat_non_termine as contrat_en_cours,
   (f.contrat_non_termine or f.lot_a_venir) as actif
