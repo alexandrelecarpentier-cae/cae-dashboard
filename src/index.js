@@ -48,6 +48,7 @@ import {
 } from './lib/sql-rh.js';
 import { buildDirectionQueries, buildClientListQuery as buildDirectionClientListQuery } from './lib/sql-direction.js';
 import { isExcludedClient, buildMissionClientQuery, EXCLUDED_CLIENT_NAMES } from './lib/excluded-clients.js';
+import { DIRECTION_SUIVI_SECTIONS, GRAINS as DIRECTION_SUIVI_GRAINS } from './lib/sql-direction-suivi.js';
 import { handleRhSuivi, handleRhExport, handleRhValues } from './lib/rh-cards.js';
 
 // Mode staging/prod (demande explicite, 9/2026) : un cookie posé côté
@@ -90,6 +91,7 @@ export default {
       if (url.pathname === '/api/assistant-site-prive') return await handleAssistantSitePrive(url, env);
       if (url.pathname === '/api/rh') return await handleRh(url, env);
       if (url.pathname === '/api/direction') return await handleDirection(url, env);
+      if (url.pathname === '/api/direction-suivi') return await handleDirectionSuivi(url, env, ctx);
       if (url.pathname === '/api/re-mobilisation') return await handleReMobilisation(url, env);
       if (url.pathname === '/api/rd-mobilisation') return await handleRdMobilisation(url, env);
       if (url.pathname === '/api/rm-missions') return await handleRmMissions(env);
@@ -566,6 +568,76 @@ async function handleRmCollecte(url, env) {
     ]);
 
     return jsonResponse({ missions, age, gender, suspectsList, suiviJour, fpe: fpe[0] || null, rmList, clientList });
+  } catch (e) {
+    return jsonResponse({ error: String(e.message || e) }, 502);
+  }
+}
+
+// ---------------------------------------------------------------
+// /api/direction-suivi — dashboard "Suivi Direction" (direction-suivi.html),
+// repris du dashboard Metabase « Direction » (id 41). UNE section par appel
+// (?section=kpis|periode|clients|missions|recruteurs|statuts|transmissions|
+// depots|facturation|facturation_detail) : le front les charge en parallèle
+// et en différé (au scroll / à l'ouverture de l'onglet) pour que chaque
+// bloc s'affiche dès que sa requête est terminée.
+// Période : date_from / date_to (AAAA-MM-JJ, optionnels = tout) ; grain =
+// découpage de l'évolution (year|month|week|day).
+// Cache : réponses mises en cache côté Cloudflare (caches.default) — 2 min
+// pour une période en cours, 1 h pour une période entièrement passée ; le
+// paramètre refresh=1 contourne la lecture du cache (bouton d'actualisation).
+// ---------------------------------------------------------------
+async function handleDirectionSuivi(url, env, ctx) {
+  const configError = requireConfig(env);
+  if (configError) return jsonResponse({ error: configError }, 500);
+
+  const section = url.searchParams.get('section') || '';
+  const build = DIRECTION_SUIVI_SECTIONS[section];
+  if (!build) return jsonResponse({ error: 'section invalide' }, 400);
+
+  const date_from = url.searchParams.get('date_from') || '';
+  const date_to = url.searchParams.get('date_to') || '';
+  if (date_from && !RE_DATE.test(date_from)) return jsonResponse({ error: 'date_from invalide' }, 400);
+  if (date_to && !RE_DATE.test(date_to)) return jsonResponse({ error: 'date_to invalide' }, 400);
+  if (date_from && date_to && date_from > date_to) return jsonResponse({ error: 'période invalide' }, 400);
+
+  const grain = url.searchParams.get('grain') || 'month';
+  if (!DIRECTION_SUIVI_GRAINS.includes(grain)) return jsonResponse({ error: 'grain invalide' }, 400);
+
+  const id_client = url.searchParams.get('id_client') || '';
+  if (section === 'facturation_detail') {
+    if (!RE_UUID.test(id_client)) return jsonResponse({ error: 'id_client manquant ou invalide' }, 400);
+    if (isExcludedClient(id_client)) return jsonResponse({ error: 'client non disponible' }, 400);
+  }
+
+  const params = {
+    date_from: date_from || null,
+    date_to: date_to || null,
+    grain,
+    id_client: id_client || null,
+  };
+
+  const today = new Date().toISOString().slice(0, 10);
+  const ttl = date_to && date_to < today ? 3600 : 120;
+
+  const keyUrl = new URL(url.toString());
+  keyUrl.searchParams.delete('refresh');
+  keyUrl.searchParams.sort();
+  const cacheKey = new Request(keyUrl.toString());
+  const cache = typeof caches !== 'undefined' ? caches.default : null;
+  const bypass = url.searchParams.get('refresh') === '1';
+
+  if (cache && !bypass) {
+    const hit = await cache.match(cacheKey);
+    if (hit) return hit;
+  }
+
+  try {
+    const rows = await runQuery(env, build(params));
+    const res = new Response(JSON.stringify({ rows, generated_at: new Date().toISOString() }), {
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${ttl}` },
+    });
+    if (cache && ctx && ctx.waitUntil) ctx.waitUntil(cache.put(cacheKey, res.clone()));
+    return res;
   } catch (e) {
     return jsonResponse({ error: String(e.message || e) }, 502);
   }
