@@ -193,13 +193,17 @@ Vue COMEX cross-clients (aucun `id_client`/`id_mission` de filtrage — porte su
 
 Reprise du dashboard Metabase « Direction » (id 41), onglets Suivi et Transmission. API : `/api/direction-suivi?section=…` (une requête par section, chargées au scroll ; cache serveur 120 s période en cours / 1 h période close ; `refresh=1` pour l'ignorer). SQL : `sql-direction-suivi.js`.
 
-- **Filtre de période** (type : total / année / mois / semaine / jour + sélecteur) appliqué à toutes les sections ; bornes en heure de Paris. Sous-découpage des graphiques : année → mois, autres → jours.
+- **Filtre de période** : deux réglages indépendants — « Regrouper par » (année / mois / semaine / jour, utilisé pour les graphiques d'évolution : global, statuts, dépôts) et une plage « Du / Au » (raccourcis disponibles, « Tout » = sans bornes). La plage s'applique à toutes les sections ; bornes en heure de Paris. URL : `?grain=&from=&to=&tab=`.
 - **Suivi global / client / mission / recruteur** : filtrés sur `lots.date` (≤ aujourd'hui). Mêmes conventions que le reste du projet : dons valides = nouveau/en_attente/transmis ; heures rue/rém. uniquement sur lots présents (heures rém. ≠ 0) ; taux réel = BS réel / heures rue (3 décimales) ; heures rue/rém. et % absence en % (1 décimale) ; don moyen en € (2 décimales). Âge médian = âge au don (médiane). Limites : 500 missions, 500 recruteurs.
 - **Volume de dons par statut** : dons créés (`dons.created_at`) sur la période, tous statuts, séparés CozApp (`old_cae_id` nul) / BO.
 - **Transmissions** : dons valides créés sur la période, par client (nouveau + en attente = « à transmettre », transmis) + paramètres de transmission du client.
-- **Dépôts** : dons dont `date_transmission` est dans la période. **Facturation** : dons `transmis` hors BO, `date_transmission` dans la période, par client × type de don (ou mois) ; détail par mission chargé à la demande.
+- **Dépôts** : dons dont `date_transmission` est dans la période (pas de split CozApp/BO). **Facturation** : dons `transmis` hors BO, `date_transmission` dans la période, par client × type de don (ou mois) ; détail par mission chargé à la demande.
 - Clients exclus : `excludeClientsClause('m')` ; `id_client` du détail refusé s'il est exclu.
 - Écarts possibles avec Metabase 41 : conventions de ce projet (lots présents, ≤ aujourd'hui) ; onglets « Missions à venir », « Recrutement », « Suspects » et autres filtres Metabase non repris.
+
+## Client « ONG de test » (13/10/2026)
+
+Exclu de tous les dashboards (au même titre que les 2 autres clients de test : `EXCLUDED_CLIENT_IDS` / `EXCLUDED_CLIENT_NAMES`), **sauf** `/rd`, `/re-collecte`, `/re-mobilisation` et son détail `/rd-mobilisation`, qui l'acceptent (option `allowTest`). Il n'apparaît donc pas dans la liste de `/rm`, mais ses missions restent consultables sur ces pages avec leur lien direct. Dans les modales ouvertes depuis ces pages (ex. `/mission`), il reste bloqué.
 
 ## /rm
 

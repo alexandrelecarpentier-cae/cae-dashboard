@@ -181,23 +181,36 @@
   <div class="filters">
     <div class="filter-row">
       <div class="filter-field">
-        <div class="filter-label">Type de période</div>
+        <div class="filter-label">Regrouper par</div>
         <select class="control" id="typeSel">
-          <option value="total">Total</option>
-          <option value="year">Par année</option>
-          <option value="month">Par mois</option>
-          <option value="week">Par semaine</option>
-          <option value="day">Par jour</option>
+          <option value="year">Année</option>
+          <option value="month">Mois</option>
+          <option value="week">Semaine</option>
+          <option value="day">Jour</option>
         </select>
       </div>
-      <div class="filter-field" id="periodField">
-        <div class="filter-label">Période</div>
-        <div class="period-box">
-          <button class="step-btn" id="prevBtn" type="button" aria-label="Période précédente">‹</button>
-          <select class="control" id="periodSel"></select>
-          <input class="control hidden" type="date" id="dayInput">
-          <button class="step-btn" id="nextBtn" type="button" aria-label="Période suivante">›</button>
-        </div>
+      <div class="filter-field">
+        <div class="filter-label">Raccourci</div>
+        <select class="control" id="presetSel">
+          <option value="custom">Personnalisé</option>
+          <option value="today">Aujourd’hui</option>
+          <option value="yesterday">Hier</option>
+          <option value="7d">7 derniers jours</option>
+          <option value="30d">30 derniers jours</option>
+          <option value="week">Cette semaine</option>
+          <option value="month">Ce mois</option>
+          <option value="lastmonth">Mois dernier</option>
+          <option value="year">Cette année</option>
+          <option value="all">Tout</option>
+        </select>
+      </div>
+      <div class="filter-field">
+        <div class="filter-label">Du</div>
+        <input class="control" type="date" id="fromInput">
+      </div>
+      <div class="filter-field">
+        <div class="filter-label">Au</div>
+        <input class="control" type="date" id="toInput">
       </div>
       <div class="range-note" id="rangeNote"></div>
       <button class="btn-reset" id="filtersReset" type="button">Réinitialiser</button>
@@ -258,11 +271,9 @@
 /* ───────── Éléments ───────── */
 var E = {
   type: document.getElementById('typeSel'),
-  period: document.getElementById('periodSel'),
-  day: document.getElementById('dayInput'),
-  prev: document.getElementById('prevBtn'),
-  next: document.getElementById('nextBtn'),
-  periodField: document.getElementById('periodField'),
+  preset: document.getElementById('presetSel'),
+  from: document.getElementById('fromInput'),
+  to: document.getElementById('toInput'),
   rangeNote: document.getElementById('rangeNote'),
   reset: document.getElementById('filtersReset'),
   refresh: document.getElementById('refreshBtn'),
@@ -325,76 +336,51 @@ function isoWeek(s){
 function todayParis(){ return new Intl.DateTimeFormat('en-CA', {timeZone:'Europe/Paris'}).format(new Date()); }
 var TODAY = todayParis();
 
-/* ───────── Période ───────── */
-var S = {type:'month', key:TODAY.slice(0,7), tab:'suivi'};
+/* ───────── Période : regroupement + dates indépendants ───────── */
+var S = {grain:'day', from:TODAY.slice(0,8) + '01', to:TODAY, tab:'suivi'};
+var RE_D = /^\d{4}-\d{2}-\d{2}$/;
 
-function currentKey(t){
-  if (t === 'year') return TODAY.slice(0,4);
-  if (t === 'month') return TODAY.slice(0,7);
-  if (t === 'week') return mondayOf(TODAY);
-  if (t === 'day') return TODAY;
-  return '';
+function getRange(){ return {from:S.from || null, to:S.to || null, grain:S.grain}; }
+function presetRange(k){
+  var y = TODAY.slice(0,4), ym = TODAY.slice(0,7);
+  if (k === 'today') return [TODAY, TODAY];
+  if (k === 'yesterday') return [addDays(TODAY,-1), addDays(TODAY,-1)];
+  if (k === '7d') return [addDays(TODAY,-6), TODAY];
+  if (k === '30d') return [addDays(TODAY,-29), TODAY];
+  if (k === 'week') return [mondayOf(TODAY), TODAY];
+  if (k === 'month') return [ym + '-01', TODAY];
+  if (k === 'lastmonth') { var lm = addMonths(ym,-1); return [lm + '-01', lastDayOfMonth(lm)]; }
+  if (k === 'year') return [y + '-01-01', TODAY];
+  if (k === 'all') return ['', ''];
+  return null;
 }
-function stepKey(t, k, dir){
-  if (t === 'year') return String(Number(k) + dir);
-  if (t === 'month') return addMonths(k, dir);
-  if (t === 'week') return addDays(k, 7 * dir);
-  if (t === 'day') return addDays(k, dir);
-  return k;
+function detectPreset(){
+  var ks = ['today','yesterday','7d','30d','week','month','lastmonth','year','all'];
+  for (var i = 0; i < ks.length; i++) { var r = presetRange(ks[i]); if (r[0] === S.from && r[1] === S.to) return ks[i]; }
+  return 'custom';
 }
-function keyLabel(t, k){
-  if (t === 'year') return k;
-  if (t === 'month') {
-    var l = new Intl.DateTimeFormat('fr-FR', {month:'long', year:'numeric', timeZone:'UTC'}).format(pd(k + '-01'));
-    return l.charAt(0).toUpperCase() + l.slice(1);
-  }
-  if (t === 'week') return 'Sem. ' + isoWeek(k) + ' · ' + fdate(k).slice(0,5) + ' → ' + fdate(addDays(k,6));
-  return fdate(k);
-}
-function getRange(){
-  var t = S.type, k = S.key;
-  if (t === 'year') return {from:k + '-01-01', to:k + '-12-31', grain:'month'};
-  if (t === 'month') return {from:k + '-01', to:lastDayOfMonth(k), grain:'day'};
-  if (t === 'week') return {from:k, to:addDays(k,6), grain:'day'};
-  if (t === 'day') return {from:k, to:k, grain:'day'};
-  return {from:null, to:null, grain:'month'};
-}
-function buildPeriodOptions(){
-  var t = S.type;
-  E.periodField.classList.toggle('hidden', t === 'total');
-  E.period.classList.toggle('hidden', t === 'day');
-  E.day.classList.toggle('hidden', t !== 'day');
-  if (t === 'total') return;
-  if (t === 'day') { E.day.value = S.key; E.day.max = TODAY; }
-  else {
-    var cur = currentKey(t), count = {year:6, month:36, week:104}[t], keys = [], k = cur;
-    for (var i = 0; i < count || k >= S.key; i++) { keys.push(k); k = stepKey(t, k, -1); if (i > 600) break; }
-    E.period.innerHTML = keys.map(function(x){ return '<option value="' + x + '">' + esc(keyLabel(t, x)) + '</option>'; }).join('');
-    E.period.value = S.key;
-  }
-  E.next.disabled = stepKey(t, S.key, 1) > currentKey(t);
-}
-function updateRangeNote(){
+function paintFilters(){
+  E.type.value = S.grain; E.from.value = S.from; E.to.value = S.to; E.preset.value = detectPreset();
+  E.to.max = ''; 
   var r = getRange();
-  E.rangeNote.textContent = r.from ? 'Du ' + fdate(r.from) + ' au ' + fdate(r.to) : 'Toutes les données';
+  E.rangeNote.textContent = r.from || r.to ? 'Du ' + (r.from ? fdate(r.from) : 'début') + ' au ' + (r.to ? fdate(r.to) : 'aujourd\u2019hui') : 'Toutes les données';
 }
 function syncUrl(){
   try {
     var u = new URL(location.href);
-    u.searchParams.set('type', S.type);
-    if (S.type === 'total') u.searchParams.delete('p'); else u.searchParams.set('p', S.key);
+    u.searchParams.set('grain', S.grain);
+    u.searchParams.set('from', S.from); u.searchParams.set('to', S.to);
     u.searchParams.set('tab', S.tab);
+    ['type','p'].forEach(function(k){ u.searchParams.delete(k); });
     history.replaceState(null, '', u.toString());
   } catch (e) {}
 }
 function readUrl(){
-  var q = new URLSearchParams(location.search), t = q.get('type'), p = q.get('p'), tab = q.get('tab');
-  if (['total','year','month','week','day'].indexOf(t) >= 0) {
-    S.type = t;
-    var ok = (t === 'year' && /^\d{4}$/.test(p || '')) || (t === 'month' && /^\d{4}-\d{2}$/.test(p || '')) ||
-             ((t === 'week' || t === 'day') && /^\d{4}-\d{2}-\d{2}$/.test(p || ''));
-    S.key = t === 'total' ? '' : (ok ? (t === 'week' ? mondayOf(p) : p) : currentKey(t));
-    if (t !== 'total' && S.key > currentKey(t)) S.key = currentKey(t);
+  var q = new URLSearchParams(location.search), g = q.get('grain'), f = q.get('from'), t = q.get('to'), tab = q.get('tab');
+  if (['year','month','week','day'].indexOf(g) >= 0) S.grain = g;
+  if (q.has('from') || q.has('to')) {
+    S.from = RE_D.test(f || '') ? f : ''; S.to = RE_D.test(t || '') ? t : '';
+    if (S.from && S.to && S.from > S.to) S.to = S.from;
   }
   if (tab === 'transmission') S.tab = 'transmission';
 }
@@ -403,7 +389,8 @@ function readUrl(){
 var memo = {};
 function fetchSection(name, extra, force){
   var r = getRange();
-  var qs = 'section=' + name + '&grain=' + r.grain + (r.from ? '&date_from=' + r.from + '&date_to=' + r.to : '');
+  var usesGrain = name === 'periode' || name === 'statuts' || name === 'depots';
+  var qs = 'section=' + name + (usesGrain ? '&grain=' + r.grain : '') + (r.from ? '&date_from=' + r.from : '') + (r.to ? '&date_to=' + r.to : '');
   if (extra && extra.id_client) qs += '&id_client=' + encodeURIComponent(extra.id_client);
   if (!force && memo[qs]) return memo[qs];
   var url = '/api/direction-suivi?' + qs + (force ? '&refresh=1' : '');
@@ -707,12 +694,12 @@ RENDER.depots = function(rows){
   var cRows = Object.keys(byC).map(function(k){ return byC[k]; });
   var pItems = Object.keys(byP).sort().map(function(d){ return {_l:periodeLabel(d, grain), nb:byP[d]}; });
   var cols = [{key:'client', label:'Client', html:function(r){ return link('client', r.client_id, r.client); }},
-    pc('cozapp','CozApp',fi), pc('bo','BO',fi), pc('nb','Total dons',fi,{bar:true}), pc('montant','Montant',feur0),
+    pc('nb','Dons transmis',fi,{bar:true}), pc('montant','Montant',feur0),
     {key:'derniere', label:'Dernier dépôt', num:true, html:function(r){ return esc(fdate(r.derniere)); }}];
   SEC.depots.innerHTML = '<div class="kpi-scroll">' + kpi(fi(tot), 'Dons transmis') + kpi(feur0(mt), 'Montant transmis') + kpi(fi(cRows.length), 'Clients') + '</div>' +
     '<div class="card"><div class="card-inner">' +
     (pItems.length ? barChart(pItems, function(r){ return r.nb; }, function(r){ return r._l; }, fi) : '') +
-    tableShell('depots', {cols:cols, rows:cRows, sortKey:'nb', searchText:function(r){ return r.client; }, sumKeys:['cozapp','bo','nb','montant'], note:'dons transmis sur la période'}) +
+    tableShell('depots', {cols:cols, rows:cRows, sortKey:'nb', searchText:function(r){ return r.client; }, sumKeys:['nb','montant'], note:'dons transmis sur la période'}) +
     '</div></div>';
   drawTable('depots');
 };
@@ -796,13 +783,12 @@ document.addEventListener('change', function(e){
 E.modalClose.addEventListener('click', closeModal);
 document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && E.modal.classList.contains('show')) closeModal(); });
 
-function applyPeriod(){ buildPeriodOptions(); updateRangeNote(); syncUrl(); fclient = null; startAll(false); }
-E.type.addEventListener('change', function(){ S.type = E.type.value; S.key = currentKey(S.type); applyPeriod(); });
-E.period.addEventListener('change', function(){ S.key = E.period.value; applyPeriod(); });
-E.day.addEventListener('change', function(){ if (E.day.value) { S.key = E.day.value > TODAY ? TODAY : E.day.value; applyPeriod(); } });
-E.prev.addEventListener('click', function(){ S.key = stepKey(S.type, S.key, -1); applyPeriod(); });
-E.next.addEventListener('click', function(){ var k = stepKey(S.type, S.key, 1); if (k <= currentKey(S.type)) { S.key = k; applyPeriod(); } });
-E.reset.addEventListener('click', function(){ S.type = 'month'; S.key = currentKey('month'); E.type.value = 'month'; applyPeriod(); });
+function applyPeriod(){ paintFilters(); syncUrl(); fclient = null; startAll(false); }
+E.type.addEventListener('change', function(){ S.grain = E.type.value; paintFilters(); syncUrl(); fclient = null; startAll(false); });
+E.preset.addEventListener('change', function(){ var r = presetRange(E.preset.value); if (r) { S.from = r[0]; S.to = r[1]; applyPeriod(); } });
+E.from.addEventListener('change', function(){ S.from = E.from.value; if (S.from && S.to && S.from > S.to) S.to = S.from; applyPeriod(); });
+E.to.addEventListener('change', function(){ S.to = E.to.value; if (S.from && S.to && S.from > S.to) S.from = S.to; applyPeriod(); });
+E.reset.addEventListener('click', function(){ S.grain = 'day'; S.from = TODAY.slice(0,8) + '01'; S.to = TODAY; applyPeriod(); });
 E.refresh.addEventListener('click', function(){ fclient = null; startAll(true); });
 
 function switchTab(tab){
@@ -819,7 +805,7 @@ E.tabTrans.addEventListener('click', function(){ switchTab('transmission'); });
 
 /* ───────── Actualisation automatique (période en cours uniquement) ───────── */
 var REFRESH_S = 300, remaining = REFRESH_S;
-function isLive(){ var r = getRange(); return !r.to || r.to >= TODAY; }
+function isLive(){ return !S.to || S.to >= TODAY; }
 function resetCountdown(){ remaining = REFRESH_S; paintCountdown(); }
 function paintCountdown(){
   var live = isLive();
@@ -838,9 +824,7 @@ setInterval(function(){
 /* ───────── Init ───────── */
 E.noteGlobal.textContent = 'lots jusqu’à aujourd’hui · heures sur lots présents';
 readUrl();
-E.type.value = S.type;
-buildPeriodOptions();
-updateRangeNote();
+paintFilters();
 switchTab(S.tab);
 startAll(false);
 })();

@@ -261,9 +261,9 @@ async function handleClientMissions(url, env) {
 // Vrai si la mission appartient à un client exclu (cf. excluded-clients.js).
 // Utilisé partout où un id_mission arrive directement depuis l'URL (lien,
 // favori...) sans passer par une liste qui filtrerait déjà ces clients.
-async function missionIsExcluded(env, id_mission) {
+async function missionIsExcluded(env, id_mission, allowTest = false) {
   const rows = await runQuery(env, buildMissionClientQuery(id_mission));
-  return !!rows[0] && isExcludedClient(rows[0].client_id);
+  return !!rows[0] && isExcludedClient(rows[0].client_id, { allowTest });
 }
 
 // Résout id_mission à partir des paramètres d'URL : accepte soit id_mission
@@ -271,12 +271,12 @@ async function missionIsExcluded(env, id_mission) {
 // etc.), soit code_mission (résolu via une requête Metabase — cas de la
 // modale ouverte depuis rm.html, qui ne connaît que le code puisque la
 // question Metabase "Missions en cours" n'expose pas l'id).
-async function resolveMissionId(url, env) {
+async function resolveMissionId(url, env, allowTest = false) {
   const idParam = url.searchParams.get('id_mission') || '';
   if (idParam) {
     if (!RE_UUID.test(idParam)) return { error: 'id_mission invalide' };
     try {
-      if (await missionIsExcluded(env, idParam)) return { error: 'mission introuvable', notFound: true };
+      if (await missionIsExcluded(env, idParam, allowTest)) return { error: 'mission introuvable', notFound: true };
     } catch (e) {
       return { error: String(e.message || e), upstream: true };
     }
@@ -290,7 +290,7 @@ async function resolveMissionId(url, env) {
   try {
     const rows = await runQuery(env, buildResolveMissionIdQuery(codeParam));
     if (!rows[0] || !rows[0].id) return { error: 'mission introuvable pour ce code_mission', notFound: true };
-    if (await missionIsExcluded(env, rows[0].id)) return { error: 'mission introuvable', notFound: true };
+    if (await missionIsExcluded(env, rows[0].id, allowTest)) return { error: 'mission introuvable', notFound: true };
     return { id_mission: rows[0].id };
   } catch (e) {
     return { error: String(e.message || e), upstream: true };
@@ -319,7 +319,7 @@ async function handleRdDashboard(url, env) {
   const configError = requireConfig(env);
   if (configError) return jsonResponse({ error: configError }, 500);
 
-  const resolved = await resolveMissionId(url, env);
+  const resolved = await resolveMissionId(url, env, true);
   if (resolved.error) return jsonResponse({ error: resolved.error }, resolved.upstream ? 502 : resolved.notFound ? 404 : 400);
   const { id_mission } = resolved;
 
@@ -456,7 +456,7 @@ async function handleReCollecte(url, env) {
   const configError = requireConfig(env);
   if (configError) return jsonResponse({ error: configError }, 500);
 
-  const resolved = await resolveMissionId(url, env);
+  const resolved = await resolveMissionId(url, env, true);
   if (resolved.error) return jsonResponse({ error: resolved.error }, resolved.upstream ? 502 : resolved.notFound ? 404 : 400);
   const { id_mission } = resolved;
 
@@ -1104,7 +1104,7 @@ async function handleReMobilisation(url, env) {
   if (configError) return jsonResponse({ error: configError }, 500);
 
   try {
-    if (await missionIsExcluded(env, id_mission)) return jsonResponse({ error: 'mission introuvable' }, 404);
+    if (await missionIsExcluded(env, id_mission, true)) return jsonResponse({ error: 'mission introuvable' }, 404);
   } catch (e) {
     return jsonResponse({ error: String(e.message || e) }, 502);
   }
@@ -1147,7 +1147,7 @@ async function handleRdMobilisation(url, env) {
   if (configError) return jsonResponse({ error: configError }, 500);
 
   try {
-    if (await missionIsExcluded(env, id_mission)) return jsonResponse({ error: 'mission introuvable' }, 404);
+    if (await missionIsExcluded(env, id_mission, true)) return jsonResponse({ error: 'mission introuvable' }, 404);
   } catch (e) {
     return jsonResponse({ error: String(e.message || e) }, 502);
   }
