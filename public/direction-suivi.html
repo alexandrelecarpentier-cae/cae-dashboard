@@ -135,6 +135,10 @@
   .legend{display:flex; gap:14px; flex-wrap:wrap; font-size:11.5px; color:var(--muted); margin:0 0 10px 6px;}
   .sub-title{font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); font-weight:700; margin:14px 0 8px 6px;}
   .detail-box{margin-top:12px; border-top:1px dashed var(--line); padding-top:8px;}
+  .pie-wrap{display:flex; flex-wrap:wrap; gap:24px; align-items:center; margin:4px 0 14px 6px;}
+  .pie{width:170px; height:170px; border-radius:50%; flex:0 0 auto; border:1px solid var(--line);}
+  .pie-legend{width:auto; min-width:260px; font-size:13px;}
+  .pie-legend td{padding:6px 12px 6px 0; border-bottom:1px solid var(--line);}
 </style>
 </head>
 <body>
@@ -632,11 +636,14 @@ RENDER.statuts = function(rows){
   });
   var sum = STATUT_ORDER.filter(function(k){ return by[k]; }).map(function(k){ by[k].part = total ? by[k].nb / total : null; return by[k]; });
   if (!sum.length) { SEC.statuts.innerHTML = '<div class="card"><div class="card-inner"><div class="empty">Aucun don sur la période.</div></div></div>'; return; }
-  var stack = '<div class="stack" style="width:100%;max-width:520px;margin:0 0 10px 6px">' + sum.map(function(s){
-    return '<i title="' + esc(STATUT[s.statut].l + ' : ' + fi(s.nb)) + '" style="width:' + (total ? s.nb / total * 100 : 0) + '%;background:' + STATUT[s.statut].c + '"></i>'; }).join('') + '</div>';
-  var cols = [
-    {key:'statut', label:'Statut', html:function(r){ return '<span class="dot" style="background:' + STATUT[r.statut].c + '"></span>' + esc(STATUT[r.statut].l); }},
-    pc('nb','Dons',fi), pc('part','Part',fpct), pc('cozapp','dont CozApp',fi), pc('bo','dont BO',fi), pc('montant','Montant',feur0)];
+  var acc = 0, stops = sum.map(function(x){
+    var from = acc / total * 100; acc += x.nb; var to = acc / total * 100;
+    return STATUT[x.statut].c + ' ' + from + '% ' + to + '%';
+  }).join(', ');
+  var pie = '<div class="pie-wrap"><div class="pie" role="img" aria-label="Répartition des dons par statut" style="background:conic-gradient(' + stops + ')"></div>' +
+    '<table class="pie-legend"><tbody>' + sum.map(function(x){
+      return '<tr><td><span class="dot" style="background:' + STATUT[x.statut].c + '"></span>' + esc(STATUT[x.statut].l) + '</td><td class="num">' + fi(x.nb) + '</td><td class="num">' + fpct(x.part) + '</td></tr>';
+    }).join('') + '<tr class="total-row"><td>Total</td><td class="num">' + fi(total) + '</td><td class="num"></td></tr></tbody></table></div>';
   var per = {};
   rows.forEach(function(r){
     var d = String(r.periode).slice(0,10), o = per[d] || (per[d] = {_d:d, _l:periodeLabel(d, grain), total:0});
@@ -646,12 +653,11 @@ RENDER.statuts = function(rows){
   var evoCols = [{key:'_d', label:'Période', html:function(r){ return esc(r._l); }, val:function(r){ return r._d; }}]
     .concat(sum.map(function(s){ return pc(s.statut, STATUT[s.statut].l, fi); }), [pc('total','Total',fi)]);
   SEC.statuts.innerHTML = '<div class="card"><div class="card-inner">' +
-    '<div class="legend">' + sum.map(function(s){ return '<span><span class="dot" style="background:' + STATUT[s.statut].c + '"></span>' + esc(STATUT[s.statut].l) + '</span>'; }).join('') + '</div>' + stack +
-    tableShell('statuts', {cols:cols, rows:sum, sortKey:'nb', sumKeys:['nb','cozapp','bo','montant'], note:'dons créés sur la période'}) +
+    '<div class="sub-title">Répartition des dons créés sur la période</div>' + pie +
     '<div class="sub-title">Évolution</div>' +
     tableShell('statutsEvo', {cols:evoCols, rows:perRows, sortKey:'_d', asc:true, sumKeys:sum.map(function(s){ return s.statut; }).concat(['total'])}) +
     '</div></div>';
-  drawTable('statuts'); drawTable('statutsEvo');
+  drawTable('statutsEvo');
 };
 
 /* ───────── Rendus : Transmission ───────── */
