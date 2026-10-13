@@ -1,0 +1,734 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<style>html{color-scheme:light}body{margin:0}</style>
+<title>Planning 2027 CAE</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout : en-tête collant, 5 onglets, tableaux denses à défilement horizontal interne */
+:root{
+  --bg:#f2f4f7;--surf:#ffffff;--surf2:#eaeef4;--ink:#131a26;--mut:#586274;--line:#d9dee7;
+  --acc:#1d4ed8;--acc-ink:#ffffff;--acc-soft:#e3eaff;
+  --good:#1a8a58;--warn:#b27a0a;--bad:#c23d28;
+  --f-disp:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;--f-body:'IBM Plex Sans','Segoe UI',system-ui,sans-serif;--f-mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f141c;--surf:#171e29;--surf2:#202938;--ink:#e8edf5;--mut:#9aa6b8;--line:#2a3445;
+  --acc:#6d93ff;--acc-ink:#0c1220;--acc-soft:#1d2a4d;
+  --good:#47c28b;--warn:#e0b04a;--bad:#ee7a66;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f141c;--surf:#171e29;--surf2:#202938;--ink:#e8edf5;--mut:#9aa6b8;--line:#2a3445;
+  --acc:#6d93ff;--acc-ink:#0c1220;--acc-soft:#1d2a4d;
+  --good:#47c28b;--warn:#e0b04a;--bad:#ee7a66;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:14px/1.5 var(--f-body);padding-inline:16px;padding-block:0 48px}
+.wrap{max-width:1240px;margin:0 auto}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:14px 0;border-bottom:1px solid var(--line)}
+.top-row{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between}
+h1{font:700 26px/1.1 var(--f-disp);margin:0;letter-spacing:-.01em}
+.sub{color:var(--mut);font-size:12.5px;margin-top:4px}
+.gen{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+button{font:inherit;color:inherit;cursor:pointer}
+.btn{background:var(--acc);color:var(--acc-ink);border:0;border-radius:6px;padding:9px 16px;font-weight:600}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn:focus-visible,.tab:focus-visible,.chip:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.dirty{font-size:12px;color:var(--warn);font-weight:600}
+nav.tabs{display:flex;gap:2px;margin-top:12px;overflow-x:auto}
+.tab{background:transparent;border:0;border-bottom:3px solid transparent;padding:9px 14px;color:var(--mut);font-weight:500;white-space:nowrap}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--acc);font-weight:600}
+main{padding-block:20px}
+.view[hidden]{display:none}
+h2{font:700 19px/1.2 var(--f-disp);margin:0 0 4px}
+h3{font:600 14px/1.3 var(--f-body);margin:0 0 8px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut)}
+.lead{color:var(--mut);margin:0 0 16px;max-width:75ch}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr))}
+.g4{grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr))}
+.panel{background:var(--surf);border:1px solid var(--line);border-radius:8px;padding:16px;min-width:0}
+.kpi .v{font:600 26px/1.1 var(--f-mono);font-variant-numeric:tabular-nums}
+.kpi .l{color:var(--mut);font-size:12.5px;margin-top:4px}
+.kpi .d{font-size:12px;margin-top:2px;color:var(--mut)}
+.score{display:flex;align-items:baseline;gap:10px}
+.score .big{font:700 56px/1 var(--f-disp)}
+.badge{display:inline-block;border-radius:4px;padding:1px 8px;font:600 12px/1.6 var(--f-mono);border:1px solid var(--line);background:var(--surf2)}
+.b-A{color:var(--good);border-color:var(--good)}.b-B{color:var(--acc);border-color:var(--acc)}.b-C{color:var(--warn);border-color:var(--warn)}.b-D{color:var(--bad);border-color:var(--bad)}
+.tw{overflow-x:auto;max-width:100%}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:6px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child,td.l,th.l{text-align:left}
+th{font:600 11.5px var(--f-body);text-transform:uppercase;letter-spacing:.05em;color:var(--mut);position:sticky;top:0;background:var(--surf)}
+td.m{font-family:var(--f-mono);font-size:12.5px}
+tr.click{cursor:pointer}tr.click:hover td{background:var(--surf2)}
+.bar{display:inline-block;height:8px;border-radius:2px;background:var(--acc);vertical-align:middle}
+ul.tight{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
+.note{font-size:12.5px;color:var(--mut)}
+.lim{border-left:3px solid var(--warn);padding:8px 12px;background:var(--surf2);border-radius:0 6px 6px 0;font-size:13px}
+details.cl{background:var(--surf);border:1px solid var(--line);border-radius:8px;margin-bottom:8px}
+details.cl>summary{list-style:none;cursor:pointer;padding:10px 14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+details.cl>summary::-webkit-details-marker{display:none}
+details.cl>summary .nm{font-weight:600;flex:1 1 200px}
+details.cl .body{padding:4px 14px 14px;display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))}
+label.f{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--mut)}
+input[type=number],select{font:inherit;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:5px;padding:5px 8px;width:100%;max-width:140px}
+input[type=range]{width:100%}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:2px 8px;font-size:12px;color:var(--mut)}
+.chip.on{background:var(--acc);border-color:var(--acc);color:var(--acc-ink);font-weight:600}
+.chip.neg.on{background:var(--bad);border-color:var(--bad);color:#fff}
+.fgrid{display:grid;gap:12px 16px;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr))}
+.capgrid{display:grid;gap:8px;grid-template-columns:repeat(6,minmax(0,1fr))}
+@media(max-width:560px){.capgrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.filters{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px;align-items:end}
+svg text{fill:var(--mut);font:11px var(--f-mono)}
+.hm td{text-align:center;font-family:var(--f-mono);font-size:12px;min-width:46px}
+.warn{color:var(--warn)}
+.h4{font:600 13px var(--f-body);margin:0 0 6px}
+.tabs{display:flex;gap:2px;overflow-x:auto;flex-wrap:wrap}
+.tab.on{color:var(--ink);font-weight:600}
+.btn.sm{padding:3px 10px;font-size:12.5px}
+.panel.sc.sel{border-color:var(--acc)}
+td.tot{font-weight:600}
+.gantt{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--surf);max-width:100%}
+.grow{display:flex;width:max-content;min-width:100%;border-bottom:1px solid var(--line)}
+.gl{position:sticky;left:0;z-index:2;flex:0 0 160px;width:160px;background:var(--surf);padding:4px 8px;font-size:12.5px;border-right:1px solid var(--line);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gtrack{flex:0 0 auto;position:relative}
+.gbody{background-image:repeating-linear-gradient(90deg,var(--line) 0 1px,transparent 1px var(--ww))}
+.gline{display:flex}
+.gm{font:600 11px var(--f-mono);color:var(--mut);padding:3px 4px;border-left:1px solid var(--line);box-sizing:border-box;overflow:hidden}
+.gw{font:10px var(--f-mono);color:var(--mut);text-align:center;box-sizing:border-box;flex:0 0 auto;padding:2px 0}
+.gbar{position:absolute;height:18px;border-radius:3px;color:var(--bg);font:500 10.5px/18px var(--f-body);padding:0 5px;overflow:hidden;white-space:nowrap;box-sizing:border-box}
+.ghead{position:sticky;top:0;z-index:3;background:var(--surf)}
+.ghead .gl{background:var(--surf)}
+.gfoot{background:var(--surf2)}.gfoot .gl{background:var(--surf2)}
+.yrsw{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}.yrsw button{border:0;background:var(--surf);color:var(--ink);padding:7px 11px;font:inherit;font-size:13px;cursor:pointer}.yrsw button[aria-selected=true]{background:var(--acc);color:#fff}
+</style>
+
+<div class="wrap">
+<header class="top">
+  <div class="top-row">
+    <div>
+      <h1 id="h1">Planning 2027</h1>
+      <div class="sub">Missions de recrutement 2022-2026, base Production Metabase, extraction du 09/10/2026. Taux réel = bulletins valides ÷ heures de rue</div>
+    </div>
+    <div class="gen">
+      <span class="dirty" id="dirty" hidden>Critères modifiés, planning à régénérer</span>
+      <div class="yrsw" id="yr"><button type="button" data-y="2027" aria-selected="false">Planifier 2027</button><button type="button" data-y="2026" aria-selected="false">Rejouer 2026</button></div>
+      <button class="btn ghost" id="reset">Réinitialiser</button>
+      <button class="btn" id="regen">Régénérer le planning</button>
+    </div>
+  </div>
+  <nav class="tabs" role="tablist" id="tabs">
+    <button class="tab" role="tab" data-v="synth" aria-selected="false">Analyse</button>
+    <button class="tab" role="tab" data-v="notes" aria-selected="false">Notes par client</button>
+    <button class="tab" role="tab" data-v="eng" aria-selected="false">Engagements et critères</button>
+    <button class="tab" role="tab" data-v="scen" aria-selected="true">Scénarios</button>
+    <button class="tab" role="tab" data-v="plan" aria-selected="false">Planning 2027</button>
+  </nav>
+</header>
+<main>
+  <section class="view" id="v-synth" hidden></section>
+  <section class="view" id="v-notes" hidden></section>
+  <section class="view" id="v-eng" hidden></section>
+  <section class="view" id="v-scen"></section>
+  <section class="view" id="v-plan" hidden></section>
+</main>
+</div>
+
+
+<script>
+const Y={
+"APF France handicap":"2022,3,3,898,1150,0,29;2023,7,7,1244,2160,0,44;2024,6,6,1334,1750,0,55;2025,6,6,1440,1650,0,56;2026,9,5,997,1340,0,36",
+"Action contre la Faim":"2022,10,9,2702,3550,0,88;2023,9,9,2378,2990,0,91;2024,6,6,1634,1500,0,60;2025,5,5,1321,1350,0,36;2026,6,3,1108,830,1,32",
+"Aides":"2022,11,10,3155,4450,0,94;2023,11,11,2879,4040,1,80;2024,13,13,3477,3850,1,141;2025,11,10,2923,3050,2,128;2026,20,12,3260,3900,1,123",
+"Alima":"2022,3,3,864,1200,0,29;2023,4,3,796,1180,0,31;2024,3,3,873,850,0,31;2025,6,6,1078,1550,1,64;2026,7,5,1079,1540,0,48",
+"Amnesty International":"2022,8,8,3030,3200,0,84;2023,12,12,3310,4050,0,114;2024,7,7,2337,2050,2,88;2025,7,6,974,1650,0,56;2026,7,6,1595,1750,1,58",
+"Apprentis d'Auteuil":"2024,3,3,688,800,0,20;2025,6,6,1357,1500,0,52;2026,8,5,1460,1620,0,46",
+"Armée du Salut":"2025,4,4,723,800,0,25;2026,3,2,464,700,0,25",
+"Association Valentin Haüy":"2024,4,4,720,1120,1,39;2025,4,4,976,960,0,42;2026,5,5,1325,1270,0,43",
+"CCFD-Terre Solidaire":"2024,3,0,0,0,0,0;2025,7,6,1203,1620,0,53;2026,10,7,1742,2080,1,68",
+"Care France":"2022,5,5,1365,1850,0,48;2023,5,5,1551,1640,0,47;2024,5,5,1286,1410,0,64;2025,11,11,2937,2950,0,103;2026,11,9,2289,3020,0,105",
+"Croix-Rouge française":"2022,21,17,5634,6500,0,183;2023,30,30,8256,9920,2,258;2024,34,34,9864,9750,4,323;2025,30,30,7473,8400,3,266;2026,30,18,4575,5040,2,154",
+"Fondation Recherche Médicale":"2025,3,3,627,600,0,27;2026,4,2,333,550,0,14",
+"Fondation des femmes":"2023,3,2,652,800,0,19;2024,4,3,1290,900,1,38",
+"Fondation pour le Logement":"2022,3,2,633,900,0,19;2023,6,6,2771,1950,0,65;2024,6,6,1546,1950,3,58;2025,12,12,3259,3650,0,139;2026,16,12,3126,3840,1,123",
+"Greenpeace":"2026,9,5,1458,1500,0,55",
+"Handicap International":"2023,1,1,145,200,0,6;2024,3,3,509,700,0,16;2025,7,7,1510,1880,0,54;2026,8,5,1094,1250,0,45",
+"IFAW":"2023,0,0,0,0,1,0;2024,5,5,1223,1340,1,51;2025,5,5,1179,1140,0,61;2026,5,3,942,1050,0,35",
+"LPO":"2022,5,5,2447,2350,0,52;2023,8,8,2488,3180,0,64;2024,6,6,1349,1650,1,41;2025,7,7,1884,2150,0,55;2026,5,2,843,800,0,28",
+"La Chaîne de l'Espoir":"2023,1,1,533,400,0,15;2024,6,6,1231,1850,1,47;2025,5,5,1030,1250,0,53;2026,5,3,695,910,0,24",
+"Ligue contre le Cancer":"2022,7,6,1447,2300,0,52;2023,13,13,3718,4395,1,116;2024,13,12,2851,3330,2,108;2025,9,9,1995,2250,0,76",
+"Médecins du Monde":"2022,6,5,2023,2250,0,54;2023,12,11,3304,4080,0,115;2024,9,9,2839,3000,3,94",
+"Médecins sans frontières":"2022,9,7,3434,2450,0,84;2023,15,15,4505,4550,1,138;2024,16,16,4714,4800,3,159;2025,17,17,5380,5050,2,159;2026,19,14,4055,3790,1,109",
+"Petits Frères des Pauvres":"2024,2,2,511,400,0,13;2025,6,6,1910,1750,0,62;2026,5,3,1146,940,0,31",
+"QUATRE PATTES":"2025,1,1,130,200,0,5;2026,3,2,424,400,0,9",
+"Restos du Coeur":"2022,4,3,1683,1450,0,30;2023,5,5,1755,1830,0,35;2024,5,5,2091,1350,1,58;2025,5,5,1416,1580,0,49;2026,6,4,1517,1280,0,33",
+"SNSM":"2025,6,6,1815,1750,0,66;2026,3,2,473,680,0,19",
+"Samusocial":"2023,5,5,1810,2000,0,46;2024,5,5,1887,2000,0,59;2025,6,6,1784,2150,0,68;2026,0,0,0,0,4,0",
+"Secours Catholique":"2025,5,5,1162,1350,0,49;2026,3,2,658,700,1,24",
+"Sidaction":"2022,8,7,2391,3050,0,76;2023,6,6,2411,2000,0,71;2024,8,8,1850,2650,0,78;2025,6,6,1521,1900,0,63;2026,6,4,874,1330,2,46",
+"Solidarités International":"2022,12,9,3398,4250,0,80;2023,25,24,6361,7260,1,188;2024,17,17,4349,5000,2,140;2025,12,12,2954,3500,4,118;2026,18,10,2527,3090,0,97",
+"Surfrider":"2022,2,2,711,750,0,19;2023,4,4,1027,1480,0,40;2024,9,8,2384,2550,0,77;2025,5,5,1807,1600,0,54;2026,2,2,519,600,3,17",
+"UNHCR":"2023,0,0,0,0,1,0;2024,3,3,682,900,0,30;2025,3,3,837,850,0,32;2026,4,3,620,680,0,14",
+"WWF":"2022,10,10,2808,3850,0,96;2023,6,6,1752,1930,1,69;2024,5,5,992,1400,1,57;2025,1,1,92,200,0,5;2026,2,1,236,380,0,15"
+};
+// Missions 2025 et 2026 : client|début|fin|format|zone|ville|RM|recr|hRue|BS|obj|lots|présents|statut
+const M25="Surfrider|250102|250201|st|pr||ROMAIP|12|953|401|300|203|186|t;Médecins sans frontières|250102|250207|st|pa||BRANG|9|610|240|350|150|127|t;Solidarités International|250107|250215|st|pa||BRANG|12|792|294|350|177|167|t;Croix-Rouge française|250107|250208|hy|pr|La Madeleine|AMYB|8|608|268|250|150|129|t;UNHCR|250107|250201|sp|pr|Marseille|ALEXAR|7|631|243|250|140|133|t;Médecins sans frontières|250107|250215|hy|do|Le Port|ALEXAR|4|433|230|300|104|88|t;APF France handicap|250107|250208|sp|pr|Strasbourg|STEVEL|7|607|263|200|145|130|t;Care France|250107|250208|st|pr||ROMAIP|13|1012|410|300|223|201|t;Médecins sans frontières|250113|250221|st|pa||STEVEL|13|850|462|350|245|194|t;Restos du Coeur|250113|250214|st|ly||ALEXAR|14|805|350|350|210|170|t;Médecins sans frontières|250114|250215|sp|pr|Nantes|AMYB|7|569|295|250|130|120|t;Amnesty International|250114|250217|st|pr||BRANG|9|563|194|300|143|121|t;Samusocial|250121|250301|st|pa||BRANG|12|764|335|350|168|156|t;Handicap International|250121|250222|sp|pr|Toulouse|AMYB|6|600|271|200|148|121|t;Croix-Rouge française|250121|250222|st|pr||ALEXAR|14|910|356|300|245|193|t;Care France|250121|250222|sp|pr|Bordeaux|ANDREF|9|882|310|200|189|172|t;Croix-Rouge française|250127|250307|st|pa||AMYB|10|671|291|350|157|149|t;Secours Catholique|250128|250301|sp|pr|Rennes|BRANG|7|578|175|200|133|123|t;WWF|250128|250301|sp|pr|Lyon|ALEXAR|5|380|92|200|93|89|t;Amnesty International|250204|250308|sp|pr|Montpellier|AMYB|7|405|102|250|127|102|t;Médecins sans frontières|250204|250308|sp|pr|Rouen|BRANG|8|686|266|200|146|143|t;Solidarités International|250204|250315|hy|pa|Paris|STEVEL|8|620|285|250|144|140|t;Aides|250204|250308|hy|ly|Marseille|ALEXAR|10|1124|453|250|237|208|t;Médecins sans frontières|250210|250321|st|pa||ANDREF|11|596|289|350|163|138|t;Solidarités International|250211|250315|sp|pr|Grenoble|ROMAIP|6|326|163|200|99|84|t;IFAW|250211|250315|st|pr||ALEXAR|18|1016|327|280|245|210|t;LPO|250211|250315|st|pr||BRANG|11|602|221|350|152|138|t;Médecins sans frontières|250211|250315|sp|pr|La Madeleine|AMYB|4|420|252|200|77|74|t;Aides|250217|250321|st|pr||ALEXAR|8|293|116|350|131|70|t;Petits Frères des Pauvres|250218|250322|st|pr||ANDREF|12|914|292|300|196|187|t;Solidarités International|250218|250312|st|pa||AMYB|12|152|50|350|73|53|t;CCFD-Terre Solidaire|250218|250329|hy|do|Saint-Pierre|ROMAIP|8|516|164|300|158|121|t;Sidaction|250218|250322|st|pr||STEVEL|8|600|259|300|144|126|t;Alima|250224|250404|st|pa||ROMAIP|12|637|244|300|165|144|t;SNSM|250225|250329|st|pr||ANDREF|17|1256|417|300|295|257|t;UNHCR|250225|250329|sp|pr|Toulouse|AMYB|8|606|240|250|144|134|t;CCFD-Terre Solidaire|250225|250329|sp|ly|Bordeaux|STEVEL|8|338|145|200|134|83|t;Samusocial|250304|250412|st|pa||AMYB|12|723|367|350|186|164|t;Action contre la Faim|250304|250405|hy|pr|Fontaine-Les-Dijon|STEVEL|6|342|242|250|81|80|t;La Chaîne de l'Espoir|250304|250405|sp|pr|Beynost|ALEXAR|8|360|154|200|159|81|t;Croix-Rouge française|250310|250418|st|pa||ROMAIP|14|1011|536|350|294|232|t;Action contre la Faim|250311|250412|st|pr||BRANG|10|647|150|250|159|140|t;Petits Frères des Pauvres|250311|250412|sp|pr|Marseille|ALEXAR|8|803|330|250|169|158|t;Médecins sans frontières|250311|250415|sp|pr|Pau|ANDREF|7|485|247|200|107|105|t;Armée du Salut|250318|250426|hy|pa|Paris|ANDREF|12|884|302|200|211|182|t;Croix-Rouge française|250318|250419|st|pr|||6|336|48|300|87|80|t;Care France|250318|250419|hy|pr|Villeneuve D'Ascq|AMYB|8|646|305|250|152|148|t;Ligue contre le Cancer|250318|250405|sp|pr|Toulouse|BRANG|9|474|225|250|135|101|t;Handicap International|250318|250419|sp|pr|Strasbourg|ALEXAR|6|509|151|250|116|110|t;Médecins sans frontières|250324|250502|st|pa||AMYB|11|766|329|350|199|158|t;Sidaction|250324|250425|st|pr||ALEXAR|13|598|181|350|156|128|t;Ligue contre le Cancer|250325|250426|st|pr||BRANG|9|811|343|225|179|167|t;APF France handicap|250325|250426|st|pr||STEVEL|9|524|217|300|134|118|t;LPO|250401|250503|hy|ly|Montpellier|BRANG|11|833|306|300|201|183|t;Amnesty International|250401|250510|st|pa||ALEXAR|14|734|157|300|246|186|t;Aides|250401|250503|st|pr||ANDREF|8|540|204|300|130|124|t;Croix-Rouge française|250401|250507|sp|pr|Angers|AMYB|3|430|216|200|75|73|t;SNSM|250401|250503|st|pr||BRANG|15|824|226|350|232|189|t;Aides|250407|250516|st|pa||BRANG|14|1173|328|350|255|233|t;Sidaction|250408|250510|st|pr||AMYB|10|600|275|250|143|136|t;La Chaîne de l'Espoir|250408|250419|sp|pr|Toulouse|BRANG|7|342|94|100|70|64|t;Croix-Rouge française|250408|250510|sp|pr|Tours|ALEXAR|7|650|203|200|150|144|t;APF France handicap|250408|250510|sp|pr|Villeurbanne|ANDREF|10|558|218|200|131|120|t;Restos du Coeur|250415|250517|sp|pr|Metz|AMYB|4|380|197|250|73|68|t;LPO|250415|250517|hy|pr|Pau|BRANG|7|548|157|300|136|123|t;IFAW|250415|250524|st|pa||ROMAIP|13|575|194|280|164|146|t;SNSM|250415|250524|hy|pr|Caen|ANDREF|7|744|274|250|168|150|t;Action contre la Faim|250415|250517|sp|pr|Marseille|ALEXAR|6|698|293|200|150|145|t;Apprentis d'Auteuil|250415|250524|hy|do|Le Port|STEVEL|9|788|270|300|193|179|t;Samusocial|250422|250530|st|pa||ROMAIP|7|347|169|350|106|94|t;Handicap International|250422|250524|st|pr||ANDREF|11|974|305|300|202|194|t;Surfrider|250422|250524|st|pr||BRANG|12|881|267|350|234|201|t;Solidarités International|250422|250524|st|pr||AMYB|5|366|162|350|104|89|t;APF France handicap|250422|250524|st|pr||STEVEL|13|1094|436|350|266|233|t;Handicap International|250428|250530|st|pr||ANDREF|14|809|260|350|209|185|t;Fondation Recherche Médicale|250429|250610|hy|pa|Paris|AMYB|11|678|209|200|205|164|t;Ligue contre le Cancer|250429|250531|hy|ly|Nice|STEVEL|7|510|206|300|143|124|t;Apprentis d'Auteuil|250429|250531|hy|ly|Nantes|BRANG|10|788|234|250|190|179|t;UNHCR|250505|250606|st|pa||ALEXAR|17|1208|354|350|277|245|t;Association Valentin Haüy|250506|250607|sp|pr|Montpellier|ANDREF|8|654|261|200|194|142|t;CCFD-Terre Solidaire|250506|250607|st|pr||STEVEL|9|545|209|270|141|128|t;Solidarités International|250506|250607|hy|ly|Bordeaux|ROMAIP|7|743|333|150|164|154|t;Care France|250506|250607|st|pr||AMYB|14|1021|302|300|238|213|t;Alima|250513|250614|sp|pr|Lyon|ROMAIP|8|458|139|250|126|100|t;Ligue contre le Cancer|250513|250614|st|pr||ALEXAR|11|462|214|200|144|114|t;Fondation pour le Logement|250513|250621|st|pa||STEVEL|26|1252|405|350|291|277|t;LPO|250513|250614|st|pr||BRANG|8|793|161|250|179|171|t;Aides|250519|250627|st|pa||ROMAIP|26|1820|459|350|401|364|t;SNSM|250520|250621|st|pr||STEVEL|15|1264|400|350|304|252|t;Solidarités International|250520|250628|hy|ly|Toulouse|BRANG|15|1186|398|300|279|240|t;Alima|250527|250628|st|pr||ALEXAR|12|458|179|200|138|109|t;Sidaction|250527|250705|hy|do|Saint-Pierre|ANDREF|6|677|252|300|167|146|t;CCFD-Terre Solidaire|250527|250628|st|pr||ROMAIP|13|858|326|350|214|189|t;Fondation Recherche Médicale|250527|250628|hy|ly|Lille|AMYB|13|584|218|200|183|144|t;Petits Frères des Pauvres|250527|250705|st|pa||BRANG|19|1298|430|350|314|285|t;Care France|250527|250628|st|pr||STEVEL|13|854|256|250|218|192|t;La Chaîne de l'Espoir|250602|250704|st|pr||STEVEL|21|1385|441|350|311|288|t;Apprentis d'Auteuil|250603|250705|st|pr||ALEXAR|9|723|248|300|170|153|t;Croix-Rouge française|250603|250705|hy|ly|Nantes|ANDREF|4|394|195|250|74|68|t;Surfrider|250603|250705|st|pr||BRANG|12|821|280|250|195|183|t;Croix-Rouge française|250610|250712|hy|pr|Merignac|AMYB|13|1040|374|200|227|212|t;Croix-Rouge française|250610|250719|st|pa||BRANG|17|1082|264|300|269|238|t;Surfrider|250610|250718|st|it||ANDREF|8|1021|620|400|212|199|t;Apprentis d'Auteuil|250610|250712|hy|ly|Rennes|ROMAIP|11|828|253|250|185|172|t;Aides|250610|250712|st|pr||ALEXAR|16|1063|254|300|257|218|t;Médecins sans frontières|250616|250725|st|pa||AMYB|22|1417|514|350|367|301|t;Association Valentin Haüy|250617|250719|sp|pr|Villeurbanne|ANDREF|4|337|78|200|85|58|t;Aides|250623|250801|st|pa||ROMAIP|19|1375|484|350|380|309|t;Petits Frères des Pauvres|250624|250726|hy|ly|Caen|AMYB|3|434|114|250|74|73|t;Fondation pour le Logement|250624|250726|hy|ly|Marseille|STEVEL|12|950|399|250|230|221|t;Fondation pour le Logement|250624|250726|st|pr||BRANG|9|831|265|250|182|173|t;Médecins sans frontières|250630|250808|st|pa||ANDREF|12|987|426|400|226|212|t;Action contre la Faim|250701|250802|hy|ly|Grenoble|ALEXAR|3|419|193|300|75|71|t;Alima|250701|250802|st|pr||STEVEL|14|654|237|300|177|157|t;Association Valentin Haüy|250701|250802|st|pr||AMYB|15|1052|399|280|245|224|t;Croix-Rouge française|250707|250808|st|pr||ALEXAR|13|978|305|350|216|202|t;Croix-Rouge française|250708|250809|hy|ly|Nice|ANDREF|5|401|157|250|102|92|t;Solidarités International|250708|250809|st|pr||BRANG|13|742|235|300|178|165|t;Fondation pour le Logement|250708|250816|st|pa||BENJAI|14|943|322|400|226|206|t;Secours Catholique|250708|250809|st|pr||STEVEL|10|425|134|250|124|110|t;Croix-Rouge française|250715|250816|st|pr||STEVEL|8|526|245|250|129|122|t;Fondation pour le Logement|250715|250816|st|pr||ALEXAR|13|832|220|300|227|176|t;Croix-Rouge française|250715|250816|st|pr||ANDREF|13|549|261|350|133|125|t;La Chaîne de l'Espoir|250715|250816|st|pr||BRANG|10|610|174|300|148|137|t;Care France|250722|250830|st|pa||STEVEL|12|906|305|350|246|201|t;Armée du Salut|250722|250823|sp|pr|Villeurbanne|ALEXAR|3|316|61|200|58|55|t;Break Poverty|250722|250823|hy|pr|Tours|BRANG|7|679|180|200|168|147|t;Samusocial|250728|250905|st|pa||BRANG|13|953|415|400|227|209|t;Armée du Salut|250729|250830|hy|ly|Metz|ALEXAR|7|381|206|200|133|97|t;Aides|250729|250830|st|pr||ANDREF|10|719|217|250|176|153|t;Croix-Rouge française|250729|250830|st|pr||STEVEL|13|869|405|350|208|190|t;Fondation pour le Logement|250805|250906|hy|ly|Lille|BRANG|10|763|270|250|196|163|t;Secours Catholique|250805|250906|st|pr||STEVEL|17|1009|388|350|262|223|t;Solidarités International|250811|250912|st|pr||BRANG|13|811|278|350|216|179|t;Médecins sans frontières|250811|250919|st|pa||ROMAIP|13|1119|435|350|302|232|t;Sidaction|250812|250913|st|pr||AMYB|9|537|231|350|130|121|t;Croix-Rouge française|250812|250913|hy|pr|Rouen|ANDREF|3|405|158|200|72|69|t;Restos du Coeur|250819|250920|st|pr||ROMAIP|10|511|261|350|143|119|t;Surfrider|250819|250920|st|pr||BRANG|10|648|239|300|181|147|t;Amnesty International|250819|250927|st|pa||ANDREF|8|489|196|0|135|118|t;Croix-Rouge française|250825|251003|st|pa|||10|520|223|350|156|125|t;Handicap International|250826|250927|sp|pr|Villeurbanne|ROMAIP|3|385|122|250|69|65|t;Petits Frères des Pauvres|250826|250927|sp|pr|Toulouse|ANDREF|6|481|206|250|127|105|t;LPO|250826|251003|hy|it||ALEXAR|7|1008|761|400|203|196|t;Ligue contre le Cancer|250902|251004|hy|ly|Fontaine|ALEXAR|3|446|190|250|75|74|t;Solidarités International|250902|251004|hy|ly|Marseille|ALEXAR|9|697|286|250|165|147|t;Restos du Coeur|250902|251004|sp|pr|Montpellier||7|686|253|250|155|143|t;Handicap International|250902|251004|st|pr||ROMAIP|9|460|166|280|124|113|t;Croix-Rouge française|250902|251011|hy|pa|Paris|BRANG|7|580|235|200|168|129|t;Croix-Rouge française|250908|251017|st|pa||STEVEL|10|520|208|350|131|131|t;Care France|250909|251015|st|pr||ROMAIP|7|410|178|275|103|96|t;QUATRE PATTES|250909|251011|sp|pr|Strasbourg|BRANG|5|325|130|200|94|78|t;Sidaction|250909|251011|st|pr||ANDREF|17|895|322|350|268|181|t;Secours Catholique|250909|251011|st|pr|||7|401|143|350|126|97|t;Action contre la Faim|250915|251017|st|pr||ALEXAR|11|1140|439|350|253|230|t;Amnesty International|250916|251025|st|pa|||13|588|209|300|153|138|t;Aides|250916|251018|st|pr||ANDREF|8|464|186|250|112|106|t;Alima|250916|251018|hy|pr|Nantes|STEVEL|10|358|114|200|129|96|t;Ligue contre le Cancer|250916|251018|st|pr||ROMAIP|9|362|158|250|97|90|t;Médecins sans frontières|250916|251021|sp|pr|Nice|BRANG|3|439|230|250|75|74|t;Samusocial|250922|251031|st|pa||BRANG|8|692|256|350|156|148|t;Ligue contre le Cancer|250923|251025|hy|ly|Bordeaux|STEVEL|9|656|265|250|166|150|t;Amnesty International|250923|251025|hy|pr|Villeneuve D'Ascq||6|252|90|250|85|72|t;Ligue contre le Cancer|250923|251025|st|pr||ALEXAR|11|411|193|300|149|108|t;Fondation pour le Logement|250923|251025|hy|do|Saint-Pierre|ANDREF|8|512|214|300|114|111|t;Petits Frères des Pauvres|250929|251107|st|pa||STEVEL|14|1181|536|350|358|301|t;Fondation pour le Logement|250930|251101|sp|pr|Rennes|ANDREF|9|527|223|250|161|119|t;Croix-Rouge française|251006|251114|st|pa||ANDREF|14|840|294|350|223|200|t;LPO|251007|251112|hy|pr|Grenoble|BENJAI|7|373|154|250|79|75|t;Apprentis d'Auteuil|251007|251108|sp|pr|Montpellier|BRANG|6|364|140|200|110|86|t;Médecins sans frontières|251007|251108|sp|pr|Caen|STEVEL|6|526|278|250|123|118|t;Aides|251007|251108|st|pr||ALEXAR|9|553|222|300|137|127|t;Fondation pour le Logement|251014|251115|st|pr||ALEXAR|7|570|218|350|133|121|t;CCFD-Terre Solidaire|251014|251115|sp|pr|Toulouse|BRANG|7|510|159|200|144|113|t;APF France handicap|251014|251115|st|pr||AMYB|8|332|99|350|127|83|t;Fondation pour le Logement|251014|251122|hy|pa|Paris|BENJAI|7|516|212|250|131|118|t;Fondation pour le Logement|251020|251121|st|pr||BENJAI|12|838|315|350|221|184|t;Médecins sans frontières|251020|251128|st|pa||ANDREF|11|548|192|350|162|132|t;APF France handicap|251021|251122|st|pr||BRANG|9|593|207|250|145|131|t;Care France|251021|251122|st|pr||STEVEL|4|278|168|275|77|74|t;Solidarités International|251021|251122|st|pr||ALEXAR|8|390|179|300|105|92|t;Secours Catholique|251021|251122|hy|pr|Nantes|ROMAIP|8|789|322|200|173|161|t;Croix-Rouge française|251028|251206|st|pa||ALEXAR|13|553|164|350|204|133|t;Apprentis d'Auteuil|251028|251129|sp|pr|Bordeaux|ROMAIP|7|556|207|200|160|129|t;CCFD-Terre Solidaire|251028|251206|hy|do|Le Port|AMYB|8|562|200|300|134|124|t;Association Valentin Haüy|251028|251129|st|pr||ANDREF|15|713|238|280|200|174|t;Armée du Salut|251103|251128|sp|pa|Paris|ANDREF|3|288|154|200|50|50|t;Samusocial|251103|251212|st|pa||ROMAIP|16|568|240|350|245|147|t;IFAW|251104|251206|sp|pr|Lyon|AMYB|10|495|203|150|125|115|t;Croix-Rouge française|251104|251206|sp|pr|Dijon|ALEXAR|6|594|327|200|150|129|t;Médecins sans frontières|251110|251219|st|pa||STEVEL|12|816|345|350|224|187|t;CCFD-Terre Solidaire|251112|251213|sp|pr|Marseille|ROMAIP|6|644|311|0|140|130|t;Croix-Rouge française|251112|251213|sp|pr|Tours|AMYB|5|318|180|200|75|64|t;Amnesty International|251112|251213|sp|pr|Montpellier|ALEXAR|7|478|214|250|119|105|t;Aides|251114|251219|hy|pa|Paris|STEVEL|9|350|189|0|84|64|t;Croix-Rouge française|251117|251226|hy|pa|Paris|ANDREF|10|577|207|350|192|144|t;Croix-Rouge française|251118|251220|hy|ly|Villeneuve D'Ascq|AMYB|5|357|146|250|98|83|t;Fondation Recherche Médicale|251118|251220|hy|pr|Strasbourg|STEVEL|3|397|200|200|75|70|t;Care France|251118|251220|sp|pr|Clermont-Ferrand|ALEXAR|7|444|145|200|111|108|t;SNSM|251118|251220|sp|pr|Rennes|ROMAIP|5|710|310|250|125|122|t;Médecins sans frontières|251118|251220|sp|pr|Toulouse|BRANG|6|781|337|200|145|135|t;Alima|251124|251226|st|pr||ALEXAR|8|486|163|300|160|113|t;SNSM|251125|251227|st|pr||ANDREF|7|462|185|250|113|96|t;Handicap International|251125|251227|sp|pr|Angers|BRANG|5|507|235|250|118|114|t;Croix-Rouge française|251125|251128|hy|pa||AMYB|5|41|15|250|19|19|t;IFAW|251125|251227|hy|pr|Nantes|ROMAIP|7|529|227|150|124|113|t;LPO|251125|251223|st|pr||STEVEL|4|208|120|300|83|56|t;Care France|251201|260109|st|pa||BRANG|10|884|305|350|230|196|t;IFAW|251202|260103|st|pr||ANDREF|13|540|225|280|217|128|t;Croix-Rouge française|251202|260117|sp|pr|Bordeaux||6|736|264|200|167|134|t;La Chaîne de l'Espoir|251209|260117|hy|do|Saint-Pierre|ROMAIP|7|460|167|300|129|109|t;Croix-Rouge française|251209|260110|sp|pr|Lyon|ALEXAR|7|588|354|200|155|130|t;Croix-Rouge française|251209|260117|st|pa||STEVEL|9|441|240|350|144|111|t;Fondation pour le Logement|251215|260123|st|pa||ROMAIP|12|506|192|350|176|129|t;Care France|251216|260117|sp|pr|Marseille|BRANG|6|584|253|200|135|124|t;Solidarités International|251219|260131|st|pa||ROMAIP|10|764|289|350|213|160|t;Restos du Coeur|251222|260123|st|pr|Toulouse|BRANG|14|826|352|380|242|179|t;Croix-Rouge française|251226|260206|st|pa||ROMAIP|8|701|330|350|192|159|t;Ligue contre le Cancer|251230|260131|st|pr|Nantes|BRANG|8|677|198|225|169|148|t";
+const M26="Amnesty International|260106|260207|sp|pr|Lille|ALEXAR|7|773|323|200|162|157|t;Armée du Salut|260106|260214|st|pa|Paris|ROMAIP|14|1093|329|350|320|236|t;Amnesty International|260113|260214|sp|pr|Angers - Le Mans|ROMAIP|6|751|323|200|150|149|t;Médecins sans frontières|260113|260221|st|pa|Paris|BRANG|12|809|265|350|208|181|t;Aides|260113|260221|sp|pr|Lyon|ALEXAR|8|912|324|240|184|174|t;Médecins sans frontières|260113|260221|sp|pa|Paris|AMYB|5|626|364|240|126|121|t;Solidarités International|260120|260228|st|pa|Paris|ROMAIP|13|629|249|350|163|148|t;Restos du Coeur|260120|260228|hy|pr|Toulouse|ALEXAR|6|832|353|180|156|143|t;SNSM|260120|260221|st|pr|Rouen|BRANG|9|790|251|300|173|170|t;CCFD-Terre Solidaire|260120|260221|st|pr|Marseille|ANDREF|11|652|317|350|165|146|t;Fondation pour le Logement|260126|260213|st|pa|Paris|ANDREF|10|318|113|350|113|79|t;Handicap International|260127|260314|hy|pr|Montpellier|ALEXAR|10|1056|401|210|271|222|t;Care France|260127|260228|st|pr|Lille|ROMAIP|9|362|153|300|101|88|t;Restos du Coeur|260127|260228|sp|pr|Dijon|AMYB|8|364|146|200|124|81|t;Croix-Rouge française|260127|260307|sp|pr|Nice|ANDREF|5|677|347|240|140|140|t;Care France|260127|260307|hy|do|La Reunion|ROMAIP|7|734|239|180|195|155|t;Aides|260203|260313|st|it||ROMAIP|7|865|382|550|169|168|t;IFAW|260203|260307|st|pr|Lyon|ANDREF|11|890|271|350|184|183|t;Apprentis d'Auteuil|260203|260314|st|pa|Paris|BRANG|11|932|288|350|200|188|t;Croix-Rouge française|260209|260320|st|pa|Paris|ANDREF|12|640|287|350|214|147|t;Handicap International|260210|260314|st|pr|Montpellier|ALEXAR|14|631|205|350|162|142|t;Handicap International|260210|260321|sp|pr|Strasbourg|AMYB|7|423|168|240|134|112|t;Petits Frères des Pauvres|260210|260321|sp|pa|Paris|AMYB|5|629|259|240|145|110|t;Alima|260210|260314|st|pr|Bordeaux|BRANG|11|578|163|300|184|128|t;Association Valentin Haüy|260217|260321|sp|pr|Grenoble|ALEXAR|4|448|197|200|100|94|t;Handicap International|260217|260321|st|pr|Tours|BRANG|9|478|197|250|128|112|t;Solidarités International|260217|260328|st|pa|Paris|ANDREF|9|474|178|350|130|111|t;UNHCR|260220|260328|sp|pr|Marseille|ALEXAR|6|617|246|200|122|109|t;Médecins sans frontières|260223|260403|st|pa|Paris|ANDREF|9|644|220|350|146|137|t;APF France handicap|260224|260404|sp|pr|Lyon|ROMAIP|7|517|172|240|139|124|t;Care France|260224|260404|hy|pr|Lille|AMYB|8|563|205|360|132|124|t;Action contre la Faim|260224|260328|st|pr|Clermont-Ferrand|ALEXAR|9|709|247|280|155|149|t;Croix-Rouge française|260224|260404|sp|pa|Paris|STEVEL|5|602|374|240|112|107|t;Handicap International|260303|260404|sp|pr|Caen|BRANG|5|246|123|200|70|66|t;Greenpeace|260303|260404|st|pr|Toulouse|ANDREF|12|794|281|350|274|174|t;Care France|260303|260411|st|pa|Paris|STEVEL|13|764|322|350|253|175|t;Croix-Rouge française|260303|260404|st|pr|Dijon|ALEXAR|7|320|97|250|100|86|t;Alima|260303|260411|hy|pr|Bordeaux|ROMAIP|8|522|200|360|141|109|t;Fondation pour le Logement|260309|260417|st|pa|Paris|ANDREF|9|644|234|350|165|136|t;Croix-Rouge française|260310|260411|st|pr|Nice|STEVEL|9|733|404|280|157|154|t;QUATRE PATTES|260310|260418|sp|pr|Toulouse|AMYB|7|644|129|0|182|115|t;Croix-Rouge française|260310|260411|st|pr|Lyon|ALEXAR|17|1007|419|350|232|210|t;APF France handicap|260310|260411|st|pr|Nantes|BRANG|7|700|312|300|151|145|t;Greenpeace|260312|260418|st|pr|Bordeaux|ALEXAR|11|963|217|0|191|186|t;Fondation Recherche Médicale|260312|260418|st|pr|Montpellier|ANDREF|7|494|162|350|117|110|t;CCFD-Terre Solidaire|260312|260425|st|pa|Paris|BRANG|8|972|261|350|201|191|t;La Chaîne de l'Espoir|260317|260425|hy|do|La Reunion|AMYB|6|718|261|360|149|145|t;Fondation pour le Logement|260317|260418|st|pr|Rennes|ROMAIP|7|364|121|300|106|93|t;Croix-Rouge française|260323|260501|st|pa|Paris|ALEXAR|11|568|187|350|193|141|t;Sidaction|260324|260425|st|pr|Strasbourg|ANDREF|10|594|275|300|141|135|t;Fondation pour le Logement|260324|260502|sp|pa|Paris|STEVEL|5|490|226|240|135|92|t;Croix-Rouge française|260324|260425|sp|pr|Tours|AMYB|9|401|214|200|103|94|t;Amnesty International|260330|260508|st|pa|Paris|ANDREF|12|875|190|350|202|193|t;Solidarités International|260331|260502|st|pr|Angers - Le Mans|BRANG|7|468|194|280|109|106|t;Médecins sans frontières|260331|260502|sp|pr|Clermont-Ferrand|ALEXAR|4|410|188|200|95|88|t;Action contre la Faim|260331|260502|st|pr|Marseille|AMYB|20|1514|687|350|336|294|t;Fondation Recherche Médicale|260331|260502|hy|pr|Montpellier|JEHSM|7|612|170|200|145|135|t;APF France handicap|260331|260509|hy|pr|Nantes|ROMAIP|8|322|136|240|120|86|t;Apprentis d'Auteuil|260407|260530|hy|pr|Lyon|BRANG|7|1064|358|320|235|215|t;Aides|260407|260509|st|pr|Toulouse|ANDREF|12|975|349|400|234|215|t;Médecins sans frontières|260407|260516|st|pa|Paris|BRANG|11|892|351|350|286|186|t;Médecins sans frontières|260407|260509|sp|pr|Lille|AMYB|7|460|188|200|151|102|t;Médecins sans frontières|260407|260509|hy|pr|Grenoble|JEHSM|7|510|303|200|124|116|t;IFAW|260414|260523|st|pa|Paris|AMYB|15|1176|279|350|288|240|t;Fondation pour le Logement|260414|260523|hy|pr|Rennes|BRANG|6|540|148|240|143|119|t;Association Valentin Haüy|260414|260516|st|pr|Nice|ANDREF|10|590|201|280|157|127|t;Solidarités International|260414|260516|st|pr|Lyon|STEVEL|10|713|202|350|188|165|t;Croix-Rouge française|260414|260522|hy|it||JEHSM|6|841|654|360|174|173|t;Fondation pour le Logement|260420|260529|st|pa|Paris|ANDREF|18|1495|483|350|343|306|t;Apprentis d'Auteuil|260421|260530|sp|pr|Strasbourg|JEHSM|6|487|185|240|112|91|t;Aides|260421|260523|st|pr|Montpellier|BRANG|14|1050|234|380|247|215|t;CCFD-Terre Solidaire|260421|260530|hy|pr|Bordeaux|ROMAIP|7|588|118|200|155|108|t;LPO|260428|260605|hy|it||ALEXAR|8|1108|534|400|218|211|t;Greenpeace|260428|260606|st|pa|Paris|BRANG|13|1668|499|350|343|323|t;Aides|260428|260606|hy|pr|Toulouse|ANDREF|16|1304|393|360|304|270|t;CCFD-Terre Solidaire|260428|260530|st|pr|Rouen|JEHSM|10|693|232|300|200|148|t;Greenpeace|260428|260530|st|pr|Tours|ROMAIP|11|687|156|200|179|157|t;Restos du Coeur|260504|260612|st|pa|Paris|ALEXAR|11|768|353|350|185|168|t;Aides|260505|260613|sp|pa|Paris|STEVEL|4|626|313|240|110|109|t;Aides|260505|260606|hy|pr|Montpellier|ROMAIP|14|750|240|300|202|170|t;Solidarités International|260505|260606|sp|pr|Marseille|ALEXAR|6|712|258|200|135|116|t;Sidaction|260505|260606|st|pr|Angers - Le Mans|AMYB|9|513|172|300|115|112|t;Petits Frères des Pauvres|260512|260627|hy|pr|Lille|AMYB|14|1312|484|280|347|274|t;Association Valentin Haüy|260512|260620|hy|pr|Nice|STEVEL|7|816|352|240|181|159|t;Amnesty International|260512|260613|st|pr|Grenoble|ALEXAR|13|918|213|350|203|194|t;Apprentis d'Auteuil|260512|260620|hy|do|La Reunion|ROMAIP|6|790|290|360|180|168|t;Armée du Salut|260512|260620|st|pa|Paris|ANDREF|11|918|135|350|267|185|t;Care France|260518|260626|st|pa|Paris|ANDREF|15|960|225|350|262|224|t;Médecins sans frontières|260519|260620|sp|pr|Metz|HILLAO|3|378|157|200|75|67|t;Surfrider|260519|260620|st|pr|Lyon|ALEXAR|10|988|308|400|192|189|t;UNHCR|260519|260627|sp|pa|Paris|JEHSM|5|757|263|240|150|139|t;Médecins sans frontières|260526|260627|sp|pr|Caen|ROMAIP|7|684|350|200|149|143|t;Sidaction|260526|260627|st|pr|Rennes|BRANG|13|988|220|350|220|209|t;Care France|260526|260627|st|pr|Bordeaux|AMYB|12|724|215|380|217|163|t;Care France|260526|260704|st|pa|Paris|JEHSM|19|1331|377|350|303|283|t;Aides|260601|260710|st|pa|Paris|ANDREF|11|852|192|350|197|190|t;Restos du Coeur|260602|260710|st|it||STEVEL|8|1031|670|550|219|206|t;Alima|260602|260704|sp|pr|Lyon|BRANG|7|796|206|200|154|151|t;Aides|260602|260704|st|pr|Clermont-Ferrand|ALEXAR|9|698|235|280|150|145|t;APF France handicap|260602|260704|st|pr|Strasbourg|ROMAIP|11|590|170|380|173|138|t;Solidarités International|260609|260718|st|pa|Paris|HILLAO|17|1766|391|350|447|363|t;Petits Frères des Pauvres|260609|260725|hy|pr|Montpellier|BRANG|12|1122|373|420|301|239|t;LPO|260609|260711|st|pr|Marseille|AMYB|20|778|309|400|211|165|t;QUATRE PATTES|260609|260711|sp|pr|Angers|JEHSM|5|562|249|200|120|119|t;Aides|260609|260711|st|pr|Rouen|ROMAIP|9|490|121|250|138|122|t;UNHCR|260609|260718|sp|pr|Toulouse|ANDREF|3|346|106|240|85|58|t;Croix-Rouge française|260615|260703|st|pa|Paris|ANDREF|11|310|77|350|131|74|t;La Chaîne de l'Espoir|260616|260718|st|pr|Grenoble|ALEXAR|9|636|257|150|162|139|t;Solidarités International|260616|260718|st|pr|Lille|ROMAIP|10|703|179|380|175|159|t;Solidarités International|260616|260725|sp|pa|Paris|HILLAO|5|591|197|240|129|107|t;Alima|260616|260718|st|pr|Dijon|JEHSM|7|488|145|280|141|111|t;Aides|260616|260718|sp|pr|Marseille|AMYB|6|537|243|200|127|101|t;Association Valentin Haüy|260623|260725|st|pr|Lyon|ALEXAR|18|1134|351|350|261|229|t;Secours Catholique|260623|260808|hy|pr|Nice|ANDREF|13|999|377|350|247|200|t;SNSM|260623|260725|st|pr|Nantes|AMYB|10|540|223|380|139|136|t;Médecins sans frontières|260623|260801|hy|do|La Reunion|JEHSM|6|522|228|360|132|123|t;Croix-Rouge française|260623|260707|st|pa|Paris|BRANG|7|219|31|350|88|59|t;Médecins sans frontières|260629|260807|st|pa|Paris|ALEXAR|18|2024|726|350|432|379|t;Croix-Rouge française|260630|260801|st|pr|Caen|BRANG|9|485|199|300|112|107|t;Apprentis d'Auteuil|260630|260801|st|pr|Montpellier|ANDREF|16|1398|341|350|296|284|t;APF France handicap|260630|260808|sp|pr|Strasbourg|AMYB|3|448|215|180|90|81|t;Fondation pour le Logement|260630|260808|hy|pr|Bordeaux|ROMAIP|10|794|288|360|231|167|t;Croix-Rouge française|260630|260725|sp|pa|Paris|STEVEL|2|211|132|160|40|38|t;Action contre la Faim|260630|260801|sp|pr|Tours|JEHSM|3|358|174|200|70|67|t;Association Valentin Haüy|260707|260808|sp|pr|Lyon|ALEXAR|4|400|199|200|82|68|t;Fondation pour le Logement|260707|260815|st|pa|Paris|JEHSM|18|909|346|350|306|199|t;Care France|260713|260821|st|pa|Paris|BRANG|14|830|274|350|240|181|t;Surfrider|260715|260815|sp|pr|Rennes|ROMAIP|7|664|210|200|141|133|t;Alima|260715|260815|st|pr|Marseille|JEHSM|15|1022|365|400|244|204|t;Fondation pour le Logement|260715|260815|st|pr|Rouen|AMYB|8|599|254|350|146|131|t;QUATRE PATTES|260721|260822|sp|pr|Grenoble|BRANG|4|528|172|200|100|93|t;Solidarités International|260721|260829|st|pa|Paris|ROMAIP|15|1406|494|350|396|281|t;Sidaction|260721|260822|st|pr|Lille|JEHSM|14|758|207|380|213|171|t;CCFD-Terre Solidaire|260721|260822|st|pr|Grenoble|BRANG|11|506|157|300|179|122|t;Fondation pour le Logement|260721|260822|st|pr|Toulouse|ALEXAR|10|678|274|400|165|149|t;Care France|260721|260822|sp|pr|Marseille|AMYB|8|506|286|400|113|99|t;Croix-Rouge française|260727|260904|st|pa|Paris|ANDREF|13|720|252|350|234|172|t;Médecins sans frontières|260728|260905|sp|pa|Paris|ROMAIP|4|563|283|240|115|96|t;Croix-Rouge française|260728|260829|st|pr|Nantes|AMYB|10|561|194|350|132|130|t;CCFD-Terre Solidaire|260728|260829|st|pr|Lyon|BRANG|13|1012|381|380|219|205|t;IFAW|260728|260829|st|pr|Nice|JEHSM|9|725|392|350|182|151|t;Fondation pour le Logement|260804|260905|sp|pr|Toulouse|AMYB|6|619|218|200|120|110|t;WWF|260804|260905|st|pr|Montpellier|JEHSM|15|950|235|380|241|213|t;Amnesty International|260804|260912|st|pa|Paris|ROMAIP|14|1208|403|350|322|252|t;Médecins sans frontières|260810|260918|st|pa|Paris|JEHSM|14|651|389|350|247|161|t;Solidarités International|260811|260919|sp|pa|Paris|ROMAIP|5|484|179|240|105|83|t;CCFD-Terre Solidaire|260811|260912|sp|pr|Lyon|JEHSM|8|680|276|200|134|126|t;Croix-Rouge française|260811|260912|sp|pr|Nantes|ROMAIP|3|348|174|200|60|60|t;Greenpeace|260818|260919|st|pr|Rouen|ANDREF|9|593|238|250|135|129|t;Greenpeace|260818|260926|st|pa|Paris|ROMAIP|10|677|280|350|187|140|t;Secours Catholique|260818|260919|st|sp|Marseille|JEHSM|11|447|278|350|165|119|t;Aides|260824|261002|st|pa|Paris|ANDREF|13|611|216|350|199|146|t;Croix-Rouge française|260825|261003|hy|pr|Montpellier|JEHSM|8|612|342|180|181|147|t;Croix-Rouge française|260825|260926|hy|pr|Lille|ROMAIP|10|650|192|180|176|146|t;La Chaîne de l'Espoir|260825|260926|st|pr|Toulouse|ALEXAR|9|461|177|400|139|102|t;Amnesty International|260901|261003|st|pr|Nantes|ANDREF|6|445|143|300|100|96|t;Petits Frères des Pauvres|260901|261017|sp|pr|Strasbourg|BRANG|7|459|167|240|153|105|e;Fondation pour le Logement|260901|261003|st|pr|Lyon|ALEXAR|16|929|442|350|276|196|t;Solidarités International|260901|261010|hy|pr|Caen|ROMAIP|10|424|128|240|141|103|e;Médecins sans frontières|260901|260907|sp|pr|Nice|STEVEL|2|48|40|200|9|9|t;Apprentis d'Auteuil|260901|261010|st|pa|Paris|JEHSM|12|664|263|350|189|150|e;Croix-Rouge française|260907|261016|st|pa|Paris|ANDREF|10|511|267|350|141|120|e;Aides|260908|261010|sp|pr|Dijon|ALEXAR|3|360|160|200|67|60|e;Sidaction|260908|261010|st|pr|Bordeaux|BRANG|10|521|143|350|154|119|e;Greenpeace|260908|261010|st|pr|Montpellier|ANDREF|17|1018|534|300|318|231|e;La Chaîne de l'Espoir|260908|261017|sp|pr|Toulouse|ALEXAR|3|377|127|0|68|64|e;Restos du Coeur|260908|261017|sp|pa|Paris|STEVEL|4|459|343|240|91|79|e;Croix-Rouge française|260914|261009|st|pa|Paris|ANDREF|10|240|125|350|130|68|e;Fondation pour le Logement|260915|261024|st|pa|Paris|ANDREF|8|305|139|350|120|73|e;LPO|260915|261023|hy|it||ALEXAR|6|538|367|400|114|108|e;Solidarités International|260915|261017|sp|pr|Clermont-Ferrand|AMYB|3|271|151|200|57|48|e;CCFD-Terre Solidaire|260915|261017|sp|pr|Nantes|BRANG|3|284|130|200|57|52|e;Fondation Recherche Médicale|260915|261017|sp|pr|Lyon|AMYB|7|604|249|150|133|124|e;Médecins sans frontières|260921|261030|st|pa|Paris|ALEXAR|14|317|147|350|114|76|e;Action contre la Faim|260922|261024|sp|pr|Rouen|AMYB|3|186|76|200|42|35|e;Aides|260922|261031|sp|pa|Paris|JEHSM|4|258|101|240|49|44|e;Médecins sans frontières|260922|261024|sp|pr|Angers|BRANG|4|186|102|200|48|42|e;Croix-Rouge française|260922|261024|sp|pr|Bordeaux|AMYB|6|349|161|200|73|67|e;Secours Catholique|260922|261024|st|pr|Marseille|ROMAIP|11|364|161|350|120|87|e;Greenpeace|260929|261107|st|pa|Paris|BRANG|7|119|57|350|52|34|e;Aides|260929|261031|st|pr|Lille|AMYB|13|257|124|380|70|61|e;Croix-Rouge française|260929|261031|st|pr|Toulouse|ROMAIP|13|235|56|400|80|67|e;Aides|261005|261113|st|pa|Paris|ANDREF|11|111|21|350|51|37|e;Fondation pour le Logement|261006|261107|st|pr|Nantes|BRANG|8|86|31|350|32|24|e;Action contre la Faim|261006|261107|sp|pr|Grenoble|JEHSM|2|20|9|200|7|5|e;Alima|261006|261114|sp|pr|Montpellier|ROMAIP|6|55|21|300|22|16|e;Armée du Salut|261006|261107|st|pr|Lyon|ALEXAR|15|131|54|350|56|39|e";
+// Agrégats terminés 2022-2024 : client|an|format|zone|n|hRue|BS|obj|lots|présents|recrSomme
+const OLD="APF France handicap|22|st|ly|1|1001|331|450|210|197|12;APF France handicap|22|st|pr|2|1422|567|700|330|288|17;APF France handicap|23|hy|pr|1|544|200|300|123|115|5;APF France handicap|23|sp|pr|2|998|426|400|242|222|12;APF France handicap|23|st|ly|1|417|175|400|100|99|9;APF France handicap|23|st|pr|2|1331|442|780|346|277|18;APF France handicap|24|sp|ly|1|440|171|250|112|93|5;APF France handicap|24|sp|pr|1|488|206|250|103|91|10;APF France handicap|24|st|ly|1|797|295|400|191|160|12;APF France handicap|24|st|pr|3|1673|662|850|457|369|28;Action contre la Faim|22|st|ly|2|1577|588|850|386|324|24;Action contre la Faim|22|st|pa|2|1333|686|350|321|285|17;Action contre la Faim|22|st|pr|6|4098|1668|2350|937|851|53;Action contre la Faim|23|sp|pr|1|420|174|200|100|97|8;Action contre la Faim|23|st|pa|1|818|325|300|207|183|11;Action contre la Faim|23|st|pr|7|4622|1879|2490|1140|989|72;Action contre la Faim|24|hy|sp|1|604|200|200|132|126|7;Action contre la Faim|24|sp|pr|1|600|281|200|143|129|7;Action contre la Faim|24|st|ly|1|1534|586|350|343|319|21;Action contre la Faim|24|st|pr|3|1394|564|750|358|321|25;Aides|22|st|it|2|1710|989|1300|370|337|16;Aides|22|st|ly|1|790|238|450|182|162|11;Aides|22|st|pa|1|451|227|0|144|107|9;Aides|22|st|pr|7|4840|1923|2700|1184|996|67;Aides|23|hy|pr|2|1028|386|500|252|238|15;Aides|23|st|it|2|1283|697|1100|277|262|10;Aides|23|st|pr|7|4316|1796|2440|1026|915|55;Aides|24|hy|pr|1|309|143|250|89|72|6;Aides|24|sp|pr|2|890|351|450|192|177|11;Aides|24|st|ly|1|595|184|350|166|131|12;Aides|24|st|pa|3|3164|1134|1050|765|666|45;Aides|24|st|pr|6|4373|1629|1750|1035|935|67;Alima|22|st|pr|3|2020|864|1200|500|417|29;Alima|23|st|ly|1|604|222|400|137|130|9;Alima|23|st|pr|2|1649|574|780|355|334|22;Alima|24|st|pr|3|2396|873|850|565|501|31;Amnesty International|22|st|it|3|3036|1738|1650|628|589|26;Amnesty International|22|st|pa|4|2922|1052|1100|679|605|46;Amnesty International|22|st|pr|1|552|239|450|144|124|12;Amnesty International|23|sp|pr|4|2700|663|600|613|570|31;Amnesty International|23|st|it|2|1706|772|1100|342|332|13;Amnesty International|23|st|pa|4|3523|1191|1600|901|737|47;Amnesty International|23|st|pr|2|1708|683|750|436|360|23;Amnesty International|24|hy|pr|1|711|224|250|176|141|8;Amnesty International|24|sp|pr|1|778|286|250|170|156|8;Amnesty International|24|st|pa|2|1288|575|700|379|304|27;Amnesty International|24|st|pr|3|3350|1252|850|785|684|45;Apprentis d'Auteuil|24|hy|do|1|673|210|350|158|147|8;Apprentis d'Auteuil|24|sp|ly|1|356|200|225|84|74|5;Apprentis d'Auteuil|24|sp|pr|1|752|278|225|175|155|7;Association Valentin Haüy|24|sp|ly|1|361|138|200|100|87|7;Association Valentin Haüy|24|sp|pr|1|397|126|220|108|98|7;Association Valentin Haüy|24|st|pr|2|1410|456|700|381|315|25;Bibliothèques Sans Frontières|22|st|pa|2|2942|1070|350|661|582|37;CCFD-Terre Solidaire|24|hy|pr|2|810|196|0|200|168|12;CCFD-Terre Solidaire|24|st|pa|1|317|111|0|60|57|4;Care France|22|st|pr|5|3659|1365|1850|823|752|48;Care France|23|st|ly|1|867|336|380|211|191|10;Care France|23|st|pr|4|3224|1215|1260|709|658|37;Care France|24|sp|pr|1|643|336|180|198|132|9;Care France|24|st|ly|1|716|222|350|186|151|12;Care France|24|st|pa|1|457|153|350|114|94|11;Care France|24|st|pr|2|1974|572|530|473|422|32;Croix-Rouge française|22|sp|pr|2|1225|556|0|278|253|14;Croix-Rouge française|22|st|ly|1|1029|501|0|225|201|13;Croix-Rouge française|22|st|pa|9|6978|3102|2800|1745|1484|111;Croix-Rouge française|22|st|pr|9|5690|2816|3700|1432|1193|83;Croix-Rouge française|23|hy|ly|1|579|194|250|137|123|9;Croix-Rouge française|23|hy|pr|1|607|253|250|132|132|7;Croix-Rouge française|23|sp|ly|1|519|155|250|120|113|5;Croix-Rouge française|23|sp|pr|6|4818|2438|1450|1076|969|48;Croix-Rouge française|23|st|ly|2|1427|553|750|352|318|27;Croix-Rouge française|23|st|pa|10|7284|3134|4000|1921|1585|111;Croix-Rouge française|23|st|pr|6|3819|1529|2140|954|829|51;Croix-Rouge française|24|hy|pr|2|651|318|500|144|132|9;Croix-Rouge française|24|sp|ly|2|952|413|450|248|221|15;Croix-Rouge française|24|sp|pr|12|7216|3493|3000|1706|1512|88;Croix-Rouge française|24|st|pa|10|8351|3568|3500|2130|1801|127;Croix-Rouge française|24|st|pr|8|4794|2059|2300|1226|1037|84;Fondation des femmes|23|hy|ly|1|658|357|400|168|156|11;Fondation des femmes|23|hy|pr|1|578|294|400|142|122|8;Fondation des femmes|23|st|pa|1|23|22|0|6|6|3;Fondation des femmes|24|sp|ly|1|408|211|200|102|89|5;Fondation des femmes|24|st|pa|2|500|257|350|121|111|13;Fondation des femmes|24|st|pr|1|1692|827|350|371|335|22;Fondation pour le Logement|22|st|ly|1|964|424|450|188|186|9;Fondation pour le Logement|22|st|pr|2|1994|822|450|452|399|25;Fondation pour le Logement|23|hy|do|1|1067|509|300|231|212|8;Fondation pour le Logement|23|sp|pr|1|545|181|150|122|119|6;Fondation pour le Logement|23|st|pa|1|542|302|400|143|126|8;Fondation pour le Logement|23|st|pr|3|3548|1779|1100|777|691|43;Fondation pour le Logement|24|hy|do|1|576|185|350|150|130|7;Fondation pour le Logement|24|sp|pr|1|455|145|200|99|98|7;Fondation pour le Logement|24|st|pa|2|1877|720|700|454|418|21;Fondation pour le Logement|24|st|pr|2|1268|496|700|336|322|23;GSCF|24|st|ly|1|540|176|350|115|110|9;GSCF|24|st|pa|1|683|164|350|155|146|11;Handicap International|23|sp|pr|1|489|145|200|120|107|6;Handicap International|24|sp|ly|1|335|145|250|75|72|3;Handicap International|24|sp|pr|2|923|361|450|234|205|13;IFAW|24|sp|ly|1|568|148|150|132|123|7;IFAW|24|sp|pr|1|312|126|200|92|68|4;IFAW|24|st|pa|1|548|264|280|188|135|12;IFAW|24|st|pr|2|2062|685|710|462|415|28;LPO|22|st|it|2|2060|1353|1100|423|396|18;LPO|22|st|ly|1|1098|447|450|244|214|14;LPO|22|st|pr|2|1711|646|800|384|345|20;LPO|23|hy|it|1|634|326|550|151|137|6;LPO|23|hy|pr|1|370|255|200|75|65|3;LPO|23|st|it|1|754|338|550|158|154|6;LPO|23|st|ly|1|914|348|400|196|180|9;LPO|23|st|pa|1|464|205|400|123|102|10;LPO|23|st|pr|3|2550|1014|1080|582|528|30;LPO|24|sp|pr|2|944|344|400|195|183|9;LPO|24|st|it|1|710|282|400|145|142|5;LPO|24|st|pr|3|1924|720|850|457|422|27;La Chaîne de l'Espoir|23|st|pa|1|1428|530|400|316|290|15;La Chaîne de l'Espoir|24|hy|do|1|822|324|350|200|196|10;La Chaîne de l'Espoir|24|sp|pr|2|742|299|500|170|150|8;La Chaîne de l'Espoir|24|st|pa|2|1113|425|700|352|243|24;La Chaîne de l'Espoir|24|st|pr|1|324|183|300|74|73|5;Ligue contre le Cancer|22|hy|pr|1|540|289|0|121|111|5;Ligue contre le Cancer|22|st|pr|6|3616|1447|2300|883|781|52;Ligue contre le Cancer|23|hy|ly|1|707|243|375|149|142|6;Ligue contre le Cancer|23|hy|pr|4|3007|1212|1140|654|611|32;Ligue contre le Cancer|23|st|it|1|526|294|480|110|109|5;Ligue contre le Cancer|23|st|pr|7|5275|1968|2400|1232|1108|73;Ligue contre le Cancer|24|hy|pr|4|2048|857|990|529|430|29;Ligue contre le Cancer|24|sp|pr|1|674|355|200|187|140|14;Ligue contre le Cancer|24|st|pr|7|4217|1639|2140|1041|912|65;Médecins du Monde|22|sp|pr|1|638|230|0|141|137|8;Médecins du Monde|22|st|it|1|815|492|650|168|163|7;Médecins du Monde|22|st|pa|2|1976|839|700|467|399|26;Médecins du Monde|22|st|pr|2|1698|692|900|381|338|21;Médecins du Monde|23|sp|ly|1|539|301|175|154|119|7;Médecins du Monde|23|sp|pr|1|601|188|175|149|112|6;Médecins du Monde|23|st|it|1|680|363|500|145|143|5;Médecins du Monde|23|st|ly|1|861|306|400|178|169|10;Médecins du Monde|23|st|pa|5|4043|1597|2150|1033|896|68;Médecins du Monde|23|st|pr|2|1368|536|680|351|298|19;Médecins du Monde|24|sp|pr|1|576|149|200|139|125|7;Médecins du Monde|24|st|it|1|466|206|400|101|100|5;Médecins du Monde|24|st|pa|5|3861|1375|1750|958|826|55;Médecins du Monde|24|st|pr|2|2220|1109|650|499|436|27;Médecins sans frontières|22|hy|ly|1|831|422|0|195|171|7;Médecins sans frontières|22|sp|pr|1|262|144|0|63|61|5;Médecins sans frontières|22|st|pa|7|7655|3432|2450|1698|1516|84;Médecins sans frontières|23|hy|do|2|1533|789|600|375|334|17;Médecins sans frontières|23|hy|ly|1|702|281|150|158|145|7;Médecins sans frontières|23|sp|ly|1|407|163|150|115|96|8;Médecins sans frontières|23|sp|pr|2|1724|737|300|359|346|19;Médecins sans frontières|23|st|pa|7|6498|2521|2800|1531|1339|87;Médecins sans frontières|24|hy|do|1|600|242|350|144|137|8;Médecins sans frontières|24|sp|ly|1|834|362|250|170|168|7;Médecins sans frontières|24|sp|pr|7|3466|1669|1750|797|714|41;Médecins sans frontières|24|st|pa|7|6298|2440|2450|1565|1350|103;Petits Frères des Pauvres|24|sp|ly|1|745|285|200|164|158|9;Petits Frères des Pauvres|24|sp|pr|1|531|226|200|100|95|4;Restos du Coeur|22|st|it|1|936|788|650|186|181|8;Restos du Coeur|22|st|pr|3|2812|1341|800|625|568|36;Restos du Coeur|23|hy|ly|1|667|366|250|150|138|7;Restos du Coeur|23|hy|pr|1|335|214|300|94|84|6;Restos du Coeur|23|st|it|1|585|474|600|140|128|5;Restos du Coeur|23|st|ly|1|1409|569|400|298|270|13;Restos du Coeur|23|st|pr|1|407|129|280|100|91|4;Restos du Coeur|24|sp|pr|3|1601|900|650|360|327|21;Restos du Coeur|24|st|pr|2|2933|1189|700|665|577|37;Samusocial|23|st|pa|5|3496|1807|2000|903|780|46;Samusocial|24|st|pa|5|4100|1887|2000|1027|896|59;Sidaction|22|hy|pr|1|581|157|0|134|122|7;Sidaction|22|st|it|1|900|572|650|207|175|9;Sidaction|22|st|ly|1|862|363|450|184|170|12;Sidaction|22|st|pa|1|761|300|350|174|161|12;Sidaction|22|st|pr|4|2762|1155|1600|679|567|43;Sidaction|23|hy|do|1|946|412|300|201|188|7;Sidaction|23|st|pr|5|5414|1999|1700|1249|1101|64;Sidaction|24|hy|do|2|922|362|700|278|225|15;Sidaction|24|st|ly|1|1011|401|350|227|206|13;Sidaction|24|st|pa|1|554|239|350|134|112|10;Sidaction|24|st|pr|4|2183|836|1250|591|490|40;Solidarités International|22|sp|pr|1|627|236|0|154|128|7;Solidarités International|22|st|it|4|3152|1864|2300|672|625|35;Solidarités International|22|st|ly|1|768|297|450|182|162|9;Solidarités International|22|st|pa|1|776|338|0|177|160|7;Solidarités International|22|st|pr|5|3193|1488|1500|793|680|44;Solidarités International|23|hy|do|2|1613|734|600|396|343|16;Solidarités International|23|hy|ly|1|611|207|150|136|123|6;Solidarités International|23|hy|pr|1|392|197|200|104|86|6;Solidarités International|23|sp|pr|7|4186|1574|1100|971|859|48;Solidarités International|23|st|it|2|1196|778|1100|278|258|12;Solidarités International|23|st|ly|1|672|178|400|159|143|12;Solidarités International|23|st|pa|6|3854|1726|2350|954|856|55;Solidarités International|23|st|pr|4|2552|959|1360|613|539|33;Solidarités International|24|hy|do|1|1037|375|300|209|203|10;Solidarités International|24|sp|pr|5|2355|899|1000|528|455|24;Solidarités International|24|st|it|2|1498|637|800|304|296|11;Solidarités International|24|st|ly|1|995|371|350|296|216|16;Solidarités International|24|st|pa|3|2350|933|1050|620|515|36;Solidarités International|24|st|pr|5|2988|1131|1500|744|647|43;Surfrider|22|st|it|1|727|340|350|164|152|9;Surfrider|22|st|ly|1|822|371|400|171|162|10;Surfrider|23|st|pa|1|417|217|400|119|100|10;Surfrider|23|st|pr|3|2110|810|1080|509|457|30;Surfrider|24|hy|pr|1|1082|414|300|228|216|11;Surfrider|24|sp|pr|1|649|222|200|145|137|8;Surfrider|24|st|it|2|1109|555|800|243|225|12;Surfrider|24|st|ly|1|971|405|350|239|201|18;Surfrider|24|st|pa|1|757|395|300|210|165|12;Surfrider|24|st|pr|2|919|391|600|231|207|16;UNHCR|24|sp|pr|1|612|205|200|148|127|9;UNHCR|24|st|ly|1|746|234|350|186|173|12;UNHCR|24|st|pa|1|648|243|350|184|149|9;WWF|22|st|ly|1|705|269|450|155|144|13;WWF|22|st|pa|2|2002|795|700|469|404|25;WWF|22|st|pr|6|4418|1744|2350|1012|901|58;WWF|23|hy|do|1|641|230|400|171|137|7;WWF|23|st|pr|5|4090|1522|1530|979|869|62;WWF|24|hy|do|1|554|173|350|137|121|9;WWF|24|sp|pr|2|673|166|400|164|143|13;WWF|24|st|ly|1|1179|375|350|286|261|19;WWF|24|st|pr|1|731|278|300|220|177|16";
+// Saisonnalité 2022-2024 (an|mois|n|hRue|BS|obj)
+const OLDMO="22|1|8|7257|3225|3100;22|2|7|5241|2337|3100;22|3|12|10539|4606|5150;22|4|9|6841|2874|3350;22|5|14|12990|5631|5850;22|6|9|7944|3307|3650;22|7|11|8646|3758|4650;22|8|12|9540|4392|4650;22|9|13|8324|3732|4000;22|10|9|5678|2800|1450;22|11|15|11334|5521|3800;22|12|9|5606|2434|2750;23|1|15|12548|5543|5010;23|2|11|9534|3757|3990;23|3|15|10976|4591|5815;23|4|15|9982|4086|4760;23|5|19|16402|6385|6135;23|6|16|13158|4739|5540;23|7|15|10680|4151|5020;23|8|14|9269|4012|4835;23|9|15|9008|3744|4460;23|10|19|11324|5069|6500;23|11|18|11637|5569|5960;23|12|7|4918|1972|2350;24|1|18|11269|4296|5380;24|2|16|10008|3583|5030;24|3|16|7948|3301|4550;24|4|25|11876|4651|6820;24|5|17|13455|5037|4955;24|6|17|17453|6776|5180;24|7|20|17478|6524|6150;24|8|11|7708|3499|3325;24|9|16|10798|4464|4500;24|10|21|13592|5912|5900;24|11|18|9794|4198|4530;24|12|11|5857|2841|3230";
+// Missions 2026 planifiées non démarrées : client|début|fin|format|zone|ville|RM|obj|statut
+const M26F="Croix-Rouge française|261013|261121|sp|pr|Marseille|BRANG|250|e;Solidarités International|261013|261114|st|pr|Bordeaux|AMYB|380|e;APF France handicap|261013|261114|st|pr|Rennes|ROMAIP|350|e;LPO|261013|261114|st|pr|Montpellier|ALEXAR|380|e;Greenpeace|261013|261114|st|pr|Caen|JEHSM|200|e;APF France handicap|261013|261121|st|pa|Paris|ANDREF|350|e;Croix-Rouge française|261019|261127|st|pa|||350|a;Croix-Rouge française|261020|261121|st|pr|Clermont-Ferrand||300|a;Croix-Rouge française|261020|261128|hy|pr|||180|a;Solidarités International|261020|261128|sp|pa|||0|a;Handicap International|261020|261121|st|pr|||350|a;Médecins sans frontières|261020|261121|sp|pr|||200|a;Croix-Rouge française|261026|261204|st|pa|Paris||350|a;Care France|261027|261128|st|pr|||300|a;Aides|261027|261204|st|it|||550|a;Fondation pour le Logement|261027|261128|st|sp|Nantes||0|a;Aides|261027|261219|hy|pr|||480|a;IFAW|261027|261205|st|pa|||350|a;Handicap International|261027|261128|st|pr|||380|a;Médecins sans frontières|261102|261211|st|pa|||350|a;Apprentis d'Auteuil|261103|261212|sp|pr|||200|a;Fondation Recherche Médicale|261103|261205|st|pr|||400|a;Croix-Rouge française|261103|261212|sp|pa|Paris||250|a;Petits Frères des Pauvres|261103|261205|st|pa|Paris||350|a;Handicap International|261110|261219|sp|pr|||240|a;CCFD-Terre Solidaire|261110|261219|st|pa|||350|a;APF France handicap|261110|261219|hy|pr|||180|a;Solidarités International|261110|261219|hy|pr|||180|a;SNSM|261110|261212|st|pr|||350|a;Fondation pour le Logement|261116|261225|st|pa|||350|a;Alima|261117|261219|st|pr|||380|a;Apprentis d'Auteuil|261117|261226|sp|pr|||200|a;Médecins sans frontières|261117|261219|sp|pr|||200|a;Action contre la Faim|261124|261226|sp|pr|||200|a;Aides|261124|261226|sp|pr|||200|a;Croix-Rouge française|261124|261226|sp|pr|Metz-Nancy||250|a;Sidaction|261124|261218|st|it|||350|a;Amnesty International|261124|261226|sp|pr|Clermont-Ferrand||200|a;APF France handicap|261201|270102|st|pr|||280|a;Solidarités International|261201|270109|sp|pr|Toulouse||250|a;CCFD-Terre Solidaire|261201|270109|sp|pa|Paris||0|a;Restos du Coeur|261201|270102|st|pr|||380|a;Aides|261207|270115|st|pa|Paris||350|a;IFAW|261208|270109|sp|pr|||200|a;WWF|261208|270109|st|pr|||350|a;Solidarités International|261208|270116|st|pa|Paris||350|a;Care France|261214|270122|st|pa|||350|a;La Chaîne de l'Espoir|261215|270123|st|pa|Paris||350|a;LPO|261215|270116|st|pr|Nice||300|a;UNHCR|261215|270123|sp|pa|Paris||250|a;Croix-Rouge française|261222|270130|st|pa|||350|a;Solidarités International|261222|270123|st|pr|||350|a";
+
+</script>
+<script>
+const $=(s,r=document)=>r.querySelector(s);
+const clamp=(x,a=0,b=100)=>Math.max(a,Math.min(b,x));
+const nf=n=>Math.round(n).toLocaleString('fr-FR');
+const pc=(x,d=0)=>x==null||isNaN(x)?'–':(x*100).toFixed(d).replace('.',',')+' %';
+const t3=x=>x==null||isNaN(x)?'–':x.toFixed(3).replace('.',',');
+const d1=x=>x==null||isNaN(x)?'–':x.toFixed(1).replace('.',',');
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const med=a=>{if(!a.length)return null;const b=[...a].sort((x,y)=>x-y),m=b.length>>1;return b.length%2?b[m]:(b[m-1]+b[m])/2};
+const pctl=(a,p)=>{const b=[...a].sort((x,y)=>x-y);return b.length?b[Math.min(b.length-1,Math.floor(p*b.length))]:0};
+const sd=a=>{const m=a.reduce((x,y)=>x+y,0)/a.length;return Math.sqrt(a.reduce((x,y)=>x+(y-m)*(y-m),0)/a.length)};
+const MN=['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
+const FTL={st:'Rue',sp:'Sites privés',hy:'Hybride'};
+const ZL={pr:'Province',pa:'Paris',ly:'Lyon',it:'Itinérante',do:'DOM-TOM',sp:'Spéciale'};
+const ftName=k=>{const a=k.split('|');return (FTL[a[0]]||a[0])+' · '+(ZL[a[1]]||a[1])};
+const RMN={ALEXAR:'Alexandre R.',AMYB:'Amy B.',ANDREF:'Andrea F.',BRANG:'Bran G.',JEHSM:'Jehs M.',ROMAIP:'Romain P.',STEVEL:'Steven L.',HILLAO:'Hillary O.',BENJAI:'Benjamin I.'};
+const dayN=s=>Date.UTC(2000+ +s.slice(0,2),+s.slice(2,4)-1,+s.slice(4,6))/864e5;
+const TODAY=dayN('261009');
+let PY=2027;try{if(localStorage.getItem('planning-year')==='2026')PY=2026}catch(e){}
+const YB=PY-1;
+const cv=v=>v==='La Reunion'?'La Réunion':v;
+
+/* ---------- données ---------- */
+const REC=[],MOREC=[],FUT=[];
+M25.split(';').concat(M26.split(';')).forEach(s=>{const a=s.split('|');
+  REC.push({cl:a[0],d0:dayN(a[1]),d1:dayN(a[2]),y:2000+ +a[1].slice(0,2),mo:+a[1].slice(2,4)-1,f:a[3],z:a[4],v:cv(a[5]),r:RMN[a[6]]||'?',recr:+a[7],hr:+a[8],bs:+a[9],obj:+a[10],lots:+a[11],pres:+a[12],st:a[13],n:1})});
+OLD.split(';').forEach(s=>{const a=s.split('|');REC.push({cl:a[0],y:2000+ +a[1],f:a[2],z:a[3],n:+a[4],hr:+a[5],bs:+a[6],obj:+a[7],lots:+a[8],pres:+a[9],recr:+a[10],old:1,mo:null,v:'',r:''})});
+OLDMO.split(';').forEach(s=>{const a=s.split('|');MOREC.push({y:2000+ +a[0],mo:+a[1]-1,n:+a[2],hr:+a[3],bs:+a[4],obj:+a[5]})});
+M26F.split(';').forEach(s=>{const a=s.split('|');FUT.push({cl:a[0],d0:dayN(a[1]),d1:dayN(a[2]),y:2026,mo:+a[1].slice(2,4)-1,f:a[3],z:a[4],v:cv(a[5]),r:RMN[a[6]]||'',obj:+a[7],fut:1})});
+const REALP=REC.filter(r=>!r.old&&r.y===PY),REALF=FUT.slice();
+if(PY<2027){for(let i=REC.length-1;i>=0;i--)if(REC[i].y>=PY)REC.splice(i,1);FUT.length=0;for(let i=MOREC.length-1;i>=0;i--)if(MOREC[i].y>=PY)MOREC.splice(i,1)}
+const MIS=REC.filter(r=>!r.old);
+const Yan={};for(const n in Y)Yan[n]=Y[n].split(';').filter(Boolean).map(r=>r.split(',').map(Number));
+const CN=[...new Set([...REC.map(r=>r.cl),...FUT.map(r=>r.cl)])].sort((a,b)=>a.localeCompare(b,'fr'));
+const CL={};CN.forEach(n=>CL[n]={name:n});
+
+/* ---------- simultanéité historique (missions démarrées 2025-2026) ---------- */
+const D0=dayN('250101'),D1=dayN('261231');
+function dayMap(key){const m={};MIS.forEach(r=>{const k=r[key];if(!k||k==='?')return;const a=m[k]||(m[k]=new Int16Array(D1-D0+1));for(let d=Math.max(r.d0,D0);d<=Math.min(r.d1,TODAY);d++)a[d-D0]++});return m}
+const DM={r:dayMap('r'),cl:dayMap('cl'),v:dayMap('v')};
+const rdDay=new Int16Array(D1-D0+1);MIS.forEach(r=>{for(let d=Math.max(r.d0,D0);d<=Math.min(r.d1,TODAY);d++)rdDay[d-D0]+=r.recr});
+const HIST={rdPeak:Math.max(...rdDay),rdP90:pctl([...rdDay].filter(x=>x>0),.9)};
+MIS.forEach(r=>{['r','cl','v'].forEach(key=>{const a=DM[key][r[key]];if(!a){r['c'+key]=null;return}let s=0,n=0;for(let d=Math.max(r.d0,D0);d<=Math.min(r.d1,TODAY);d++){s+=a[d-D0];n++}r['c'+key]=n?s/n:null})});
+function p90of(a){const v=[...a].filter(x=>x>0);return v.length?pctl(v,.9):0}
+(()=>{const W={};MIS.forEach(r=>{const k=Math.floor((r.d0-dayN('250106'))/7);W[k]=(W[k]||0)+1});HIST.wkMax=Math.max(...Object.values(W));HIST.wkP90=pctl(Object.values(W),.9)})();
+const CAP={r:{},cl:{},v:{}};
+for(const key in CAP)for(const k in DM[key]){const p=p90of(DM[key][k]);CAP[key][k]=Math.max(key==='r'?3:2,Math.ceil(p))}
+
+/* ---------- réglages ---------- */
+const BASE26=(()=>{const a=Array(12).fill(0);MIS.filter(r=>r.y===YB).concat(YB===2026?FUT:[]).forEach(r=>a[r.mo]++);return a})();
+const DEF={yw:{2022:.25,2023:.5,2024:1,2025:2,2026:3},hk:1500,w:{taux:30,att:15,pres:10,trend:10,vol:20,fiab:15},tmin:.30,tmax:.46,
+  mult:100,sens:0,att:1,dmp:50,maxWk:Math.ceil(HIST.wkMax*1.1),cap:BASE26.map(x=>Math.ceil(x*1.15)),flatMarg:1.12,maxW:2,capCl:100,capRM:100,capVl:100,capRD:105,
+  resp:{'Alexandre R.':true,'Amy B.':true,'Andrea F.':true,'Bran G.':true,'Jehs M.':true,'Romain P.':true,'Steven L.':true,'Hillary O.':false,'Benjamin I.':false},
+  sc:{ref:{early:0,perf:1,smooth:.5,adj:.5,rm:1,city:.3,bal:.3,capm:1.15,rdm:1},
+      vit:{early:4,perf:.3,smooth:.1,adj:.2,rm:1,city:.2,bal:.2,capm:1.4,rdm:1.25},
+      mis:{early:0,perf:1.5,smooth:.4,adj:.5,rm:1.2,city:.3,bal:.3,capm:1.15,rdm:1},
+      rd:{early:0,perf:2,smooth:.3,adj:.4,rm:2,city:.3,bal:.2,capm:1.15,rdm:1},
+      lis:{early:0,perf:.3,smooth:4,adj:1,rm:1,city:.3,bal:.5,capm:1.15,rdm:1},
+      vil:{early:0,perf:.5,smooth:.4,adj:.4,rm:1,city:3,bal:.3,capm:1.15,rdm:1},
+      egal:{early:0,perf:1,smooth:.5,adj:.5,rm:1,city:.3,bal:0,capm:1.15,rdm:1},
+      opt:{early:0,perf:3,smooth:.1,adj:.2,rm:3,city:.3,bal:0,capm:1.5,rdm:1,vf:3}},
+  sel:'vit',semDef:50};
+const SCD=[
+ {id:'ref',name:'Référence : engagement 2026 identique',short:'Référence',eng:'ref',team:'ref',flat:0,desc:'Même nombre de missions que 2026 par association, mêmes équipes, placées selon les meilleurs mois.'},
+ {id:'vit',name:'Atteindre les objectifs le plus vite',short:'Objectifs au plus vite',eng:'ref',team:'max',flat:0,desc:'Mêmes missions, équipes au maximum de l\'historique du client, démarrages avancés dans l\'année.'},
+ {id:'mis',name:'Réduire le nombre de missions',short:'Moins de missions',eng:'merge',team:'fit',flat:0,desc:'Missions les plus rentables conservées et regroupées (objectif relevé jusqu\'au maximum déjà vu chez le client), équipe juste dimensionnée.'},
+ {id:'rd',name:'Réduire le nombre de RD',short:'Moins de RD',eng:'realloc',team:'fitcap',flat:0,desc:'Associations les plus productives par RD favorisées (± 50 %), équipe au minimum qui atteint l\'objectif sans dépasser l\'équipe historique, meilleurs mois et responsables.'},
+ {id:'lis',name:'Lisser les démarrages',short:'Démarrages lissés',eng:'ref',team:'ref',flat:1,desc:'Mêmes missions, démarrages répartis le plus régulièrement possible sur 52 semaines.'},
+ {id:'vil',name:'Globaliser les villes de démarrage',short:'Villes regroupées',eng:'ref',team:'ref',flat:0,desc:'Mêmes missions, départs synchronisés dans un nombre réduit de villes (villes pôles), dans la limite de la simultanéité historique par ville.'},
+ {id:'egal',name:'Répartition égale entre responsables',short:'RM à parts égales',eng:'ref',team:'ref',flat:0,equal:1,desc:'Mêmes missions et équipes, chaque responsable actif reçoit le même nombre de missions (à une près), dans la limite de ses plafonds de simultanéité.'},
+ {id:'opt',name:'Optimisation maximale',short:'Optimum',eng:'best',team:'fit',flat:0,desc:'Chaque mission va à la meilleure association du client (format et zone), au meilleur mois, dans la meilleure ville, avec le meilleur responsable, et l\'équipe la plus petite qui atteint l\'objectif. Les plafonds restent respectés.'}];
+const SCP=[['early','Avance (démarrer tôt)'],['perf','Poids du mois favorable'],['smooth','Lissage des démarrages'],['adj','Écart entre missions d\'un client'],['rm','Poids de la performance du responsable'],['bal','Équilibrage entre responsables'],['city','Regroupement des villes'],['capm','Capacité mensuelle (× base 1,15)'],['rdm','Plafond de recruteurs en rue (× base)'],['vf','Poids de la performance de la ville (0 = automatique)'],['sem','Poids du critère % de dons par semestre']];
+const clone=o=>JSON.parse(JSON.stringify(o));
+let S=clone(DEF),CS={};
+for(const id in DEF.sc)DEF.sc[id].sem=id==='vit'?.25:1;
+const KEY='planning'+PY+'-v2';
+try{const raw=localStorage.getItem(KEY);if(raw){const o=JSON.parse(raw);if(o&&o.S&&o.CS){S=Object.assign(clone(DEF),o.S);for(const id in DEF.sc)S.sc[id]=Object.assign({},DEF.sc[id],(o.S.sc||{})[id]);CS=o.CS}}}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify({S,CS}))}catch(e){}}
+const yw=y=>S.yw[y]!=null?+S.yw[y]:.2;
+const eng26=c=>{const e={};MIS.filter(r=>r.cl===c&&r.y===YB).concat(YB===2026?FUT.filter(r=>r.cl===c):[]).forEach(r=>{const k=r.f+'|'+r.z;e[k]=(e[k]||0)+1});return e};
+const semT=c=>{const v=CS[c]?CS[c].sem:'';return clamp(v===''||v==null?S.semDef:+v,0,100)/100};
+function cs(name){if(!CS[name])CS[name]={sem:'',eng:eng26(name),mult:100,ex:[],pref:[],exR:[],impR:'',maxW:'',bonus:0,tmax:''};return CS[name]}
+CN.forEach(cs);
+
+/* ---------- agrégats pondérés ---------- */
+function ag(fn){const a={n:0,wn:0,hr:0,bs:0,o:0,bsO:0,lots:0,pres:0,recr:0};
+  for(const r of REC){if(!fn(r))continue;const w=yw(r.y);a.n+=r.n;a.wn+=w*r.n;a.hr+=w*r.hr;a.bs+=w*r.bs;if(r.obj>0&&r.st!=='e'){a.o+=w*r.obj;a.bsO+=w*r.bs}a.lots+=w*r.lots;a.pres+=w*r.pres;a.recr+=w*r.recr}
+  return a}
+function raw(fn){const a={n:0,hr:0,bs:0,o:0,bsO:0,lots:0,pres:0,recr:0};
+  for(const r of REC){if(!fn(r))continue;a.n+=r.n;a.hr+=r.hr;a.bs+=r.bs;if(r.obj>0&&r.st!=='e'){a.o+=r.obj;a.bsO+=r.bs}a.lots+=r.lots;a.pres+=r.pres;a.recr+=r.recr}
+  return a}
+const tx=a=>a.hr?a.bs/a.hr:null;
+let G,Gt,Gp,Gatt,Ghpl,Glpr,MF,RF,VF,TF,PF,RMS,HUBS,CITYN;
+const band=T=>T<=5?0:T<=8?1:T<=11?2:T<=15?3:4;
+const BANDL=['≤ 5','6-8','9-11','12-15','16+'];
+const pband=c=>c<2.5?0:c<3.5?1:c<4.5?2:3;
+const PBL=['≤ 2','3','4','5 et +'];
+function shr(a,prior,K){return (a.bs+K*prior)/(a.hr+K)}
+function prep(){
+  const K=S.hk;
+  G=ag(()=>true);Gt=G.bs/G.hr;Gp=G.pres/G.lots;Gatt=G.bsO/G.o;Ghpl=G.hr/G.pres;Glpr=G.lots/G.recr;
+  MF=[];for(let m=0;m<12;m++){const a={hr:0,bs:0};MIS.forEach(r=>{if(r.mo===m){const w=yw(r.y);a.hr+=w*r.hr;a.bs+=w*r.bs}});MOREC.forEach(r=>{if(r.mo===m){const w=yw(r.y);a.hr+=w*r.hr;a.bs+=w*r.bs}});MF[m]=clamp(shr(a,Gt,K)/Gt*100,70,135)/100}
+  RMS=[...new Set(MIS.map(r=>r.r).filter(r=>r&&r!=='?'))];
+  RF={};RMS.forEach(r=>{RF[r]=clamp(shr(ag(x=>!x.old&&x.r===r),Gt,K)/Gt*100,80,125)/100});
+  CITYN={};MIS.forEach(r=>{if(r.v)CITYN[r.v]=(CITYN[r.v]||0)+1});
+  VF={};for(const v in CITYN)VF[v]=clamp(shr(ag(x=>!x.old&&x.v===v),Gt,K*.7)/Gt*100,80,125)/100;
+  HUBS=Object.entries(CITYN).filter(([v,n])=>v!=='Paris'&&v!=='Lyon'&&v!=='La Réunion'&&n>=4).sort((a,b)=>b[1]-a[1]).slice(0,12).map(x=>x[0]);
+  TF=[0,1,2,3,4].map(b=>clamp(shr(ag(x=>!x.old&&band(x.recr)===b),Gt,K)/Gt*100,80,125)/100);
+  PF=[0,1,2,3].map(b=>clamp(shr(ag(x=>!x.old&&x.cr!=null&&pband(x.cr)===b),Gt,K)/Gt*100,80,125)/100);
+  CN.forEach(n=>scoreClient(CL[n]));
+}
+function pfOf(peak){return PF[pband(Math.max(1,peak))]}
+function scoreClient(c){
+  const n=c.name,a=ag(r=>r.cl===n),W=S.w;c.a=a;
+  c.rawA=raw(r=>r.cl===n);
+  c.t=a.hr?shr(a,Gt,S.hk):Gt;c.pres=(a.pres+30*Gp)/(a.lots+30);c.att=(a.bsO+600*Gatt)/(a.o+600);
+  c.hpl=(a.hr+20*Ghpl)/(a.pres+20);c.lpr=(a.lots+10*Glpr)/(a.recr+10);
+  const rc=MIS.filter(r=>r.cl===n),n26=Object.values(cs(n).eng).reduce((x,y)=>x+y,0);
+  c.n26=n26;c.active=rc.some(r=>r.y===YB)||(YB===2026&&FUT.some(r=>r.cl===n));
+  c.at={};const keys=new Set([...Object.keys(cs(n).eng),...REC.filter(r=>r.cl===n).map(r=>r.f+'|'+r.z)]);
+  keys.forEach(k=>{const [f,z]=k.split('|');c.at[k]=shr(ag(r=>r.cl===n&&r.f===f&&r.z===z),c.t,S.hk)});
+  c.nk={};keys.forEach(k=>{const [f,z]=k.split('|');c.nk[k]=REC.filter(r=>r.cl===n&&r.f===f&&r.z===z&&r.y>=2025).reduce((x,r)=>x+r.n,0)});
+  c.cmf=[];for(let m=0;m<12;m++){const am=ag(r=>!r.old&&r.cl===n&&r.mo===m);c.cmf[m]=clamp(shr(am,c.t*MF[m],S.hk)/c.t*100,75,130)/100}
+  c.rmf={};RMS.forEach(r=>{const x=ag(q=>!q.old&&q.cl===n&&q.r===r);c.rmf[r]={n:x.n,t:x.hr?x.bs/x.hr:null,f:clamp(shr(x,c.t*RF[r],S.hk)/(c.t*RF[r])*100,85,120)/100*RF[r]}});
+  const rec=rc.filter(r=>r.y>=2025),recs=rec.map(r=>r.recr);
+  c.Tavg=recs.length?recs.reduce((x,y)=>x+y,0)/recs.length:8;c.Tmax=recs.length?Math.max(...recs):10;c.Tmin=Math.max(2,Math.round(c.Tavg*.5));
+  c.Tk={};keys.forEach(k=>{const [f,z]=k.split('|');const q=rec.filter(r=>r.f===f&&r.z===z);c.Tk[k]=q.length>=2?q.reduce((x,r)=>x+r.recr,0)/q.length:c.Tavg});
+  const ob=rec.map(r=>r.obj).filter(x=>x>0).concat(FUT.filter(r=>r.cl===n&&r.obj>0).map(r=>r.obj));
+  c.oa=ob.length?ob.reduce((x,y)=>x+y,0)/ob.length:300;c.objMax=ob.length?Math.max(...ob):300;
+  c.ok={};keys.forEach(k=>{const [f,z]=k.split('|');const q=rec.map(r=>r).filter(r=>r.f===f&&r.z===z&&r.obj>0).map(r=>r.obj).concat(FUT.filter(r=>r.cl===n&&r.f===f&&r.z===z&&r.obj>0).map(r=>r.obj));c.ok[k]=q.length>=2?q.reduce((x,y)=>x+y,0)/q.length:c.oa});
+  c.dur={};keys.forEach(k=>{const [f,z]=k.split('|');const q=rc.filter(r=>r.f===f&&r.z===z).map(r=>r.d1-r.d0+1);c.dur[k]=q.length?Math.ceil(med(q)/7):(f==='hy'?6:5)});
+  c.vl={};rc.concat(FUT.filter(r=>r.cl===n)).forEach(r=>{if(r.v)c.vl[r.v]=(c.vl[r.v]||0)+1});
+  c.cCl=med(rc.map(r=>r.ccl).filter(x=>x!=null))||1;
+  const tOld=raw(r=>r.cl===n&&r.y<=2024),tNew=raw(r=>r.cl===n&&r.y>=2025);
+  c.trendR=(tOld.hr>=1500&&tNew.hr>=1500)?(tNew.bs/tNew.hr)/(tOld.bs/tOld.hr):null;
+  const ycount0=y=>REC.filter(r=>r.cl===n&&r.y===y).reduce((x,r)=>x+r.n,0)+(y===2026?FUT.filter(r=>r.cl===n).length:0);
+  const ycount=y=>y>=PY?0:ycount0(y);const x=(ycount(PY-3)+ycount(PY-2)+ycount(PY-1))/3,a25=ycount(PY-2),a26=ycount(PY-1);
+  c.s={taux:clamp(50+(c.t/Gt-1)*200),att:clamp(50+(c.att/Gatt-1)*200),pres:clamp(50+(c.pres/Gp-1)*400),
+    trend:c.trendR==null?50:clamp(50+(c.trendR-1)*150),
+    vol:clamp(100*Math.log(1+x)/Math.log(31)+15*clamp((a26-a25)/Math.max(a25,1),-1,1)),fiab:100};
+  const ya=(Yan[n]||[]).filter(r=>r[0]>=2023),an=ya.reduce((s,r)=>s+r[5],0),nn=ya.reduce((s,r)=>s+r[1],0);
+  c.cancel=an/Math.max(an+nn,1);c.s.fiab=clamp(100-c.cancel*400);
+  const ws=W.taux+W.att+W.pres+W.trend+W.vol+W.fiab||1;
+  c.note=(c.s.taux*W.taux+c.s.att*W.att+c.s.pres*W.pres+c.s.trend*W.trend+c.s.vol*W.vol+c.s.fiab*W.fiab)/ws;
+  c.nm=rc.length+REC.filter(r=>r.old&&r.cl===n).reduce((x,r)=>x+r.n,0);
+  c.conf=c.rawA.n>=12?'élevée':c.rawA.n>=5?'moyenne':'faible';
+  c.grade=c.note>=70?'A':c.note>=55?'B':c.note>=40?'C':'D';
+}
+const GL={A:'À renforcer',B:'Solide',C:'À surveiller',D:'À risque'};
+function reco(c){
+  if(!c.active)return 'Inactif en 2026 : décider d\'une relance ou d\'un arrêt.';
+  if(c.conf==='faible')return 'Peu de recul : conserver l\'engagement et réévaluer après 5 missions terminées.';
+  return {A:'Renforcer : un engagement supérieur de 10 à 20 % est défendable.',B:'Maintenir l\'engagement, privilégier les meilleurs mois et responsables.',C:'Maintenir avec des critères plus stricts (mois, responsables, équipe).',D:'Réduire d\'environ 20 % ou conditionner l\'engagement à un redressement.'}[c.grade]}
+function commentary(c){
+  const o=[];
+  o.push('Taux réel pondéré '+t3(c.t)+' (global '+t3(Gt)+'), présence '+pc(c.pres,1)+', atteinte moyenne de l\'objectif '+pc(c.att)+'.');
+  const ms=[...Array(12).keys()].map(m=>({m,f:c.cmf[m]})).sort((a,b)=>b.f-a.f);
+  o.push('Mois les plus favorables : '+ms.slice(0,2).map(x=>MN[x.m]+' ('+(x.f>=1?'+':'')+Math.round((x.f-1)*100)+' %)').join(', ')+' ; plus faible : '+MN[ms[11].m]+' ('+Math.round((ms[11].f-1)*100)+' %).');
+  const rs=Object.entries(c.rmf).filter(([r,v])=>v.n>=3).sort((a,b)=>b[1].t-a[1].t);
+  if(rs.length>=2)o.push('Responsable le plus performant : '+rs[0][0]+' ('+t3(rs[0][1].t)+', '+rs[0][1].n+' missions) ; le moins : '+rs[rs.length-1][0]+' ('+t3(rs[rs.length-1][1].t)+').');
+  const ks=Object.keys(c.at).filter(k=>c.nk[k]>=2).sort((a,b)=>c.at[b]-c.at[a]);
+  if(ks.length>=2)o.push('Association la plus rentable : '+ftName(ks[0])+' ('+t3(c.at[ks[0]])+') ; la moins : '+ftName(ks[ks.length-1])+' ('+t3(c.at[ks[ks.length-1]])+').');
+  o.push('Équipe type '+d1(c.Tavg)+' recruteurs (max '+c.Tmax+'), '+d1(c.lpr)+' jours par recruteur, '+d1(c.hpl)+' h de rue par jour présent. Simultanéité : '+d1(c.cCl)+' missions du client en parallèle en moyenne.');
+  if(c.trendR!=null)o.push('Taux réel 2025-26 contre 2022-24 : '+(c.trendR>=1?'+':'')+((c.trendR-1)*100).toFixed(0)+' %.');
+  if(c.cancel>=.08)o.push('Annulations élevées : '+pc(c.cancel)+' des missions prévues depuis 2023.');
+  return o}
+
+/* ---------- moteur de planning ---------- */
+const NW=52,SZ=70;
+const wdate=i=>new Date(Date.UTC(PY,0,1+(2-new Date(Date.UTC(PY,0,1)).getUTCDay()+7)%7+7*i));
+const wmonth=i=>wdate(i).getUTCMonth();
+const dm=f=>1+(f-1)*S.dmp/100;
+const bpr=(c,k,m,r,v,T,par)=>{const C=CL[c];
+  const rate=C.at[k]*dm(C.cmf[m]||1)*(r?dm(C.rmf[r]?C.rmf[r].f:(RF[r]||1)):1)*(v&&VF[v]?dm(VF[v]):1)*dm(pfOf(par||1))*dm(TF[band(T)]);
+  return rate*C.hpl*C.lpr*C.pres};
+function teamFor(sc,c,k,obj,m,r,v,par){const C=CL[c],s=cs(c);
+  const tmax=s.tmax!==''?+s.tmax:C.Tmax;
+  if(sc.team==='ref')return clamp(Math.round(C.Tk[k]||C.Tavg),2,40);
+  if(sc.team==='max')return tmax;
+  const tcap=Math.max(Math.ceil(tmax*1.2),C.Tmin);let fit=tcap;
+  for(let T=C.Tmin;T<=tcap;T++)if(T*bpr(c,k,m,r,v,T,par)>=obj*S.att){fit=T;break}
+  if(sc.team==='fitcap')return Math.min(fit,clamp(Math.round(C.Tk[k]||C.Tavg),2,40));
+  return fit}
+function demand(sc){const out=[];
+  for(const c of CN){const C=CL[c],s=cs(c);
+    const m=S.mult/100*(s.mult/100)*(1+S.sens/100*(C.note-55)/45);
+    let items=[];for(const k in s.eng){const n=Math.round(s.eng[k]*m);for(let i=0;i<n;i++)items.push({c,k,obj:Math.round((C.ok[k]||C.oa)/10)*10})}
+    if(!items.length)continue;
+    if(sc.eng==='merge'&&items.length>1){const B=items.reduce((x,i)=>x+i.obj,0),n2=Math.max(1,Math.ceil(B/Math.max(C.objMax,1)));
+      if(n2<items.length){items.sort((a,b)=>C.at[b.k]-C.at[a.k]);items=items.slice(0,n2);const o=Math.round(B/n2/10)*10;items.forEach(i=>i.obj=o)}}
+    else if(sc.eng==='best'){const ks=Object.keys(C.at).filter(k=>C.nk[k]>=2).sort((a,b)=>C.at[b]-C.at[a]);
+      if(ks.length){const k=ks[0];items.forEach(i=>{i.k=k})}}
+    else if(sc.eng==='realloc'&&items.length>1){const cnt={};items.forEach(i=>cnt[i.k]=(cnt[i.k]||0)+1);
+      const ks=Object.keys(cnt).sort((a,b)=>C.at[b]-C.at[a]),lo={},hi={};let left=items.length;
+      ks.forEach(k=>{lo[k]=Math.floor(cnt[k]*.5);hi[k]=C.nk[k]>=2?Math.ceil(cnt[k]*1.5):cnt[k];left-=lo[k]});
+      const res={...lo};for(const k of ks){const add=Math.min(left,hi[k]-lo[k]);res[k]+=add;left-=add}
+      for(const k of [...ks].reverse()){if(left<=0)break;const add=Math.min(left,hi[k]-res[k]);if(add>0){res[k]+=add;left-=add}}
+      items=[];ks.forEach(k=>{for(let i=0;i<res[k];i++)items.push({c,k,obj:Math.round((C.ok[k]||C.oa)/10)*10})})}
+    items.forEach(i=>out.push(i))}
+  return out}
+const mx=(a,i,n)=>{let m=0;for(let j=i;j<i+n;j++)if(a[j]>m)m=a[j];return m};
+function plan(sc){
+  const dem=demand(sc),N=dem.length;
+  const capM=sc.flat?Array(12).fill(Math.ceil(N/12*S.flatMarg)):S.cap.map(x=>Math.ceil(x*sc.capm/1.15));
+  const tot=capM.reduce((a,b)=>a+b,0);if(tot<N*1.05){const f=N*1.05/tot;for(let i=0;i<12;i++)capM[i]=Math.ceil(capM[i]*f)}
+  const st=Array(SZ).fill(0),pst=Array(SZ).fill(0),mL=Array(12).fill(0),rdL=Array(SZ).fill(0);
+  const rms=Object.keys(S.resp).filter(r=>S.resp[r]),rmL={},clL={},vlL={},vSt={},rmTot={},use={};
+  rms.forEach(r=>{rmL[r]=Array(SZ).fill(0);rmTot[r]=0});
+  const capRD=Math.ceil(HIST.rdPeak*S.capRD/100*(sc.rdm||1)),avgSt=N/NW;
+  const PLm=[],flags={cap:0,cl:0,rm:0,vl:0,rd:0};
+  const order=[...new Set(dem.map(d=>d.c))].sort((a,b)=>(CL[b].note+cs(b).bonus)-(CL[a].note+cs(a).bonus));
+  const Q={};order.forEach(c=>Q[c]=dem.filter(d=>d.c===c));
+  const starts={},Bc={},acc={};order.forEach(c=>{Bc[c]=Q[c].reduce((x,i)=>x+i.obj,0);acc[c]=[0,0]});
+  let guard=0;
+  while(order.some(c=>Q[c].length)&&guard++<2000)for(const c of order){if(!Q[c].length)continue;
+    const it=Q[c].shift(),C=CL[c],s=cs(c),[f,z]=it.k.split('|'),dur=C.dur[it.k]||(f==='hy'?6:5);
+    const maxW=s.maxW===''?S.maxW:+s.maxW,capCl=Math.max(1,Math.round((CAP.cl[c]||2)*S.capCl/100));
+    const T0=teamFor(sc,c,it.k,it.obj,null,null,null,1);
+    starts[c]=starts[c]||[];clL[c]=clL[c]||Array(SZ).fill(0);
+    const sT=semT(c);let best=null,relax=0;
+    for(relax=0;relax<3&&!best;relax++)for(let w=0;w<NW;w++){const m=wmonth(w);
+      if(s.ex.includes(m+1))continue;
+      if(relax<2&&mL[m]>=capM[m])continue;
+      if(relax<2&&st[w]>=S.maxWk)continue;
+      if(starts[c].filter(x=>x===w).length>=maxW)continue;
+      const cl=mx(clL[c],w,dur);if(relax<1&&cl>=capCl)continue;
+      const rdp=mx(rdL,w,dur),adj=starts[c].filter(x=>Math.abs(x-w)<=1).length;
+      let sco=sc.perf*(C.cmf[m]-1)*4+(s.pref.includes(m+1)?.4:0)
+        -sc.smooth*((st[w]+.5*((st[w-1]||0)+(st[w+1]||0)))/avgSt)-sc.early*(w/51)*1-sc.adj*adj
+        -.5*mL[m]/Math.max(capM[m],1)-1.2*rdp/capRD-(rdp+T0>capRD?3:0)-(sc.team==='max'?2*Math.max(0,(T0-(capRD-rdp))/T0):0)-(cl>=capCl?3:0)
+        +(z==='pr'?sc.city*Math.min(1,pst[w]/3)*.8:0)+(((CN.indexOf(c)*7+w*13)%17)/17)*.02;
+      {const q=m<6?0:1,tg=(q?1-sT:sT)*Bc[c],ac=acc[c][q];sco+=(sc.sem==null?1:sc.sem)*(1.5*Math.min(1,Math.max(0,tg-ac)/it.obj)-3*Math.min(1,Math.max(0,ac+.5*it.obj-tg)/it.obj))}
+      if(!best||sco>best.sco)best={sco,w,cl}}
+    if(!best)best={w:0,sco:0,cl:0};
+    const w=best.w,m=wmonth(w);if(mL[m]>=capM[m])flags.cap++;if(best.cl>=capCl)flags.cl++;
+    /* responsable */
+    let cands=rms.filter(r=>!s.exR.includes(r));if(s.impR&&rms.includes(s.impR))cands=[s.impR];if(!cands.length)cands=rms.slice();
+    if(sc.equal&&!s.impR){const mn=Math.min(...cands.map(r=>rmTot[r]));const c2=cands.filter(r=>rmTot[r]<=mn);if(c2.length)cands=c2}
+    const avg=rms.reduce((x,r)=>x+rmTot[r],0)/Math.max(rms.length,1);let rb=null;
+    for(const r of cands){const peak=mx(rmL[r],w,dur),cap=Math.max(1,Math.round((CAP.r[r]||4)*S.capRM/100)),rf=C.rmf[r]?C.rmf[r].f:(RF[r]||1);
+      const sco=sc.rm*(rf-1)*4+(C.rmf[r]&&C.rmf[r].n>=3?.2:0)-sc.bal*(rmTot[r]-avg)/Math.max(avg,1)-(peak>=cap?4:0)-peak*.05+(pfOf(peak+1)-1)*3;
+      if(!rb||sco>rb.sco)rb={sco,r,peak,cap}}
+    const r=rb?rb.r:'À affecter';if(rb){if(rb.peak>=rb.cap)flags.rm++;rmTot[r]++}
+    /* ville */
+    let v,vs='hist';
+    if(z==='pa')v='Paris';else if(z==='ly')v='Lyon';else if(z==='it')v='Itinérante';else if(z==='sp'){v='À définir';vs='tbd'}
+    else{use[c]=use[c]||{};
+      let pool=Object.entries(C.vl).filter(([x])=>z==='do'?DOMV.has(x):!DOMV.has(x)&&x!=='Paris'&&x!=='Lyon').map(([x,n])=>({v:x,src:'hist',b:.3}));
+      if(z==='do'){if(!pool.length)pool=[{v:'La Réunion',src:'tbd',b:0}]}
+      else{if(sc.vf>1)Object.keys(CITYN).filter(x=>CITYN[x]>=4&&!DOMV.has(x)&&x!=='Paris'&&x!=='Lyon'&&!pool.some(p=>p.v===x)).forEach(x=>pool.push({v:x,src:'sugg',b:0}));
+      HUBS.slice(0,sc.city>1?11:12).forEach(h=>{const q=pool.find(p=>p.v===h);if(q)q.b+=sc.city>1?.9:0;else pool.push({v:h,src:'sugg',b:sc.city>1?.9:0})})}
+      pool.forEach(p=>{const peak=vlL[p.v]?mx(vlL[p.v],w,dur):0,cap=Math.max(1,Math.round((CAP.v[p.v]||2)*S.capVl/100));
+        p.peak=peak;p.cap=cap;
+        p.sc=((VF[p.v]||1)-1)*4*(sc.vf||(sc.perf>=1?1:.5))+p.b+(vSt[p.v]&&vSt[p.v][w]?sc.city*1.2:0)+(vlL[p.v]&&peak>0?sc.city*.3:0)-(peak>=cap?5:0)-.6*(use[c][p.v]||0)-(p.src==='sugg'?.15:0)});
+      pool.sort((a,b)=>b.sc-a.sc);const p=pool[0];v=p.v;vs=p.src;if(p.peak>=p.cap)flags.vl++;use[c][v]=(use[c][v]||0)+1}
+    /* équipe définitive et attendu */
+    const par=rb?rb.peak+1:1,rr=rb?r:null;
+    const tmaxC=s.tmax!==''?+s.tmax:C.Tmax,T=sc.team==='max'?clamp(capRD-mx(rdL,w,dur),C.Tmin,tmaxC):teamFor(sc,c,it.k,it.obj,m,rr,v,par),E=T*bpr(c,it.k,m,rr,v,T,par);
+    for(let j=w;j<w+dur;j++){rdL[j]+=T;clL[c][j]++;if(rb)rmL[r][j]++;vlL[v]=vlL[v]||Array(SZ).fill(0);vlL[v][j]++}
+    if(mx(rdL,w,dur)>capRD)flags.rd++;
+    acc[c][m<6?0:1]+=it.obj;st[w]++;mL[m]++;starts[c].push(w);if(z==='pr')pst[w]++;
+    vSt[v]=vSt[v]||{};vSt[v][w]=(vSt[v][w]||0)+1;
+    const hours=T*C.lpr*C.pres*C.hpl;
+    PLm.push({c,k:it.k,f,z,v,vs,r,T,obj:it.obj,E,hours,att:E/it.obj,rate:E/hours,w,m,dur,d:wdate(w),par,note:C.note,grade:C.grade,cl:best.cl})}
+  PLm.sort((a,b)=>a.w-b.w||a.c.localeCompare(b.c));
+  return{id:sc.id,P:PLm,st,mL,capM,rdL,capRD,flags,rmTot,rms,N}
+}
+const DOMV=new Set(['Saint-Pierre','Le Port','La Réunion']);
+let RES={},REFB={};
+function kpis(R){const P=R.P,n=P.length,T=P.reduce((x,p)=>x+p.T,0),E=P.reduce((x,p)=>x+p.E,0),O=P.reduce((x,p)=>x+p.obj,0),H=P.reduce((x,p)=>x+p.hours,0);
+  const cum={};const wk=Array(NW+12).fill(0);
+  P.forEach(p=>{cum[p.c]=cum[p.c]||Array(NW+12).fill(0);for(let j=p.w;j<p.w+p.dur;j++)cum[p.c][j]+=p.E/p.dur});
+  let tt=0;const reach=[];const curve=Array(NW+12).fill(0);let tgtTot=0;
+  for(const c in cum){const B=REFB[c]||0;tgtTot+=B;let s=0,hit=null;cum[c].forEach((x,j)=>{s+=x;curve[j]+=Math.min(s,B);if(hit==null&&B>0&&s>=B*.999)hit=j+1});reach.push(hit==null?NW+12:hit)}
+  let cs2=0;const cv2=curve.map((x,j)=>x/Math.max(tgtTot,1));
+  const cities=new Set(P.filter(p=>p.z==='pr').map(p=>p.v)),open=new Set(P.filter(p=>p.z==='pr').map(p=>p.v+'|'+p.w));
+  const prov=P.filter(p=>p.z==='pr');
+  const rdw=R.rdL.slice(0,NW+8);
+  const rmpk=Math.max(0,...R.rms.map(r=>Math.max(...R.P.length?[0]:[0])));
+  const sem={},cn2={};P.forEach(p=>{const q=p.m<6?0:1;sem[p.c]=sem[p.c]||[0,0];sem[p.c][q]+=p.E;cn2[p.c]=(cn2[p.c]||0)+1});
+  let sdv=0,nsd=0,sok=0;for(const c in sem){if(cn2[c]<2)continue;const tt2=sem[c][0]+sem[c][1];if(!tt2)continue;const dv=Math.abs(sem[c][0]/tt2-semT(c))*100;sdv+=dv;nsd++;if(dv<=10)sok++}
+  return{semDev:nsd?sdv/nsd:0,semOk:nsd?sok/nsd:1,n,T,Tavg:T/n,E,O,H,rate:E/H,att:E/O,cov:P.filter(p=>p.E>=p.obj*.98).length/n,
+    sdW:sd(R.st.slice(0,NW)),maxW:Math.max(...R.st.slice(0,NW)),sdM:sd(R.mL),
+    rdPeak:Math.max(...rdw),rdAvg:rdw.reduce((x,y)=>x+y,0)/NW,
+    reachMed:med(reach),reach26:reach.filter(x=>x<=26).length/Math.max(reach.length,1),curve:cv2,
+    cities:cities.size,open:open.size,perOpen:prov.length/Math.max(open.size,1),prov:prov.length,
+    flags:R.flags,tgt:tgtTot,rmSpread:(()=>{const v=R.rms.filter(r=>R.rmTot[r]>0||true).map(r=>R.rmTot[r]);return Math.max(...v)-Math.min(...v)})(),rmMax:Math.max(...R.rms.map(r=>R.rmTot[r]))}}
+function generate(){
+  prep();
+  const o={};SCD.forEach(sc=>{o[sc.id]=Object.assign({},sc,S.sc[sc.id])});
+  RES={};REFB={};
+  RES.ref=plan(o.ref);RES.ref.P.forEach(p=>REFB[p.c]=(REFB[p.c]||0)+p.obj);
+  SCD.slice(1).forEach(sc=>RES[sc.id]=plan(o[sc.id]));
+  SCD.forEach(sc=>{RES[sc.id].K=kpis(RES[sc.id])});
+}
+
+/* ---------- rendu : outils ---------- */
+function heat(v,base,span=.35){if(v==null||!base)return '';const d=v/base-1,p=Math.min(55,Math.abs(d)/span*55);return 'background:color-mix(in srgb,var('+(d>=0?'--good':'--bad')+') '+p.toFixed(0)+'%,var(--surf))'}
+const tw=h=>'<div class="tw">'+h+'</div>';
+function dimT(lab,items,pred,years,src){
+  let h='<table class="hm"><thead><tr><th class="l">'+lab+'</th>'+years.map(y=>'<th>'+y+(y===2026?'*':'')+'</th>').join('')+'<th>Total</th></tr></thead><tbody>';
+  items.forEach(([id,name])=>{const cell=a=>a.hr?'<td style="'+heat(a.bs/a.hr,Gt)+'">'+t3(a.bs/a.hr)+'<br><span class="note">'+a.n+'</span></td>':'<td class="note">·</td>';
+    const row=y=>{const a={n:0,hr:0,bs:0};if(src==='mo'){MIS.concat(MOREC).forEach(r=>{if(r.y===y&&pred(r,id)){a.n+=r.n||1;a.hr+=r.hr;a.bs+=r.bs}})}else REC.forEach(r=>{if(r.y===y&&pred(r,id)){a.n+=r.n;a.hr+=r.hr;a.bs+=r.bs}});return a};
+    const ra=years.map(row),tt=ra.reduce((p,q)=>({n:p.n+q.n,hr:p.hr+q.hr,bs:p.bs+q.bs}),{n:0,hr:0,bs:0});
+    h+='<tr><td class="l">'+esc(name)+'</td>'+ra.map(cell).join('')+cell(tt).replace('<td','<td class="tot"')+'</tr>'});
+  return tw(h+'</tbody></table>')}
+function lineChart(series,w=640,h=240,ymax=1){
+  const L=44,R=10,Tp=12,B=26,X=i=>L+(w-L-R)*i/(NW+9),Yy=v=>h-B-(h-B-Tp)*v/ymax;
+  let s='<svg viewBox="0 0 '+w+' '+h+'" width="100%" role="img" aria-label="Part des objectifs clients atteinte par semaine">';
+  [0,.25,.5,.75,1].forEach(g=>{s+='<line x1="'+L+'" x2="'+(w-R)+'" y1="'+Yy(g)+'" y2="'+Yy(g)+'" stroke="var(--line)"/><text x="'+(L-4)+'" y="'+(Yy(g)+4)+'" text-anchor="end">'+Math.round(g*100)+'%</text>'});
+  [0,13,26,39,52].forEach(i=>{s+='<text x="'+X(i)+'" y="'+(h-8)+'" text-anchor="middle">S'+(i+1)+'</text>'});
+  series.forEach(se=>{s+='<polyline fill="none" stroke="'+se.col+'" stroke-width="'+(se.bold?3:1.6)+'" '+(se.dash?'stroke-dasharray="4 3" ':'')+'points="'+se.v.slice(0,NW+10).map((v,i)=>X(i).toFixed(1)+','+Yy(Math.min(v,ymax)).toFixed(1)).join(' ')+'"/>'});
+  return s+'</svg>'}
+const COLS=['var(--ink)','#d6471f','#1d8a58','#7b3fc4','#c98a0a','#0f8aa8','#c4379a','#7a8c1f'];
+const SCC={};SCD.forEach((s,i)=>SCC[s.id]=COLS[i]);
+function spark(a,max,w=150,h=34){const bw=w/a.length;return '<svg viewBox="0 0 '+w+' '+h+'" width="'+w+'" height="'+h+'" aria-hidden="true">'+a.map((v,i)=>'<rect x="'+(i*bw).toFixed(1)+'" y="'+(h-v/max*h).toFixed(1)+'" width="'+Math.max(bw-.6,.5).toFixed(1)+'" height="'+(v/max*h).toFixed(1)+'" fill="var(--acc)"/>').join('')+'</svg>'}
+
+/* ---------- onglet Analyse ---------- */
+function globalNote(){
+  const yr=y=>raw(r=>r.y===y);
+  const rec=raw(r=>r.y>=2025),old=raw(r=>r.y<=2024);
+  const tN=rec.bs/rec.hr,tO=old.bs/old.hr;
+  const s={taux:clamp((tN-S.tmin)/(S.tmax-S.tmin)*100),att:clamp((rec.bsO/rec.o-.7)/.35*100),pres:clamp((rec.pres/rec.lots-.7)/.25*100),trend:clamp(50+(tN/tO-1)*150)};
+  const n23=raw(r=>r.y===2023).n,n26=raw(r=>r.y===PY-1).n+FUT.length;s.vol=clamp(50+(n26/n23-1)*100);
+  let an=0,nn=0;for(const c in Yan)Yan[c].filter(r=>r[0]>=2023).forEach(r=>{an+=r[5];nn+=r[1]});const canc=an/(an+nn);s.fiab=clamp(100-canc*400);
+  const cnt=CN.map(c=>REC.filter(r=>r.cl===c&&r.y>=2024).reduce((x,r)=>x+r.n,0)).sort((a,b)=>b-a),tot=cnt.reduce((x,y)=>x+y,0),top5=cnt.slice(0,5).reduce((x,y)=>x+y,0)/tot;s.div=clamp(100-(top5-.3)*250);
+  const W={taux:25,att:20,pres:15,trend:10,vol:10,fiab:10,div:10};
+  const note=Object.keys(W).reduce((x,k)=>x+s[k]*W[k],0)/100;
+  return{s,W,note,tN,tO,att:rec.bsO/rec.o,pres:rec.pres/rec.lots,canc,top5,n23,n26,yr}}
+function renderSynth(){
+  const g=globalNote(),gr=g.note>=70?'A':g.note>=55?'B':g.note>=40?'C':'D';
+  const ys=[2022,2023,2024,2025,2026].filter(y=>y<PY),yrs=ys.map(y=>{const a=raw(r=>r.y===y);return{y,...a,t:a.hr?a.bs/a.hr:null,p:a.pres/a.lots,att:a.o?a.bsO/a.o:null,team:a.n?a.recr/a.n:null,hm:a.n?a.hr/a.n:null}});
+  const comp=[['Taux réel',g.s.taux,g.W.taux],['Atteinte de l\'objectif',g.s.att,g.W.att],['Présence',g.s.pres,g.W.pres],['Tendance',g.s.trend,g.W.trend],['Volume',g.s.vol,g.W.vol],['Fiabilité',g.s.fiab,g.W.fiab],['Diversification',g.s.div,g.W.div]];
+  /* simultanéité */
+  const mrec=MIS.filter(r=>r.cr!=null);
+  const pbT=[0,1,2,3].map(b=>{const a=raw(r=>!r.old&&r.cr!=null&&pband(r.cr)===b);return{b,a}});
+  const cbT=[0,1,2,3].map(b=>{const a=raw(r=>!r.old&&r.ccl!=null&&pband(r.ccl)===b);return{b,a}});
+  const vbT=[0,1,2,3].map(b=>{const a=raw(r=>!r.old&&r.cv!=null&&r.v&&pband(r.cv)===b);return{b,a}});
+  const pt=(L)=>tw('<table><thead><tr><th class="l">Missions en parallèle (moyenne sur la mission)</th><th>Missions</th><th>Taux réel</th><th>Présence</th></tr></thead><tbody>'+L.map(x=>'<tr><td class="l">'+PBL[x.b]+'</td><td class="m">'+x.a.n+'</td><td class="m" style="'+heat(tx(x.a),Gt)+'">'+t3(tx(x.a))+'</td><td class="m">'+pc(x.a.pres/x.a.lots,1)+'</td></tr>').join('')+'</tbody></table>');
+  const capR=RMS.map(r=>({r,n:MIS.filter(x=>x.r===r).length,cap:CAP.r[r],avg:med(MIS.filter(x=>x.r===r).map(x=>x.cr).filter(x=>x!=null)),a:raw(x=>!x.old&&x.r===r)})).sort((a,b)=>b.n-a.n);
+  const capV=Object.keys(CAP.v).map(v=>({v,n:CITYN[v]||0,cap:CAP.v[v]})).sort((a,b)=>b.n-a.n).slice(0,10);
+  const bl=[];
+  bl.push('Le <b>taux réel</b> (bulletins valides ÷ heures de rue, lots présents) est de <b>'+t3(g.tN)+'</b> en 2025-26 contre <b>'+t3(g.tO)+'</b> en 2022-24. La <b>présence</b> (jours payés ÷ jours de lot) est de <b>'+pc(g.pres,1)+'</b> et l\'objectif théorique est atteint à <b>'+pc(g.att)+'</b> en moyenne.');
+  const pm=[...Array(12).keys()].map(m=>({m,f:MF[m]})).sort((a,b)=>b.f-a.f);
+  bl.push('Mois les plus favorables (pondéré par année) : '+pm.slice(0,3).map(x=>MN[x.m]+' ('+(x.f>=1?'+':'')+Math.round((x.f-1)*100)+' %)').join(', ')+' ; les plus faibles : '+pm.slice(-3).map(x=>MN[x.m]+' ('+Math.round((x.f-1)*100)+' %)').join(', ')+'.');
+  bl.push('Taille d\'équipe (2025-26) : '+TF.map((f,b)=>BANDL[b]+' recruteurs '+(f>=1?'+':'')+Math.round((f-1)*100)+' %').join(', ')+' sur le taux réel, à données égales. L\'effet reste modeste.');
+  bl.push('Simultanéité : le taux réel varie de '+t3(tx(pbT[0].a))+' (responsable avec 2 missions ou moins en parallèle) à '+t3(tx(pbT[3].a))+' (5 et plus). Pic historique de recruteurs en rue en même temps : '+HIST.rdPeak+'.');
+  bl.push('Annulations : '+pc(g.canc,1)+' des missions prévues depuis 2023. Concentration : les 5 premiers clients pèsent '+pc(g.top5)+' des missions 2024-26.');
+  $('#v-synth').innerHTML=
+  '<h2>Analyse de l\'historique</h2><p class="lead">Missions de recrutement 2022-2026. Les années récentes pèsent davantage (réglable dans l\'onglet critères : '+ys.map(y=>y+' ×'+yw(y)).join(', ')+').</p>'+
+  '<div class="grid g2"><div class="panel"><div class="score"><span class="big">'+Math.round(g.note)+'</span><span style="color:var(--mut)">/ 100</span><span class="badge b-'+gr+'">'+gr+' · '+GL[gr]+'</span></div>'+
+  '<div style="margin-top:14px" class="tw"><table><tbody>'+comp.map(c=>'<tr><td class="l">'+c[0]+' <span class="note">(poids '+c[2]+' %)</span></td><td><span class="bar" style="width:'+c[1]*1.2+'px"></span></td><td class="m">'+Math.round(c[1])+'</td></tr>').join('')+'</tbody></table></div></div>'+
+  '<div class="panel"><h3>Ce que dit l\'historique</h3><ul class="tight">'+bl.map(x=>'<li>'+x+'</li>').join('')+'</ul></div></div>'+
+  '<div class="panel" style="margin-top:16px"><h3>Année par année</h3>'+tw('<table><thead><tr><th class="l">Année</th><th>Missions</th><th>Bulletins</th><th>Heures de rue</th><th>Taux réel</th><th>Présence</th><th>Atteinte objectif</th><th>Recruteurs / mission</th><th>Heures / mission</th></tr></thead><tbody>'+yrs.map(r=>'<tr><td class="l">'+r.y+(r.y===2026?'*':'')+'</td><td class="m">'+r.n+'</td><td class="m">'+nf(r.bs)+'</td><td class="m">'+nf(r.hr)+'</td><td class="m"><b>'+t3(r.t)+'</b></td><td class="m">'+pc(r.p,1)+'</td><td class="m">'+pc(r.att)+'</td><td class="m">'+d1(r.team)+'</td><td class="m">'+nf(r.hm)+'</td></tr>').join('')+'</tbody></table>')+'<p class="note">* 2026 en cours, jusqu\'au 09/10/2026. 2022-2024 : missions terminées uniquement.</p></div>'+
+  '<div class="grid g2" style="margin-top:16px">'+
+  '<div class="panel"><h3>Taux réel par format</h3>'+dimT('Format',Object.entries(FTL),(r,id)=>r.f===id,ys)+'<h3 style="margin-top:14px">Par zone</h3>'+dimT('Zone',Object.entries(ZL),(r,id)=>r.z===id,ys)+'</div>'+
+  '<div class="panel"><h3>Par mois de démarrage</h3>'+dimT('Mois',MN.map((m,i)=>[i,m]),(r,id)=>r.mo===id,[2022,2023,2024,2025,2026],'mo')+'</div>'+
+  '<div class="panel"><h3>Par taille d\'équipe (2025-26)</h3>'+dimT('Recruteurs',BANDL.map((b,i)=>[i,b]),(r,id)=>!r.old&&band(r.recr)===id,[2025,2026])+'<h3 style="margin-top:14px">Par ville (2025-26, 4 missions et plus)</h3>'+dimT('Ville',Object.entries(CITYN).filter(([v,n])=>n>=4).sort((a,b)=>b[1]-a[1]).map(([v])=>[v,v]),(r,id)=>!r.old&&r.v===id,[2025,2026])+'</div>'+
+  '<div class="panel"><h3>Par responsable de mission (2025-26)</h3>'+dimT('Responsable',RMS.map(r=>[r,r]),(r,id)=>!r.old&&r.r===id,[2025,2026])+'</div></div>'+
+  '<div class="panel" style="margin-top:16px"><h3>Missions en parallèle</h3><p class="note" style="margin-top:0">Mesuré sur les missions 2025-2026 : pour chaque mission, nombre moyen de missions en cours en même temps pour le même responsable, le même client ou la même ville.</p><div class="grid g2">'+
+  '<div><h4 class="h4">Par responsable</h4>'+pt(pbT)+'</div><div><h4 class="h4">Par client</h4>'+pt(cbT)+'</div><div><h4 class="h4">Par ville</h4>'+pt(vbT)+'</div>'+
+  '<div><h4 class="h4">Plafonds retenus pour le planning (90e centile historique)</h4>'+tw('<table><thead><tr><th class="l">Responsable</th><th>Missions</th><th>Parallèle moyen</th><th>Plafond</th></tr></thead><tbody>'+capR.map(x=>'<tr><td class="l">'+x.r+'</td><td class="m">'+x.n+'</td><td class="m">'+d1(x.avg)+'</td><td class="m"><b>'+x.cap+'</b></td></tr>').join('')+'</tbody></table>')+'<table style="margin-top:8px"><thead><tr><th class="l">Ville</th><th>Missions</th><th>Plafond</th></tr></thead><tbody>'+capV.map(x=>'<tr><td class="l">'+esc(x.v)+'</td><td class="m">'+x.n+'</td><td class="m"><b>'+x.cap+'</b></td></tr>').join('')+'</tbody></table></div></div></div>'+
+  '<div class="lim" style="margin-top:16px"><b>Limites.</b> Le détail par mission (mois, responsable, ville, équipe, simultanéité) n\'est rechargé que pour 2025-2026 ; 2022-2024 n\'existe qu\'en agrégats client × format × zone. La ville n\'est pas renseignée sur toutes les missions rue de 2025. Les corrélations ne prouvent pas de causalité : un responsable chargé de plus de missions a aussi des missions différentes.</div>'}
+
+/* ---------- onglet notes ---------- */
+function renderNotes(){
+  const cl=CN.map(n=>CL[n]).sort((a,b)=>b.note-a.note);
+  $('#v-notes').innerHTML='<h2>Notes par client</h2><p class="lead">Chaque client est noté sur 100 : taux réel, atteinte de l\'objectif et présence (pondérés par année), tendance, volume, fiabilité. Les poids se règlent dans l\'onglet critères. Cliquer sur une ligne pour le détail.</p>'+
+  '<div class="panel">'+tw('<table><thead><tr><th class="l">Client</th><th>Note</th><th>Classe</th><th>Taux réel</th><th>Présence</th><th>Atteinte obj.</th><th>Équipe</th><th>Missions '+YB+'</th><th class="l">Confiance</th></tr></thead><tbody>'+
+  cl.map(c=>'<tr class="click" data-i="'+CN.indexOf(c.name)+'"><td class="l"><b>'+esc(c.name)+'</b></td><td class="m"><b>'+Math.round(c.note)+'</b></td><td><span class="badge b-'+c.grade+'">'+c.grade+'</span></td><td class="m" style="'+heat(c.t,Gt)+'">'+t3(c.t)+'</td><td class="m">'+pc(c.pres,1)+'</td><td class="m">'+pc(c.att)+'</td><td class="m">'+d1(c.Tavg)+'</td><td class="m">'+c.n26+'</td><td class="l">'+c.conf+' ('+c.rawA.n+' missions)</td></tr><tr hidden id="d'+CN.indexOf(c.name)+'"><td class="l" colspan="9" style="white-space:normal"><b>'+GL[c.grade]+'.</b> '+esc(reco(c))+'<ul class="tight" style="margin-top:6px">'+commentary(c).map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></td></tr>').join('')+'</tbody></table>')+'</div>'}
+
+/* ---------- onglet critères ---------- */
+function chips(act,ci,list,on,neg){return '<div class="chips">'+list.map(m=>'<button type="button" class="chip'+(neg?' neg':'')+(on.includes(m)?' on':'')+'" data-act="'+act+'" data-ci="'+ci+'" data-m="'+(typeof m==='string'?esc(m):m)+'">'+(typeof m==='number'?MN[m-1]:esc(m))+'</button>').join('')+'</div>'}
+function renderEng(){
+  const act=Object.keys(S.resp);
+  const gl=(id,lab,key,min,max,step)=>'<label class="f">'+lab+' : <b id="o-'+id+'"></b><input type="range" id="'+id+'" data-g="'+key+'" min="'+min+'" max="'+max+'" step="'+step+'"></label>';
+  const cap=S.cap.map((v,i)=>'<label class="f">'+MN[i]+'<input type="number" min="0" id="cap'+i+'" data-g="cap" data-i="'+i+'" value="'+v+'"></label>').join('');
+  const yws=[2022,2023,2024,2025,2026].map(y=>'<label class="f">'+y+'<input type="number" min="0" max="10" step="0.25" id="yw'+y+'" data-g="yw.'+y+'" value="'+yw(y)+'"></label>').join('');
+  let h='<h2>Engagements et critères</h2><p class="lead">Par défaut, l\'engagement '+PY+' de chaque association reprend à l\'identique le nombre de missions de '+YB+' (hors annulées, y compris celles déjà planifiées jusqu\'en janvier '+PY+'). Modifier puis « Régénérer ».</p>'+
+  '<div class="panel"><h3>Historique pris en compte</h3><p class="note" style="margin-top:0">Poids de chaque année dans les taux, la présence et l\'atteinte des objectifs. Plus le poids est élevé, plus l\'année compte.</p><div class="capgrid" style="grid-template-columns:repeat(5,minmax(0,1fr))">'+yws+'</div>'+
+  '<div class="fgrid" style="margin-top:12px">'+gl('g-hk','Prudence statistique (heures fictives)','hk',0,5000,250)+gl('g-att','Part de l\'objectif visée par mission','att',.8,1.2,.05)+'</div></div>'+
+  '<div class="panel" style="margin-top:12px"><h3>Critères globaux</h3><div class="fgrid">'+
+  gl('g-mult','Engagement global (%)','mult',50,150,5)+gl('g-sens','Effet de la note sur l\'engagement (± %)','sens',0,30,5)+
+  gl('g-maxw','Missions d\'un client démarrant la même semaine (max)','maxW',1,4,1)+gl('g-capcl','Plafond de missions simultanées par client (% de l\'historique)','capCl',50,200,10)+
+  gl('g-caprm','Plafond de missions simultanées par responsable (% de l\'historique)','capRM',50,200,10)+gl('g-maxwk','Démarrages maximum par semaine (historique : '+HIST.wkMax+')','maxWk',4,30,1)+gl('g-dmp','Part de l\'écart historique retenue pour mois, responsables, villes, équipe (%)','dmp',0,100,10)+gl('g-capvl','Plafond de missions simultanées par ville (% de l\'historique)','capVl',50,200,10)+
+  gl('g-caprd','Plafond de recruteurs en rue en même temps (% du pic historique, '+HIST.rdPeak+')','capRD',60,150,5)+gl('g-flat','Marge du mois plafond pour le lissage','flatMarg',1,1.5,.02)+'</div>'+
+  '<h3 style="margin-top:16px">Poids de la note client</h3><div class="fgrid">'+
+  gl('w-taux','Taux réel','w.taux',0,100,5)+gl('w-att','Atteinte de l\'objectif','w.att',0,100,5)+gl('w-pres','Présence','w.pres',0,100,5)+gl('w-trend','Tendance','w.trend',0,100,5)+gl('w-vol','Volume','w.vol',0,100,5)+gl('w-fiab','Fiabilité','w.fiab',0,100,5)+'</div>'+
+  '<h3 style="margin-top:16px">Capacité de démarrages par mois (missions, scénario de référence)</h3><div class="capgrid">'+cap+'</div><p class="note">Base : démarrages '+YB+' augmentés de 15 %. Mettre 0 pour fermer un mois.</p>'+
+  '<h3 style="margin-top:16px">Répartition des dons par semestre</h3><label class="f">Part de l\'objectif annuel de dons réalisée au 1er semestre, par défaut (%)<input type="number" id="semDef" data-g="semDef" min="0" max="100" value="'+S.semDef+'"></label><p class="note">Le 2e semestre prend le complément (50 % par semestre par défaut). Réglable par client ci-dessous ; le poids du critère se règle par scénario.</p>'+
+  '<h3 style="margin-top:16px">Responsables disponibles en '+PY+'</h3><div class="chips">'+act.map(r=>'<button type="button" class="chip'+(S.resp[r]?' on':'')+'" data-act="gresp" data-m="'+esc(r)+'">'+esc(r)+'</button>').join('')+'</div></div>'+
+  '<h3 style="margin:20px 0 8px">Critères par client</h3>';
+  const cl=CN.map(n=>CL[n]).sort((a,b)=>b.note-a.note);
+  cl.forEach(c=>{const ci=CN.indexOf(c.name),s=cs(c.name);
+    const keys=[...new Set([...Object.keys(c.at),...Object.keys(s.eng)])];
+    const tot=Object.values(s.eng).reduce((x,y)=>x+y,0),e26=eng26(c.name);
+    h+='<details class="cl" id="cl'+ci+'"><summary><span class="nm">'+esc(c.name)+'</span><span class="badge b-'+c.grade+'">'+Math.round(c.note)+' · '+c.grade+'</span><span class="note">'+YB+' : '+Object.values(e26).reduce((x,y)=>x+y,0)+' missions</span><span class="note" id="tot'+ci+'">'+PY+' : '+tot+' missions</span></summary><div class="body">'+
+    '<div><h3>Engagement '+PY+' par association</h3>'+tw('<table><thead><tr><th class="l">Format et zone</th><th>'+YB+'</th><th>'+PY+'</th></tr></thead><tbody>'+keys.map(k=>'<tr><td class="l">'+ftName(k)+'</td><td class="m">'+(e26[k]||0)+'</td><td><input type="number" min="0" max="60" data-act="eng" data-ci="'+ci+'" data-k="'+k+'" value="'+(s.eng[k]||0)+'"></td></tr>').join('')+'</tbody></table>')+
+    '<label class="f" style="margin-top:8px">Ajouter une association<select data-act="addft" data-ci="'+ci+'"><option value="">Choisir…</option>'+Object.keys(FTL).flatMap(f=>Object.keys(ZL).map(z=>f+'|'+z)).filter(k=>!keys.includes(k)).map(k=>'<option value="'+k+'">'+ftName(k)+'</option>').join('')+'</select></label>'+
+    '<label class="f" style="margin-top:8px">Part des dons au 1er semestre (%, vide = '+S.semDef+' ; 2e semestre = complément)<input type="number" min="0" max="100" data-act="csem" data-ci="'+ci+'" value="'+s.sem+'"></label>'+
+    '<label class="f" style="margin-top:8px">Multiplicateur client (%)<input type="number" min="0" max="300" data-act="cmult" data-ci="'+ci+'" value="'+s.mult+'"></label></div>'+
+    '<div><h3>Mois à éviter</h3>'+chips('ex',ci,[1,2,3,4,5,6,7,8,9,10,11,12],s.ex,true)+'<h3 style="margin-top:12px">Mois à privilégier</h3>'+chips('pref',ci,[1,2,3,4,5,6,7,8,9,10,11,12],s.pref,false)+
+    '<label class="f" style="margin-top:12px">Démarrages la même semaine (max, vide = global)<input type="number" min="1" max="6" data-act="cmaxw" data-ci="'+ci+'" value="'+s.maxW+'"></label>'+
+    '<label class="f" style="margin-top:8px">Bonus de priorité (points de note)<input type="number" min="-30" max="30" data-act="bonus" data-ci="'+ci+'" value="'+s.bonus+'"></label>'+
+    '<label class="f" style="margin-top:8px">Équipe maximale (vide = max historique : '+c.Tmax+')<input type="number" min="2" max="40" data-act="tmax" data-ci="'+ci+'" value="'+s.tmax+'"></label></div>'+
+    '<div><h3>Responsables à exclure</h3>'+chips('exr',ci,Object.keys(S.resp).filter(r=>S.resp[r]),s.exR,true)+
+    '<label class="f" style="margin-top:12px">Responsable imposé<select data-act="impr" data-ci="'+ci+'"><option value="">Aucun</option>'+Object.keys(S.resp).filter(r=>S.resp[r]).map(r=>'<option'+(s.impR===r?' selected':'')+' value="'+esc(r)+'">'+esc(r)+'</option>').join('')+'</select></label>'+
+    '<p class="note" style="margin-top:12px">Équipe type : '+d1(c.Tavg)+' recruteurs. Objectif moyen : '+nf(c.oa)+' bulletins. Taux réel : '+t3(c.t)+'. Présence : '+pc(c.pres,1)+'.</p></div></div></details>'});
+  $('#v-eng').innerHTML=h;
+  document.querySelectorAll('#v-eng input[type=range]').forEach(e=>{const p=e.dataset.g.split('.');const v=p.length===2?S[p[0]][p[1]]:S[p[0]];e.value=v;const o=$('#o-'+e.id);if(o)o.textContent=v})}
+
+/* ---------- onglet scénarios ---------- */
+function renderScen(){
+  const rows=[
+    ['Missions',k=>k.n,v=>nf(v),-1],['Recruteurs engagés (somme des équipes)',k=>k.T,v=>nf(v),-1],['Équipe moyenne',k=>k.Tavg,d1,0],
+    ['Pic de recruteurs en rue en même temps',k=>k.rdPeak,v=>nf(v),-1],
+    ['Bulletins attendus',k=>k.E,nf,1],['Objectifs visés',k=>k.O,nf,0],['Taux réel attendu',k=>k.rate,t3,1],['Atteinte des objectifs',k=>k.att,v=>pc(v),1],['Missions qui atteignent leur objectif',k=>k.cov,v=>pc(v),1],
+    ['Semaine médiane d\'atteinte de l\'objectif annuel du client',k=>k.reachMed,v=>v>=NW+1?'au-delà de S52':'S'+Math.round(v),-1],['Clients à leur objectif annuel avant fin juin',k=>k.reach26,v=>pc(v),1],
+    ['Écart-type des démarrages par semaine',k=>k.sdW,d1,-1],['Maximum de démarrages en une semaine',k=>k.maxW,nf,-1],
+    ['Écart à la répartition S1/S2 visée (points, clients à 2 missions et plus)',k=>k.semDev,d1,-1],['Clients à ±10 points de la répartition visée',k=>k.semOk,v=>pc(v),1],
+    ['Villes de province distinctes',k=>k.cities,nf,-1],['Ouvertures ville × semaine (province)',k=>k.open,nf,-1],['Missions par ouverture',k=>k.perOpen,d1,1],
+    ['Écart de missions entre responsables (max − min)',k=>k.rmSpread,nf,-1],['Points de vigilance (plafonds dépassés)',k=>k.flags.cap+k.flags.cl+k.flags.rm+k.flags.vl+k.flags.rd,nf,-1]];
+  const ref=RES.ref.K;
+  const best=rows.map(r=>{if(!r[3])return null;const vs=SCD.map(s=>r[1](RES[s.id].K));const b=r[3]>0?Math.max(...vs):Math.min(...vs);return b});
+  const tbl='<table><thead><tr><th class="l">Indicateur</th>'+SCD.map(s=>'<th style="white-space:normal;min-width:96px"><span style="color:'+SCC[s.id]+'">●</span> '+esc(s.short)+'</th>').join('')+'</tr></thead><tbody>'+
+   rows.map((r,i)=>'<tr><td class="l">'+r[0]+'</td>'+SCD.map(s=>{const v=r[1](RES[s.id].K),isB=best[i]!=null&&Math.abs(v-best[i])<1e-9&&s.id!=='ref'&&SCD.filter(x=>x.id!=='ref').some(x=>Math.abs(r[1](RES[x.id].K)-best[i])<1e-9);return '<td class="m"'+(isB?' style="background:color-mix(in srgb,var(--good) 18%,var(--surf));font-weight:600"':'')+'>'+r[2](v)+'</td>'}).join('')+'</tr>').join('')+'</tbody></table>';
+  const ser=SCD.map(s=>({v:RES[s.id].K.curve,col:SCC[s.id],bold:s.id===S.sel,dash:s.id==='ref'}));
+  const leg=SCD.map(s=>'<span style="margin-right:12px;white-space:nowrap"><span style="color:'+SCC[s.id]+'">━</span> '+esc(s.short)+'</span>').join('');
+  const mxw=Math.max(...SCD.flatMap(s=>RES[s.id].st.slice(0,NW)));
+  const cards=SCD.map(s=>{const K=RES[s.id].K;return '<div class="panel sc'+(S.sel===s.id?' sel':'')+'"><div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><b><span style="color:'+SCC[s.id]+'">●</span> '+esc(s.name)+'</b><button class="btn ghost sm" data-open="'+s.id+'">Voir le planning</button></div><p class="note" style="margin:6px 0">'+esc(s.desc)+'</p><div style="display:flex;gap:16px;align-items:end;flex-wrap:wrap"><div class="kpi"><div class="v">'+K.n+'</div><div class="l">missions</div></div><div class="kpi"><div class="v">'+K.T+'</div><div class="l">recruteurs engagés</div></div><div class="kpi"><div class="v">'+t3(K.rate)+'</div><div class="l">taux réel attendu</div></div><div>'+spark(RES[s.id].st.slice(0,NW),mxw)+'<div class="l note">démarrages par semaine</div></div></div></div>'}).join('');
+  const prm='<table><thead><tr><th class="l">Paramètre</th>'+SCD.map(s=>'<th style="white-space:normal">'+esc(s.short)+'</th>').join('')+'</tr></thead><tbody>'+
+   SCP.map(p=>'<tr><td class="l">'+p[1]+'</td>'+SCD.map(s=>'<td><input type="number" step="0.05" min="0" max="10" data-g="sc.'+s.id+'.'+p[0]+'" value="'+S.sc[s.id][p[0]]+'"></td>').join('')+'</tr>').join('')+'</tbody></table>';
+  $('#v-scen').innerHTML='<h2>Scénarios '+PY+'</h2><p class="lead">'+SCD.length+' versions du planning à partir du même point de départ : l\'engagement '+YB+' identique. Chaque version applique le même modèle (taux réel, présence, simultanéité par client, responsable et ville, plafond de recruteurs) avec un objectif différent. En vert : la meilleure valeur parmi les scénarios (hors référence).</p>'+
+  (PY<2027?realPY():'')+
+  '<div class="grid g2">'+cards+'</div>'+
+  '<div class="panel" style="margin-top:16px"><h3>Comparatif</h3>'+tw(tbl)+'<p class="note">Bulletins attendus = équipe × jours par recruteur × présence × heures de rue par jour × taux réel attendu (mois, responsable, ville, équipe et simultanéité). L\'objectif annuel d\'un client est la somme des objectifs du scénario de référence.</p></div>'+
+  '<div class="panel" style="margin-top:16px"><h3>Part des objectifs annuels des clients atteinte, semaine par semaine</h3>'+lineChart(ser)+'<p class="note">'+leg+'</p></div>'+
+  '<div class="panel" style="margin-top:16px"><h3>Réglages des scénarios</h3>'+tw(prm)+'<p class="note">Modifier puis « Régénérer ». Les types d\'équipe et d\'engagement sont fixés par scénario : référence = équipes historiques ; au plus vite = équipes maximales ; moins de missions et moins de RD = équipe minimale qui atteint l\'objectif.</p></div>'}
+
+function realPY(){const m=REALP,a=m.reduce((x,r)=>({hr:x.hr+r.hr,bs:x.bs+r.bs,T:x.T+r.recr,o:x.o+r.obj,bo:x.bo+(r.obj>0?r.bs:0)}),{hr:0,bs:0,T:0,o:0,bo:0});
+ return '<div class="lim"><b>Rejouer '+PY+' à partir de 2025 et avant.</b> Taux réel, présence, atteinte, facteurs mois / responsable / ville / équipe et plafonds de simultanéité sont calculés sans aucune donnée '+PY+'. Engagement par défaut = missions réalisées en '+YB+' ; équipes, durées et objectifs par mission viennent aussi de l\'historique. <b>Réalisé '+PY+' pour comparer (au 09/10/2026, année en cours) :</b> '+m.length+' missions démarrées (+ '+REALF.length+' déjà planifiées), '+a.T+' recruteurs, '+nf(a.hr)+' h de rue, '+nf(a.bs)+' bulletins, taux réel '+t3(a.bs/a.hr)+', atteinte des objectifs '+pc(a.bo/a.o)+'. Le planning rejoué couvre l\'année entière : comparer surtout les taux et la répartition.</div>'}
+
+/* ---------- onglet planning ---------- */
+function renderPlan(){
+  const id=S.sel,R=RES[id],K=R.K,P=R.P,sc=SCD.find(s=>s.id===id);
+  const ref=RES.ref.K,ml=R.mL,mxv=Math.max(...R.capM,...ml,...BASE26)+2;
+  let svg='<svg viewBox="0 0 720 220" width="100%" role="img" aria-label="Missions planifiées par mois">';
+  const bw=34,gap=(680-12*bw)/12,base=190,scy=v=>base-(v/mxv)*160;
+  [0,.5,1].forEach(g=>{const y=scy(g*mxv);svg+='<line x1="30" x2="716" y1="'+y+'" y2="'+y+'" stroke="var(--line)"/><text x="26" y="'+(y+4)+'" text-anchor="end">'+Math.round(g*mxv)+'</text>'});
+  ml.forEach((v,i)=>{const x=40+i*(bw+gap)+gap/2,y=scy(v);
+    svg+='<rect x="'+x+'" y="'+y+'" width="'+bw+'" height="'+(base-y)+'" rx="2" fill="var(--acc)"/><text x="'+(x+bw/2)+'" y="'+(y-4)+'" text-anchor="middle">'+v+'</text>'+
+    '<line x1="'+(x-3)+'" x2="'+(x+bw+3)+'" y1="'+scy(BASE26[i])+'" y2="'+scy(BASE26[i])+'" stroke="var(--warn)" stroke-width="2"/>'+
+    '<line x1="'+(x-3)+'" x2="'+(x+bw+3)+'" y1="'+scy(R.capM[i])+'" y2="'+scy(R.capM[i])+'" stroke="var(--bad)" stroke-width="1.5" stroke-dasharray="3 2"/>'+
+    '<text x="'+(x+bw/2)+'" y="206" text-anchor="middle">'+MN[i].replace('.','')+'</text>'});
+  svg+='</svg>';
+  const cn=[...new Set(P.map(p=>p.c))].sort((a,b)=>CL[b].note-CL[a].note);
+  const mat=tw('<table class="hm"><thead><tr><th class="l">Client</th>'+MN.map(m=>'<th>'+m.replace('.','')+'</th>').join('')+'<th>'+PY+'</th><th>'+YB+'</th><th>Dons S1 / S2</th><th>Cible S1</th></tr></thead><tbody>'+cn.map(n=>{const e1=P.filter(p=>p.c===n&&p.m<6).reduce((x,p)=>x+p.E,0),e2=P.filter(p=>p.c===n&&p.m>=6).reduce((x,p)=>x+p.E,0),et=e1+e2;const r=Array(12).fill(0);P.forEach(p=>{if(p.c===n)r[p.m]++});const t=r.reduce((x,y)=>x+y,0);return '<tr><td class="l">'+esc(n)+'</td>'+r.map(v=>'<td style="'+(v?'background:color-mix(in srgb,var(--acc) '+Math.min(70,v*18)+'%,var(--surf))':'')+'">'+(v||'')+'</td>').join('')+'<td><b>'+t+'</b></td><td class="note">'+CL[n].n26+'</td><td>'+(et?Math.round(e1/et*100)+' / '+Math.round(e2/et*100):'')+'</td><td class="note">'+Math.round(semT(n)*100)+' %</td></tr>'}).join('')+'</tbody></table>');
+  const wl=R.rms.map(r=>{const q=P.filter(p=>p.r===r);return{r,n:q.length,T:q.reduce((x,p)=>x+p.T,0),pk:Math.max(0,...[...Array(NW)].map((_,w)=>q.filter(p=>p.w<=w&&w<p.w+p.dur).length)),cap:Math.round((CAP.r[r]||4)*S.capRM/100)}}).sort((a,b)=>b.n-a.n);
+  const vl=Object.entries(P.reduce((o,p)=>{o[p.v]=(o[p.v]||0)+1;return o},{})).sort((a,b)=>b[1]-a[1]).slice(0,12);
+  const opts=(arr,all)=>'<option value="">'+all+'</option>'+arr.map(x=>'<option value="'+esc(x)+'">'+esc(x)+'</option>').join('');
+  const sw=SCD.map(s=>'<button class="tab'+(s.id===id?' on':'')+'" data-sc="'+s.id+'" style="border-bottom-color:'+(s.id===id?SCC[s.id]:'transparent')+'">'+esc(s.short)+'</button>').join('');
+  const vig=K.flags.cap+K.flags.cl+K.flags.rm+K.flags.vl+K.flags.rd;
+  $('#v-plan').innerHTML='<h2>Planning '+PY+'</h2><div class="tabs sw" style="margin-bottom:6px">'+sw+'</div><p class="lead">'+esc(sc.name)+'. '+esc(sc.desc)+' Démarrages le mardi, durée de 5 semaines (6 pour l\'hybride selon l\'historique du client).</p>'+
+  '<div class="grid g4"><div class="panel kpi"><div class="v">'+K.n+'</div><div class="l">missions</div><div class="d">référence : '+ref.n+'</div></div>'+
+  '<div class="panel kpi"><div class="v">'+K.T+'</div><div class="l">recruteurs engagés</div><div class="d">équipe moyenne '+d1(K.Tavg)+', pic '+K.rdPeak+' en rue</div></div>'+
+  '<div class="panel kpi"><div class="v">'+nf(K.E)+'</div><div class="l">bulletins attendus</div><div class="d">objectifs '+nf(K.O)+' ('+pc(K.att)+') · taux '+t3(K.rate)+'</div></div>'+
+  '<div class="panel kpi"><div class="v '+(vig?'warn':'')+'">'+vig+'</div><div class="l">points de vigilance</div><div class="d">'+K.flags.cap+' mois plein, '+K.flags.cl+' client, '+K.flags.rm+' responsable, '+K.flags.vl+' ville, '+K.flags.rd+' recruteurs</div></div></div>'+
+  '<div class="grid g2" style="margin-top:16px"><div class="panel"><h3>Démarrages par mois</h3>'+svg+'<p class="note"><span style="color:var(--acc)">■</span> planifiés &nbsp; <span style="color:var(--warn)">━</span> démarrages '+YB+' &nbsp; <span style="color:var(--bad)">┅</span> capacité</p></div>'+
+  '<div class="panel"><h3>Charge par responsable</h3>'+tw('<table><thead><tr><th class="l">Responsable</th><th>Missions</th><th>Recruteurs</th><th>Pic parallèle</th><th>Plafond</th></tr></thead><tbody>'+wl.map(w=>'<tr><td class="l">'+esc(w.r)+'</td><td class="m">'+w.n+'</td><td class="m">'+w.T+'</td><td class="m'+(w.pk>w.cap?' warn':'')+'">'+w.pk+'</td><td class="m">'+w.cap+'</td></tr>').join('')+'</tbody></table>')+'<h3 style="margin-top:14px">Villes les plus utilisées</h3><div class="chips">'+vl.map(x=>'<span class="chip">'+esc(x[0])+' · '+x[1]+'</span>').join('')+'</div></div></div>'+
+  '<div class="panel" style="margin-top:16px"><h3>Missions par client et par mois</h3>'+mat+'</div>'+
+  '<div class="panel" style="margin-top:16px"><h3>Liste des missions</h3><div class="filters"><label class="f">Client<select id="f-c">'+opts(cn,'Tous')+'</select></label><label class="f">Responsable<select id="f-r">'+opts(R.rms.concat(['À affecter']),'Tous')+'</select></label><label class="f">Mois<select id="f-m"><option value="">Tous</option>'+MN.map((m,i)=>'<option value="'+i+'">'+m+'</option>').join('')+'</select></label><label class="f">Affichage<select id="f-v"><option value="list">Liste</option><option value="gantt">Gantt à la semaine</option></select></label><label class="f" id="f-gw">Regrouper par<select id="f-g"><option value="c">Client</option><option value="r">Responsable</option><option value="v">Ville</option></select></label><button class="btn ghost" id="copy">Copier en CSV</button><span class="note" id="copied"></span></div><div id="plist"></div></div>';
+  ['f-c','f-r','f-m','f-v','f-g'].forEach(x=>$('#'+x).addEventListener('change',e=>{if(x==='f-v')S.view=e.target.value;if(x==='f-g')S.grp=e.target.value;if(x==='f-v'||x==='f-g')save();list()}));$('#f-v').value=S.view||'list';$('#f-g').value=S.grp||'c';
+  $('#copy').addEventListener('click',copyCsv);list()}
+function filtered(){const c=$('#f-c').value,r=$('#f-r').value,m=$('#f-m').value;return RES[S.sel].P.filter(p=>(!c||p.c===c)&&(!r||p.r===r)&&(m===''||p.m===+m))}
+const dstr=d=>d.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short',timeZone:'UTC'});
+const dend=p=>new Date(p.d.getTime()+(p.dur*7-4)*864e5);
+const FCOL={st:'var(--acc)',sp:'var(--good)',hy:'var(--warn)'};
+function gantt(L){
+  const grp=S.grp||'c',WW=22,NWK=NW+6,key=p=>grp==='c'?p.c:grp==='r'?p.r:p.v,R=RES[S.sel];
+  const groups={};L.forEach(p=>(groups[key(p)]=groups[key(p)]||[]).push(p));
+  const names=Object.keys(groups).sort((a,b)=>a.localeCompare(b,'fr'));
+  let mh='',wk='',m0=0;
+  for(let w=0;w<NWK;w++){const mm=wmonth(w);if(w===NWK-1||wmonth(w+1)!==mm){mh+='<div class="gm" style="width:'+(w-m0+1)*WW+'px">'+MN[mm]+(w>=NW-1&&mm===0?' '+(PY+1):'')+'</div>';m0=w+1}wk+='<div class="gw" style="width:'+WW+'px" title="Semaine du '+dstr(wdate(w))+'">'+(w+1)+'</div>'}
+  const lab=t=>'<div class="gl">'+t+'</div>';
+  let h='<div class="gantt" style="--ww:'+WW+'px"><div class="grow ghead">'+lab('')+'<div class="gtrack" style="width:'+NWK*WW+'px"><div class="gline">'+mh+'</div><div class="gline">'+wk+'</div></div></div>';
+  names.forEach(n=>{const q=groups[n].slice().sort((a,b)=>a.w-b.w),ends=[];
+    q.forEach(p=>{let i=ends.findIndex(e=>e<=p.w);if(i<0){i=ends.length;ends.push(0)}ends[i]=p.w+p.dur;p.lane=i});
+    h+='<div class="grow">'+lab(esc(n)+' <span class="note">'+q.length+'</span>')+'<div class="gtrack gbody" style="width:'+NWK*WW+'px;height:'+(ends.length*20+6)+'px">'+
+    q.map(p=>'<div class="gbar" style="left:'+p.w*WW+'px;width:'+(p.dur*WW-2)+'px;top:'+(p.lane*20+3)+'px;background:'+FCOL[p.f]+'" title="'+esc(p.c+' · '+ftName(p.k)+' · '+p.v+' · '+p.r+' · équipe '+p.T+' · '+dstr(p.d)+' au '+dstr(dend(p))+' · attendu '+nf(p.E)+' / objectif '+nf(p.obj))+'">'+esc((grp==='c'?p.v:p.c)+' · '+p.T)+'</div>').join('')+'</div></div>'});
+  const cnt=a=>'<div class="gtrack" style="width:'+NWK*WW+'px;display:flex">'+Array.from({length:NWK},(_,w)=>'<div class="gw" style="width:'+WW+'px">'+(a[w]||'')+'</div>').join('')+'</div>';
+  h+='<div class="grow gfoot">'+lab('Démarrages (tous)')+cnt(R.st)+'</div><div class="grow gfoot">'+lab('Recruteurs en rue (tous)')+cnt(R.rdL.map(x=>x||''))+'</div></div>';
+  return h+'<p class="note"><span style="color:var(--acc)">■</span> Rue &nbsp; <span style="color:var(--good)">■</span> Sites privés &nbsp; <span style="color:var(--warn)">■</span> Hybride. Libellé de la barre : '+(grp==='c'?'ville':'client')+' · taille d\'équipe. Passer la souris sur une barre pour le détail. Les lignes du bas portent sur tout le planning, hors filtres.</p>'}
+function list(){const L=filtered();
+  $('#f-gw').style.display=S.view==='gantt'?'':'none';
+  if(S.view==='gantt'){$('#plist').innerHTML=gantt(L)+'<p class="note">'+L.length+' missions affichées.</p>';return}
+  $('#plist').innerHTML=tw('<table><thead><tr><th class="l">Démarrage</th><th class="l">Fin</th><th class="l">Client</th><th class="l">Format</th><th class="l">Ville</th><th class="l">Responsable</th><th>Équipe</th><th>Objectif</th><th>Attendu</th><th>Atteinte</th><th>Taux</th></tr></thead><tbody>'+L.map(p=>'<tr><td class="l m">'+dstr(p.d)+'</td><td class="l m">'+dstr(dend(p))+'</td><td class="l">'+esc(p.c)+' <span class="badge b-'+p.grade+'">'+p.grade+'</span></td><td class="l">'+ftName(p.k)+'</td><td class="l">'+esc(p.v)+(p.vs==='sugg'?' <span class="note">(suggestion)</span>':p.vs==='tbd'?' <span class="note">(à définir)</span>':'')+'</td><td class="l">'+esc(p.r)+'</td><td class="m">'+p.T+'</td><td class="m">'+nf(p.obj)+'</td><td class="m">'+nf(p.E)+'</td><td class="m'+(p.att<.95?' warn':'')+'">'+pc(p.att)+'</td><td class="m">'+t3(p.rate)+'</td></tr>').join('')+'</tbody></table>')+'<p class="note">'+L.length+' missions affichées.</p>'}
+function copyCsv(){const L=filtered();const t=['Démarrage\tFin\tClient\tFormat\tZone\tVille\tResponsable\tÉquipe\tObjectif\tAttendu'].concat(L.map(p=>[p.d.toISOString().slice(0,10),dend(p).toISOString().slice(0,10),p.c,FTL[p.f],ZL[p.z],p.v,p.r,p.T,p.obj,Math.round(p.E)].join('\t'))).join('\n');
+  const ok=()=>{$('#copied').textContent='Copié ('+L.length+' lignes, séparées par tabulation)'},ko=()=>{$('#copied').textContent='Copie impossible ici : sélectionner le tableau à la main'};
+  try{navigator.clipboard.writeText(t).then(ok,ko)}catch(e){ko()}}
+
+/* ---------- interactions ---------- */
+let dirty=false;
+function mark(){dirty=true;$('#dirty').hidden=false;save()}
+function showTab(v){document.querySelectorAll('.tab[data-v]').forEach(t=>t.setAttribute('aria-selected',t.dataset.v===v));document.querySelectorAll('.view').forEach(x=>x.hidden=x.id!=='v-'+v);window.scrollTo(0,0)}
+function run(){generate();dirty=false;$('#dirty').hidden=true;renderSynth();renderNotes();renderScen();renderPlan();const open=[...document.querySelectorAll('details.cl[open]')].map(e=>e.id);renderEng();open.forEach(id=>{const e=$('#'+id);if(e)e.open=true});save()}
+$('#regen').addEventListener('click',run);
+$('#reset').addEventListener('click',()=>{const sel=S.sel;S=clone(DEF);S.sel=sel;CS={};CN.forEach(cs);run()});
+$('#tabs').addEventListener('click',e=>{const b=e.target.closest('.tab');if(b)showTab(b.dataset.v)});
+$('#v-notes').addEventListener('click',e=>{const tr=e.target.closest('tr.click');if(!tr)return;const d=$('#d'+tr.dataset.i);d.hidden=!d.hidden});
+$('#v-scen').addEventListener('click',e=>{const b=e.target.closest('[data-open]');if(!b)return;S.sel=b.dataset.open;save();renderScen();renderPlan();showTab('plan')});
+$('#v-plan').addEventListener('click',e=>{const b=e.target.closest('[data-sc]');if(!b)return;S.sel=b.dataset.sc;save();renderPlan();renderScen()});
+const toggle=(arr,v)=>{const i=arr.indexOf(v);i>=0?arr.splice(i,1):arr.push(v)};
+$('#v-eng').addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b)return;const a=b.dataset.act;
+  if(a==='gresp'){S.resp[b.dataset.m]=!S.resp[b.dataset.m];b.classList.toggle('on');mark();return}
+  const s=cs(CN[+b.dataset.ci]);
+  if(a==='ex'){const m=+b.dataset.m;toggle(s.ex,m);if(s.ex.includes(m))s.pref=s.pref.filter(x=>x!==m)}
+  else if(a==='pref'){const m=+b.dataset.m;toggle(s.pref,m);if(s.pref.includes(m))s.ex=s.ex.filter(x=>x!==m)}
+  else if(a==='exr'){toggle(s.exR,b.dataset.m)}
+  mark();const open=$('#cl'+b.dataset.ci).open;renderEng();$('#cl'+b.dataset.ci).open=open});
+function setPath(path,v){const p=path.split('.');let o=S;for(let i=0;i<p.length-1;i++)o=o[p[i]];o[p[p.length-1]]=v}
+function onEng(e){const t=e.target;
+  if(t.dataset.g){const v=+t.value;
+    if(t.dataset.g==='cap')S.cap[+t.dataset.i]=Math.max(0,v||0);else setPath(t.dataset.g,v);
+    const o=$('#o-'+t.id);if(o)o.textContent=v;mark();return}
+  const a=t.dataset.act;if(!a)return;const ci=t.dataset.ci,s=cs(CN[+ci]);
+  if(a==='eng'){s.eng[t.dataset.k]=Math.max(0,+t.value||0);const x=Object.values(s.eng).reduce((p,q)=>p+q,0);$('#tot'+ci).textContent=PY+' : '+x+' missions'}
+  else if(a==='addft'){if(t.value){s.eng[t.value]=1;mark();const o=$('#cl'+ci).open;renderEng();$('#cl'+ci).open=o;return}}
+  else if(a==='csem')s.sem=t.value===''?'':clamp(+t.value,0,100);
+  else if(a==='cmult')s.mult=Math.max(0,+t.value||0);
+  else if(a==='cmaxw')s.maxW=t.value===''?'':Math.max(1,+t.value);
+  else if(a==='tmax')s.tmax=t.value===''?'':Math.max(2,+t.value);
+  else if(a==='bonus')s.bonus=+t.value||0;
+  else if(a==='impr')s.impR=t.value;
+  mark()}
+$('#v-eng').addEventListener('input',onEng);
+$('#v-eng').addEventListener('change',e=>{if(e.target.tagName==='SELECT')onEng(e)});
+$('#v-scen').addEventListener('input',e=>{if(e.target.dataset.g){setPath(e.target.dataset.g,+e.target.value);mark()}});
+run();
+
+(function(){const h=$('#h1');if(h)h.textContent='Planning '+PY;document.title='Planning '+PY+' CAE';
+ const pt=document.querySelector('[data-v="plan"]');if(pt)pt.textContent='Planning '+PY;
+ document.querySelectorAll('#yr [data-y]').forEach(b=>{b.setAttribute('aria-selected',String(+b.dataset.y===PY));b.addEventListener('click',()=>{try{localStorage.setItem('planning-year',b.dataset.y)}catch(e){}location.reload()})})})();
+
+</script>
+
+</body>
+</html>

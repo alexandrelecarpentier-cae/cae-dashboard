@@ -19,6 +19,7 @@ natif sur la base "Production").
 | RD | `/rd.html?id_mission=<uuid>&id_utilisateur=<uuid>` | Un recruteur, une mission |
 | RE Mobilisation | `/re-mobilisation.html?mission_id=<uuid>` | Porte-à-porte : suivi global d'une mission |
 | RD Mobilisation | `/rd-mobilisation.html?mission_id=<uuid>&user_id=<uuid>` | Porte-à-porte : un mobilisateur, une mission |
+| Planning | `/planning-cae.html` | Planning des missions (données figées au 09/10/2026, pas d'API) |
 
 Toutes les pages autres que RM et Challenge n'ont pas de champ de recherche
 ni de picker : l'identifiant (`id_client`, `id_mission`, `id_utilisateur`,

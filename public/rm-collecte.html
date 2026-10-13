@@ -34,6 +34,11 @@
 
   .filters{display:flex; flex-direction:column; gap:8px;}
   .filter-label{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; font-weight:700;}
+  .btn-reset{
+    background:#fff; border:1px solid var(--line); border-radius:var(--sharp);
+    padding:0 12px; height:34px; box-sizing:border-box; font-size:12px; font-weight:700; color:var(--muted); cursor:pointer;
+    text-transform:uppercase; letter-spacing:.03em; flex:0 0 auto;
+  }
   .filter-row{display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;}
   select.control{
     background:var(--surface-2); color:var(--text); border:1px solid var(--line);
@@ -122,6 +127,15 @@
   tr.total-row td{font-weight:800; border-top:2px solid var(--text); background:var(--surface-2);}
   /* Clic sur une ligne mission pour filtrer sur cette mission (demande
      explicite) — cf. renderMissionsTable. */
+  /* Modale : dashboard /mission d'une mission (clic sur le code mission) */
+  a.mission-link{color:var(--red); font-weight:700; text-decoration:underline; text-underline-offset:2px; cursor:pointer;}
+  .mission-modal{position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; padding:24px;}
+  .mission-modal.open{display:flex;}
+  .mission-modal-box{background:#fff; width:min(1200px,100%); height:100%; border-radius:var(--sharp); display:flex; flex-direction:column; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,.35);}
+  .mission-modal-head{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 14px; border-bottom:1px solid var(--line); font-weight:800; font-size:13px;}
+  .mission-modal-close{background:#fff; border:1px solid var(--line); border-radius:var(--sharp); height:30px; padding:0 12px; font-size:12px; font-weight:700; cursor:pointer; color:var(--muted); text-transform:uppercase;}
+  .mission-modal iframe{flex:1; width:100%; border:0;}
+  @media print{ .mission-modal{display:none !important;} }
   tbody tr.clickable{cursor:pointer;}
   tbody tr.clickable:hover{background:var(--surface-2);}
   tbody tr.clickable.selected{background:var(--accent-tint, #FBE9EC);}
@@ -204,6 +218,7 @@
         <div class="filter-label">Au</div>
         <input class="control" type="date" id="dateTo">
       </div>
+      <button class="btn-reset" id="filtersReset" type="button">Réinitialiser</button>
     </div>
   </div>
 
@@ -418,6 +433,16 @@
   dateToEl.addEventListener('change', () => { dateFrom = dateFromEl.value; dateTo = dateToEl.value; setActiveQuickTag(null); refreshData(); });
   rmSelectEl.addEventListener('change', () => { selectedRm = rmSelectEl.value; refreshData(); });
   clientSelectEl.addEventListener('change', () => { selectedClient = clientSelectEl.value; refreshData(); });
+  // Réinitialiser : retour à l'état d'ouverture de la page (missions en cours aujourd'hui).
+  document.getElementById('filtersReset').addEventListener('click', () => {
+    selectedRm = ''; rmSelectEl.value = '';
+    selectedClient = ''; clientSelectEl.value = '';
+    selectedMission = '';
+    dateFrom = isoDate(today); dateTo = isoDate(today);
+    dateFromEl.value = dateFrom; dateToEl.value = dateTo;
+    setActiveQuickTag('today');
+    refreshData();
+  });
 
   function setActiveQuickTag(key) {
     quickTagsEl.querySelectorAll('.quick-tag').forEach((t) => t.classList.toggle('active', t.dataset.key === key));
@@ -619,6 +644,23 @@
     renderVentilation('genderLegend', rows, 'genre', GENDER_COLORS);
   }
 
+  // ---- Modale mission : /mission?id_mission=… dans une iframe (staging propagé)
+  const missionModalEl = document.getElementById('missionModal');
+  const missionFrameEl = document.getElementById('missionModalFrame');
+  function openMissionModal(id, code) {
+    const staging = new URLSearchParams(window.location.search).get('staging') === '1';
+    document.getElementById('missionModalTitle').textContent = code || 'Mission';
+    missionFrameEl.src = '/mission?id_mission=' + encodeURIComponent(id) + (staging ? '&staging=1' : '');
+    missionModalEl.classList.add('open');
+  }
+  function closeMissionModal() {
+    missionModalEl.classList.remove('open');
+    missionFrameEl.src = 'about:blank';
+  }
+  document.getElementById('missionModalClose').addEventListener('click', closeMissionModal);
+  missionModalEl.addEventListener('click', (e) => { if (e.target === missionModalEl) closeMissionModal(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && missionModalEl.classList.contains('open')) closeMissionModal(); });
+
   function renderMissionsTable(rows) {
     const tbody = document.getElementById('missionsTableBody');
     if (!rows.length) {
@@ -634,7 +676,7 @@
       const classes = [isTotal ? 'total-row' : '', clickable && r.mission_id === selectedMission ? 'selected' : '', clickable ? 'clickable' : ''].filter(Boolean).join(' ');
       const attrs = clickable ? ` data-id="${r.mission_id}"` : '';
       return `<tr${classes ? ` class="${classes}"` : ''}${attrs}>
-        <td>${esc(r.code_mission)}</td>
+        <td>${clickable ? `<a class="mission-link" href="/mission?id_mission=${encodeURIComponent(r.mission_id)}" data-id="${esc(r.mission_id)}" data-code="${esc(r.code_mission)}">${esc(r.code_mission)}</a>` : esc(r.code_mission)}</td>
         <td>${esc(r.client || '')}</td>
         <td>${isTotal ? '' : fmtDate(r.date_debut)}</td>
         <td>${isTotal ? '' : fmtDate(r.date_fin)}</td>
@@ -659,6 +701,14 @@
         // Reclic sur la mission déjà sélectionnée : revient à "toutes les missions".
         selectedMission = (id === selectedMission) ? '' : id;
         refreshData();
+      });
+    });
+    // Clic sur le code mission : ouvre le dashboard /mission dans une modale
+    // (sans déclencher le filtre de la ligne).
+    tbody.querySelectorAll('a.mission-link').forEach((a) => {
+      a.addEventListener('click', (e) => {
+        e.preventDefault(); e.stopPropagation();
+        openMissionModal(a.dataset.id, a.dataset.code);
       });
     });
   }
@@ -770,5 +820,11 @@
 })();
 </script>
 
+<div class="mission-modal" id="missionModal" role="dialog" aria-modal="true" aria-label="Dashboard mission">
+  <div class="mission-modal-box">
+    <div class="mission-modal-head"><span id="missionModalTitle">Mission</span><button class="mission-modal-close" id="missionModalClose" type="button">Fermer</button></div>
+    <iframe id="missionModalFrame" title="Dashboard mission"></iframe>
+  </div>
+</div>
 </body>
 </html>

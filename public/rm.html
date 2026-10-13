@@ -70,6 +70,7 @@
     flex:1; background:var(--surface-2); color:var(--text); border:1px solid var(--line);
     border-radius:var(--sharp); padding:9px 10px; font-size:13px; font-weight:600;
   }
+  .btn-reset{background:#fff; border:1px solid var(--line); border-radius:var(--sharp); padding:0 12px; font-size:12px; font-weight:700; color:var(--muted); cursor:pointer; text-transform:uppercase; letter-spacing:.03em; flex:0 0 auto;}
   select.selfilter.rm-active{border-color:var(--red); color:var(--red); background:#FFF3F5;}
 
   .chips{display:flex; gap:8px; overflow-x:auto; padding:6px 16px 14px; -webkit-overflow-scrolling:touch;}
@@ -200,6 +201,7 @@
       <option value="bs_reel">BS global (desc)</option>
       <option value="bs_annules">BS annulés (desc)</option>
     </select>
+    <button class="btn-reset" id="filtersReset" type="button">Réinitialiser</button>
   </div>
 </div>
 <div class="chips" id="formatChips"></div>
@@ -575,6 +577,14 @@ document.getElementById("rmSelect").addEventListener("change", e=>{
   document.getElementById("rmSelect").classList.toggle("rm-active", state.rm!=="all");
   document.getElementById("rmActiveTag").textContent = state.rm!=="all" ? `RM: ${state.rm}` : "";
   renderList(); renderKPIs();
+});
+
+document.getElementById("filtersReset").addEventListener("click", ()=>{
+  state.q = ""; state.format = "all"; state.rm = "all"; state.sort = "date_fin";
+  LS.set("q", state.q); LS.set("format", state.format); LS.set("rm", state.rm); LS.set("sort", state.sort);
+  document.getElementById("searchInput").value = "";
+  document.getElementById("sortSelect").value = state.sort;
+  renderAll();
 });
 
 function showToastMsg(msg){
