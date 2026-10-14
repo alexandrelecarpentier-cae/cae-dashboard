@@ -82,6 +82,13 @@
   .score-card .score-val{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:26px; font-weight:800;}
   .score-card .score-lbl{font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.03em;}
 
+  .tip-btn{display:inline-flex; align-items:center; justify-content:center; width:14px; height:14px; margin-left:5px; border-radius:50%;
+    border:1px solid var(--muted); color:var(--muted); font-size:9px; font-weight:700; line-height:1; cursor:pointer; background:#fff;
+    text-transform:none; vertical-align:middle; padding:0; font-family:inherit;}
+  .tip-btn:hover,.tip-btn.active{border-color:var(--red); color:var(--red);}
+  #tipPop{display:none; position:absolute; z-index:60; width:270px; max-width:85vw; background:#fff; border:1px solid var(--line);
+    border-left:2px solid var(--red); box-shadow:0 4px 14px rgba(0,0,0,.15); padding:8px 10px; font-size:12px; line-height:1.4;
+    color:var(--ink,#222); text-transform:none; letter-spacing:0; font-weight:400; text-align:left;}
   .info-wrap{position:relative; display:inline-flex;}
   .info-btn{width:15px; height:15px; border-radius:50%; border:1px solid var(--muted); color:var(--muted);
     background:none; font-size:10px; line-height:13px; text-align:center; padding:0; cursor:pointer;
@@ -299,18 +306,18 @@
       </div>
 
       <div class="kpi-grid">
-        <div class="kpi"><div class="val">${actifTxt}</div><div class="lbl" title="Actif = au moins un lot à venir (aujourd'hui compris) sur une mission en cours, ou un contrat non terminé ; sinon Inactif." style="cursor:help;">Statut à ce jour</div></div>
-        <div class="kpi"><div class="val">${permisTxt}</div><div class="lbl" title="utilisateur_situations.permis_de_conduire (Oui / Non / Non renseigné)." style="cursor:help;">Permis</div></div>
-        <div class="kpi"><div class="val">${joursTxt}</div><div class="lbl" title="Aujourd'hui − date du dernier lot passé (lots.date ≤ aujourd'hui) ; « Aujourd'hui » si 0 ; « — » si aucun lot." style="cursor:help;">Depuis la dernière mission</div></div>
-        <div class="kpi">${txtVal(profil.ville_residence)}<div class="lbl" title="utilisateur_informations_contact.ville." style="cursor:help;">Ville de résidence</div></div>
-        <div class="kpi" style="grid-column:1 / -1;">${txtVal(profil.villes_mission)}<div class="lbl" title="Villes principales (missions.ville_principale) des missions du salarié (contrat ou lot), dédoublonnées sans tenir compte de la casse." style="cursor:help;">Villes de mission</div></div>
-        <div class="kpi"><div class="val">${resume.nb_missions != null ? fmtNum(resume.nb_missions) : '—'}</div><div class="lbl" title="Nombre de missions distinctes avec un contrat ou au moins un lot du salarié (clients exclus non comptés)." style="cursor:help;">Missions</div></div>
-        <div class="kpi"><div class="val">${fmtDate(resume.premiere_mission_le)}</div><div class="lbl" title="Date de début la plus ancienne parmi les missions du salarié." style="cursor:help;">Première mission</div></div>
-        <div class="kpi"><div class="val">${finContratTxt}</div><div class="lbl" title="max(contrats.date_fin) ; « En cours » si un contrat n'est pas terminé." style="cursor:help;">Fin du dernier contrat</div></div>
-        <div class="kpi"><div class="val">${resume.bs_reel_total != null ? fmtNum(resume.bs_reel_total) : '—'}</div><div class="lbl" title="count(distinct dons) au statut nouveau / en_attente / transmis, sur les lots du salarié jusqu'à aujourd'hui." style="cursor:help;">BS réel cumulé</div></div>
-        <div class="kpi"><div class="val">${resume.heures_rue_total != null ? fmtNum(resume.heures_rue_total, 1) : '—'}</div><div class="lbl" title="Σ nombre_horaires_rue des lots avec presence_recruteur ≠ faux (lots ≤ aujourd'hui ; heures rémunérées non complétées ignorées le jour même)." style="cursor:help;">Heures de rue totales</div></div>
-        <div class="kpi"><div class="val">${resume.heures_remuneration_total != null ? fmtNum(resume.heures_remuneration_total, 1) : '—'}</div><div class="lbl" title="Σ nombre_horaires_remuneration des lots présents (heures rémunérées ≠ 0)." style="cursor:help;">Heures rémunérées totales</div></div>
-        <div class="kpi"><div class="val">${fmtPct(resume.ratio_h_total)}</div><div class="lbl" title="Heures de rue / heures rémunérées (affiché en %)." style="cursor:help;">Ratio h rue/rém</div></div>
+        <div class="kpi"><div class="val">${actifTxt}</div><div class="lbl" data-tip="Actif = au moins un lot à venir (aujourd'hui compris) sur une mission en cours, ou un contrat non terminé ; sinon Inactif.">Statut à ce jour</div></div>
+        <div class="kpi"><div class="val">${permisTxt}</div><div class="lbl" data-tip="utilisateur_situations.permis_de_conduire (Oui / Non / Non renseigné).">Permis</div></div>
+        <div class="kpi"><div class="val">${joursTxt}</div><div class="lbl" data-tip="Aujourd'hui − date du dernier lot passé (lots.date ≤ aujourd'hui) ; « Aujourd'hui » si 0 ; « — » si aucun lot.">Depuis la dernière mission</div></div>
+        <div class="kpi">${txtVal(profil.ville_residence)}<div class="lbl" data-tip="utilisateur_informations_contact.ville.">Ville de résidence</div></div>
+        <div class="kpi" style="grid-column:1 / -1;">${txtVal(profil.villes_mission)}<div class="lbl" data-tip="Villes principales (missions.ville_principale) des missions du salarié (contrat ou lot), dédoublonnées sans tenir compte de la casse.">Villes de mission</div></div>
+        <div class="kpi"><div class="val">${resume.nb_missions != null ? fmtNum(resume.nb_missions) : '—'}</div><div class="lbl" data-tip="Nombre de missions distinctes avec un contrat ou au moins un lot du salarié (clients exclus non comptés).">Missions</div></div>
+        <div class="kpi"><div class="val">${fmtDate(resume.premiere_mission_le)}</div><div class="lbl" data-tip="Date de début la plus ancienne parmi les missions du salarié.">Première mission</div></div>
+        <div class="kpi"><div class="val">${finContratTxt}</div><div class="lbl" data-tip="max(contrats.date_fin) ; « En cours » si un contrat n'est pas terminé.">Fin du dernier contrat</div></div>
+        <div class="kpi"><div class="val">${resume.bs_reel_total != null ? fmtNum(resume.bs_reel_total) : '—'}</div><div class="lbl" data-tip="count(distinct dons) au statut nouveau / en_attente / transmis, sur les lots du salarié jusqu'à aujourd'hui.">BS réel cumulé</div></div>
+        <div class="kpi"><div class="val">${resume.heures_rue_total != null ? fmtNum(resume.heures_rue_total, 1) : '—'}</div><div class="lbl" data-tip="Σ nombre_horaires_rue des lots avec presence_recruteur ≠ faux (lots ≤ aujourd'hui ; heures rémunérées non complétées ignorées le jour même).">Heures de rue totales</div></div>
+        <div class="kpi"><div class="val">${resume.heures_remuneration_total != null ? fmtNum(resume.heures_remuneration_total, 1) : '—'}</div><div class="lbl" data-tip="Σ nombre_horaires_remuneration des lots présents (heures rémunérées ≠ 0).">Heures rémunérées totales</div></div>
+        <div class="kpi"><div class="val">${fmtPct(resume.ratio_h_total)}</div><div class="lbl" data-tip="Heures de rue / heures rémunérées (affiché en %).">Ratio h rue/rém</div></div>
       </div>
 
       <div class="section-label"><span class="diamond"></span>Historique des missions</div>
@@ -318,18 +325,51 @@
         <table>
           <thead>
             <tr>
-              <th>Mission</th><th>Client</th><th title="Grade du contrat le plus récent sur la mission (RD, RDC, RDE…) ; RE / RM si la personne est responsable d'équipe / de mission." style="cursor:help;">Rôle</th><th>Format</th><th title="Responsable d'équipe de la mission." style="cursor:help;">RE</th><th title="Responsable de mission." style="cursor:help;">RM</th>
+              <th>Mission</th><th>Client</th><th data-tip="Grade du contrat le plus récent sur la mission (RD, RDC, RDE…) ; RE / RM si la personne est responsable d'équipe / de mission.">Rôle</th><th>Format</th><th data-tip="Responsable d'équipe de la mission.">RE</th><th data-tip="Responsable de mission.">RM</th>
               <th>Début</th><th>Fin</th>
-              <th title="count(distinct dons) au statut nouveau / en_attente / transmis sur les lots du salarié pour cette mission." style="cursor:help;" class="num">BS réel</th><th title="BS réel / heures de rue (lots avec presence_recruteur ≠ faux)." style="cursor:help;" class="num">Taux réel</th>
-              <th title="Heures de rue / heures rémunérées (en %)." style="cursor:help;" class="num">Ratio h</th>
-              <th title="avg(montant) des dons valides." style="cursor:help;" class="num">Don moyen</th><th title="100 × dons valides avec donateur < 25 ans (âge à la date du don) / dons valides dont la date de naissance est connue." style="cursor:help;" class="num">−25 ans</th>
-              <th title="Don moyen × (1 − % donateurs −25 ans). Barème : 0–3 Très faible · 3–5,5 Faible · 5,5–6,5 Moyen · 6,5–8 Bon · > 8 Très bon." style="cursor:help;">Score qualité</th>
+              <th data-tip="count(distinct dons) au statut nouveau / en_attente / transmis sur les lots du salarié pour cette mission." class="num">BS réel</th><th data-tip="BS réel / heures de rue (lots avec presence_recruteur ≠ faux)." class="num">Taux réel</th>
+              <th data-tip="Heures de rue / heures rémunérées (en %)." class="num">Ratio h</th>
+              <th data-tip="avg(montant) des dons valides." class="num">Don moyen</th><th data-tip="100 × dons valides avec donateur < 25 ans (âge à la date du don) / dons valides dont la date de naissance est connue." class="num">−25 ans</th>
+              <th data-tip="Don moyen × (1 − % donateurs −25 ans). Barème : 0–3 Très faible · 3–5,5 Faible · 5,5–6,5 Moyen · 6,5–8 Bon · > 8 Très bon.">Score qualité</th>
             </tr>
           </thead>
           <tbody id="missionList"></tbody>
         </table>
       </div>
     `;
+
+    // Infobulles cliquables : un petit « i » à côté de chaque libellé portant data-tip.
+    (function initTips() {
+      let pop = document.getElementById('tipPop');
+      if (!pop) { pop = document.createElement('div'); pop.id = 'tipPop'; document.body.appendChild(pop); }
+      let current = null;
+      const hide = () => { pop.style.display = 'none'; if (current) current.classList.remove('active'); current = null; };
+      document.querySelectorAll('#profileArea [data-tip]').forEach((el) => {
+        if (el.querySelector('.tip-btn')) return;
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'tip-btn'; b.textContent = 'i';
+        b.setAttribute('aria-label', 'Formule');
+        b.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (current === b) { hide(); return; }
+          hide();
+          pop.textContent = el.getAttribute('data-tip');
+          pop.style.display = 'block';
+          const r = b.getBoundingClientRect();
+          const w = pop.offsetWidth;
+          let left = r.left + window.scrollX - 10;
+          left = Math.max(8, Math.min(left, window.scrollX + document.documentElement.clientWidth - w - 8));
+          pop.style.left = left + 'px';
+          pop.style.top = (r.bottom + window.scrollY + 6) + 'px';
+          b.classList.add('active'); current = b;
+        });
+        el.appendChild(b);
+      });
+      if (!window.__tipBound) {
+        window.__tipBound = true;
+        document.addEventListener('click', (e) => { if (!pop.contains(e.target)) hide(); });
+      }
+    })();
 
     const listEl = document.getElementById('missionList');
     if (!missions.length) {
