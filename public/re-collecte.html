@@ -147,6 +147,48 @@
   body:has(#state:not(.hidden):not(.error)) header{visibility:hidden;}
   .hidden{display:none;}
 </style>
+<style id="touch-scroll-fix">
+  /* Durcissement tactile (Android / WebView bas de gamme, 10/2026) : la page doit toujours
+     défiler au doigt, même en passant par un graphique ou un tableau. */
+  html{overflow-x:hidden; overflow-y:auto; height:auto; -webkit-text-size-adjust:100%; touch-action:pan-x pan-y pinch-zoom;}
+  body{height:auto; min-height:100%; overflow-x:hidden; overflow-y:visible; touch-action:pan-x pan-y pinch-zoom; -webkit-overflow-scrolling:touch;}
+  canvas{touch-action:pan-y pinch-zoom !important; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;}
+  .chart-box{touch-action:pan-y pinch-zoom;}
+  /* flou d'arrière-plan et animations en boucle : coûteux sur GPU d'entrée de gamme, inutiles ici */
+  header{-webkit-backdrop-filter:none; backdrop-filter:none; background:#fff;}
+  .live-diamond{animation:none !important;}
+  #refreshFill{transition:none !important;}
+  .table-wrap, .table-scroll{-webkit-overflow-scrolling:touch; overscroll-behavior-x:contain; touch-action:pan-x pan-y;}
+  select.control, input.control{touch-action:manipulation;}
+</style>
+<script>
+  // 1) Chart.js ne doit pas capter les gestes tactiles (sinon le doigt posé sur un graphique ne fait
+  //    plus défiler la page) : on retire les événements touch et les animations dès son chargement.
+  (function () {
+    var real;
+    try {
+      Object.defineProperty(window, 'Chart', {
+        configurable: true,
+        get: function () { return real; },
+        set: function (v) {
+          real = v;
+          try {
+            if (v && v.defaults) {
+              v.defaults.events = ['mousemove', 'mouseout', 'click'];
+              v.defaults.animation = false;
+              v.defaults.devicePixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+            }
+          } catch (e) {}
+        }
+      });
+    } catch (e) {}
+    // 2) dernier contact tactile : l'auto-actualisation attend que le doigt soit levé depuis 4 s
+    window.__lastTouch = 0;
+    ['touchstart', 'touchmove', 'touchend'].forEach(function (t) {
+      document.addEventListener(t, function () { window.__lastTouch = Date.now(); }, { passive: true, capture: true });
+    });
+  })();
+</script>
 </head>
 <body>
 <script>
@@ -488,7 +530,14 @@
     rdSelectEl.dataset.built = '1';
   }
 
+  // Conserve la position de scroll pendant une actualisation (le contenu est reconstruit)
   async function refreshData() {
+    const y = window.scrollY;
+    try { await refreshDataInner(); } finally {
+      requestAnimationFrame(() => { if (Math.abs(window.scrollY - y) > 2) window.scrollTo(0, y); });
+    }
+  }
+  async function refreshDataInner() {
     try {
       const p = new URLSearchParams();
       if (idMissionParam) p.set('id_mission', idMissionParam);
@@ -827,7 +876,11 @@
   let remaining = REFRESH_MS;
   function tickCountdown() {
     remaining -= 1000;
-    if (remaining <= 0) { remaining = REFRESH_MS; refreshData(); return; }
+    if (remaining <= 0) {
+      // doigt encore posé / scroll en cours : on repousse l'actualisation de 5 s (évite de reconstruire la page sous le doigt)
+      if (Date.now() - (window.__lastTouch || 0) < 4000) { remaining = 5000; return; }
+      remaining = REFRESH_MS; refreshData(); return;
+    }
     const s = Math.floor(remaining / 1000);
     const mm = Math.floor(s / 60), ss = s % 60;
     document.getElementById('countdown').textContent = `${mm}:${ss.toString().padStart(2, '0')}`;
