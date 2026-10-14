@@ -662,7 +662,8 @@
       { v: fmtNum(s.nb_missions), l: 'Missions' },
       { v: s.heures_rue != null ? fmtNum(s.heures_rue) : '—', l: 'Heures rue' },
       { v: fmtNum(s.bs_reel), l: 'BS réel' },
-      { v: s.taux_reel != null ? fmtNum(s.taux_reel, 3) : '—', l: 'Taux réel' },
+      { v: s.taux_reel != null ? fmtNum(s.taux_reel, 3) : '—', l: 'Taux réel (filtres)' },
+      { v: s.taux_reel_mission != null ? fmtNum(s.taux_reel_mission, 3) : '—', l: 'Taux réel mission' },
       { v: s.don_moyen != null ? fmtEuro(s.don_moyen) : '—', l: 'Don moyen' },
     ];
     document.getElementById('kpiGlobal').innerHTML = kpis.map((k) => `

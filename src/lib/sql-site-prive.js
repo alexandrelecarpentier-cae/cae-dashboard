@@ -81,17 +81,47 @@ dons_f as (
 )`;
 }
 
+// Mission entière (tous emplacements, privés ou non, avec ou sans emplacement) pour les missions
+// présentes dans le périmètre filtré (lots_f) : mêmes lots que /mission (période Du/Au et règle des
+// heures non complétées appliquées, pas de filtre emplacement / ville / département).
+function wholeMissionCtes(p) {
+  const dateClauses = [];
+  if (p.date_from) dateClauses.push(`l.date >= '${p.date_from}'`);
+  if (p.date_to) dateClauses.push(`l.date <= '${p.date_to}'`);
+  const dateSql = dateClauses.length ? ' and ' + dateClauses.join(' and ') : '';
+  return `scope_missions as (select distinct mission_id from lots_f),
+lots_m as (
+  select l.id, l.mission_id, l.emplacement_id,
+    case when l.presence_recruteur is distinct from false then l.nombre_horaires_rue else 0 end as nombre_horaires_rue
+  from lots l
+  join missions m on m.id = l.mission_id
+  where l.mission_id in (select mission_id from scope_missions)
+    and (coalesce(l.heures_remuneration_completes, true) or l.date < CURRENT_DATE)${dateSql}
+    ${excludeClientsClause('m')}
+)`;
+}
+
 // Indicateurs globaux : nb d'emplacements et de missions couverts par le
 // périmètre filtré, BS réel cumulé, taux réel global (pondéré, pas moyenne
 // de taux), don moyen global.
 function buildGlobalStatsQuery(p) {
   return `${baseCte(p)},
+${wholeMissionCtes(p)},
 heures as (
   select sum(nombre_horaires_rue) as heures_rue
   from lots_f
 ),
 dons_agg as (
   select count(distinct id) as bs_reel, avg(montant) as don_moyen from dons_f
+),
+heures_m as (
+  select sum(nombre_horaires_rue) as heures_rue_mission from lots_m
+),
+dons_m as (
+  select count(distinct d.id) as bs_reel_mission
+  from dons d
+  join lots_m l on l.id = d.lot_id
+  where d.statut in ${STATUTS_VALIDES}
 )
 select
   (select count(distinct emplacement_id) from lots_f) as nb_emplacements,
@@ -99,8 +129,11 @@ select
   h.heures_rue,
   coalesce(da.bs_reel, 0) as bs_reel,
   case when coalesce(h.heures_rue,0) > 0 then coalesce(da.bs_reel,0)::float / h.heures_rue else null end as taux_reel,
-  da.don_moyen
-from heures h, dons_agg da;`;
+  da.don_moyen,
+  hm.heures_rue_mission,
+  coalesce(dm.bs_reel_mission, 0) as bs_reel_mission,
+  case when coalesce(hm.heures_rue_mission,0) > 0 then coalesce(dm.bs_reel_mission,0)::float / hm.heures_rue_mission else null end as taux_reel_mission
+from heures h, dons_agg da, heures_m hm, dons_m dm;`;
 }
 
 // Taux réel + don moyen par typologie d'emplacement (categorie : sup, hyp,
@@ -307,21 +340,8 @@ function buildParMissionQuery(p) {
   // taux que /mission), quel que soit le filtre emplacement / ville / département ; seules les
   // missions ayant au moins un lot dans le périmètre filtré sont listées. La période Du/Au reste
   // appliquée.
-  const dateClauses = [];
-  if (p.date_from) dateClauses.push(`l.date >= '${p.date_from}'`);
-  if (p.date_to) dateClauses.push(`l.date <= '${p.date_to}'`);
-  const dateSql = dateClauses.length ? ' and ' + dateClauses.join(' and ') : '';
   return `${baseCte(p)},
-scope_missions as (select distinct mission_id from lots_f),
-lots_m as (
-  select l.id, l.mission_id, l.emplacement_id,
-    case when l.presence_recruteur is distinct from false then l.nombre_horaires_rue else 0 end as nombre_horaires_rue
-  from lots l
-  join missions m on m.id = l.mission_id
-  where l.mission_id in (select mission_id from scope_missions)
-    and (coalesce(l.heures_remuneration_completes, true) or l.date < CURRENT_DATE)${dateSql}
-    ${excludeClientsClause('m')}
-),
+${wholeMissionCtes(p)},
 par_mission as (
   select l.mission_id,
     count(distinct l.emplacement_id) as nb_emplacements,
