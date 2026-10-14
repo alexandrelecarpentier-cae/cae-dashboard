@@ -64,6 +64,8 @@ Taux réel brut 3 décimales · tx_transfo % à l'unité · ratio h, taux de pr�
 
 ## Réserves connues
 
+- `/rm-collecte` : la liste des RM regroupe par nom (une personne avec plusieurs comptes utilisateurs n'apparaît qu'une fois ; le filtre `id_rm` accepte plusieurs ids séparés par des virgules).
+
 - ~900 lots (2026, surtout sites privés) ont `presence_recruteur = faux` mais des heures rémunérées ≠ 0 : ils restent comptés « présents » pour le taux de présence.
 - `/rm` consomme la carte Metabase 514 : formules (dont le dénominateur de « % < 25 ») non vérifiables côté projet.
 - `/client` exclut la journée en cours (petit écart de taux réel avec les autres dashboards en cours de journée).

@@ -46,7 +46,9 @@ function missionOverlapClause(dateRange) {
 }
 
 function missionScopeCTE(rmId, clientId, dateRange, missionId) {
-  const rmFilter = rmId ? `AND m.responsable_mission_id = '${rmId}'` : '';
+  // rmId : un ou plusieurs UUID séparés par des virgules (une même personne peut avoir
+  // plusieurs comptes utilisateurs ; la liste les regroupe par nom). UUID whitelistés côté index.js.
+  const rmFilter = rmId ? `AND m.responsable_mission_id IN (${rmId.split(',').map((x) => `'${x}'`).join(',')})` : '';
   const clientFilter = clientId ? `AND m.client_id = '${clientId}'` : '';
   // Filtre mission unique, activé par un clic sur une ligne de la table
   // "Suivi des missions" (demande explicite) — mêmes règles de validation
@@ -260,13 +262,16 @@ ORDER BY nb DESC;`;
 }
 
 function buildRmListQuery() {
-  return `SELECT DISTINCT m.responsable_mission_id AS id, coalesce(uip.prenom || ' ' || uip.nom, u.email) AS nom
+  // Une ligne par personne (nom) : une même personne peut avoir plusieurs comptes
+  // utilisateurs (ex. doublons) → ids regroupés, séparés par des virgules.
+  return `SELECT string_agg(DISTINCT x.responsable_mission_id::text, ',') AS id, x.nom FROM (
+SELECT m.responsable_mission_id, trim(coalesce(uip.prenom || ' ' || uip.nom, u.email)) AS nom
 FROM missions m
 LEFT JOIN utilisateurs u ON u.id = m.responsable_mission_id
 LEFT JOIN utilisateur_informations_personnelles uip ON uip.utilisateur_id = m.responsable_mission_id
 WHERE m.responsable_mission_id IS NOT NULL
   ${excludeClientsClause('m')}
-ORDER BY nom;`;
+) x GROUP BY x.nom ORDER BY x.nom;`;
 }
 
 function buildClientListQuery() {

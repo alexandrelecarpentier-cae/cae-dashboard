@@ -539,7 +539,7 @@ async function handleRmCollecte(url, env, ctx) {
   if (configError) return jsonResponse({ error: configError }, 500);
 
   const id_rm = url.searchParams.get('id_rm') || '';
-  if (id_rm && !RE_UUID.test(id_rm)) return jsonResponse({ error: 'id_rm invalide' }, 400);
+  if (id_rm && !id_rm.split(',').every((x) => RE_UUID.test(x))) return jsonResponse({ error: 'id_rm invalide' }, 400);
 
   const id_client = url.searchParams.get('id_client') || '';
   if (id_client && !RE_UUID.test(id_client)) return jsonResponse({ error: 'id_client invalide' }, 400);
