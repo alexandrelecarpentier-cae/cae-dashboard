@@ -27,7 +27,7 @@ function filtersClause(p) {
 // jours de présence/absence (avec motif d'absence, pour l'absentéisme).
 function baseCte(p) {
   return `with lots_f as (
-  select l.id, l.mission_id, l.nombre_horaires_rue, l.nombre_horaires_remuneration, l.absence_id
+  select l.id, l.mission_id, case when l.presence_recruteur is distinct from false then l.nombre_horaires_rue else 0 end as nombre_horaires_rue, l.nombre_horaires_remuneration, l.absence_id
   from lots l
   join missions m on m.id = l.mission_id
   where ${filtersClause(p)}

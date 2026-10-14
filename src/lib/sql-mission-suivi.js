@@ -33,7 +33,7 @@ function buildWeeklyQuery(id_mission, id_utilisateur, dateRange) {
   const rdFilter = id_utilisateur ? `AND l.utilisateur_id = '${id_utilisateur}'` : '';
   const dateFilter = dateFilterClause('l.date', dateRange);
   return `WITH mission_lots AS (
-  SELECT l.id, l.date, l.nombre_horaires_rue, l.nombre_horaires_remuneration
+  SELECT l.id, l.date, case when l.presence_recruteur is distinct from false then l.nombre_horaires_rue else 0 end AS nombre_horaires_rue, l.nombre_horaires_remuneration
   FROM lots l
   WHERE l.mission_id = '${id_mission}'
     ${rdFilter}
@@ -60,7 +60,7 @@ function buildAllDaysStatsQuery(id_mission, id_utilisateur, dateRange) {
   const dateFilter = dateUpToTodayClause('l.date', dateRange);
   return `WITH lots_all AS (
   SELECT l.id, l.date, l.utilisateur_id,
-    coalesce(l.nombre_horaires_rue, 0) AS heures_rue,
+    case when l.presence_recruteur is distinct from false then l.nombre_horaires_rue else 0 end AS heures_rue,
     CASE WHEN coalesce(l.nombre_horaires_remuneration, 0) <> 0 THEN l.nombre_horaires_remuneration ELSE 0 END AS heures_rem
   FROM lots l
   WHERE l.mission_id = '${id_mission}'

@@ -83,7 +83,7 @@ function buildMissionsDataQuery(rmId, clientId, dateRange, missionId) {
 ),
 lots_mission AS (
   SELECT l.id, l.mission_id, l.utilisateur_id, l.date,
-    coalesce(l.nombre_horaires_rue, 0) AS heures_rue,
+    case when l.presence_recruteur is distinct from false then l.nombre_horaires_rue else 0 end AS heures_rue,
     CASE WHEN coalesce(l.nombre_horaires_remuneration, 0) <> 0 THEN l.nombre_horaires_remuneration ELSE 0 END AS heures_rem
   FROM lots l
   WHERE l.mission_id IN (SELECT id FROM filtered_missions)

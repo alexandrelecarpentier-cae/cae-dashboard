@@ -37,7 +37,7 @@ function filtersClause(p) {
 // associés, hors clients exclus.
 function baseCte(p) {
   return `with lots_f as (
-  select l.id, l.mission_id, l.utilisateur_id, l.emplacement_id, l.nombre_horaires_rue, l.nombre_horaires_remuneration
+  select l.id, l.mission_id, l.utilisateur_id, l.emplacement_id, case when l.presence_recruteur is distinct from false then l.nombre_horaires_rue else 0 end as nombre_horaires_rue, l.nombre_horaires_remuneration
   from lots l
   join missions m on m.id = l.mission_id
   where ${filtersClause(p)}
@@ -279,7 +279,7 @@ order by pm.derniere_arrivee desc;`;
 function buildRecruteursParMissionQuery(id_mission, dateRange) {
   const dateFilter = dateFilterClause('l.date', dateRange);
   return `with lots_f as (
-  select l.id, l.utilisateur_id, l.emplacement_id, l.nombre_horaires_rue, l.nombre_horaires_remuneration
+  select l.id, l.utilisateur_id, l.emplacement_id, case when l.presence_recruteur is distinct from false then l.nombre_horaires_rue else 0 end as nombre_horaires_rue, l.nombre_horaires_remuneration
   from lots l
   where l.mission_id = '${id_mission}'
     ${dateFilter}

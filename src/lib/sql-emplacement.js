@@ -30,7 +30,7 @@ where id = '${id_emplacement}';`;
 function buildMissionsQuery(id_emplacement, dateRange) {
   return `with e as (select '${id_emplacement}'::uuid as id),
 lots_e as (
-  select l.id, l.mission_id, l.date, l.utilisateur_id, l.nombre_horaires_rue, l.nombre_horaires_remuneration
+  select l.id, l.mission_id, l.date, l.utilisateur_id, case when l.presence_recruteur is distinct from false then l.nombre_horaires_rue else 0 end as nombre_horaires_rue, l.nombre_horaires_remuneration
   from lots l join e on l.emplacement_id = e.id
   where 1=1 ${dateClause(dateRange)}
 ),
@@ -81,7 +81,7 @@ order by pm.derniere_date desc;`;
 function globalDaysCtePrefix(id_emplacement, dateRange) {
   return `with e as (select '${id_emplacement}'::uuid as id),
 lots_e as (
-  select l.id, l.mission_id, l.date, l.utilisateur_id, l.nombre_horaires_rue, l.nombre_horaires_remuneration
+  select l.id, l.mission_id, l.date, l.utilisateur_id, case when l.presence_recruteur is distinct from false then l.nombre_horaires_rue else 0 end as nombre_horaires_rue, l.nombre_horaires_remuneration
   from lots l
   join e on l.emplacement_id = e.id
   join missions m on m.id = l.mission_id

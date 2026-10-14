@@ -75,7 +75,7 @@ order by m.date_debut desc nulls last;`;
 function buildPerformanceParMissionQuery(id_utilisateur) {
   return `with u as (select '${id_utilisateur}'::uuid as id),
 lots_u as (
-  select l.id, l.mission_id, l.nombre_horaires_rue, l.nombre_horaires_remuneration, l.heures_remuneration_completes
+  select l.id, l.mission_id, case when l.presence_recruteur is distinct from false then l.nombre_horaires_rue else 0 end as nombre_horaires_rue, l.nombre_horaires_remuneration, l.heures_remuneration_completes
   from lots l
   join u on l.utilisateur_id = u.id
   join missions m on m.id = l.mission_id
@@ -143,7 +143,7 @@ ms as (
   select l.mission_id from lots l join u on l.utilisateur_id = u.id
 ),
 lots_u as (
-  select l.id, l.nombre_horaires_rue, l.nombre_horaires_remuneration, l.heures_remuneration_completes
+  select l.id, case when l.presence_recruteur is distinct from false then l.nombre_horaires_rue else 0 end as nombre_horaires_rue, l.nombre_horaires_remuneration, l.heures_remuneration_completes
   from lots l
   join u on l.utilisateur_id = u.id
   join missions m on m.id = l.mission_id

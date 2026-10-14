@@ -62,7 +62,7 @@ function filtersClause(p) {
 // mission/client/emplacement/période si demandé, hors clients exclus.
 function baseCte(p) {
   return `with lots_f as (
-  select l.id, l.mission_id, l.emplacement_id, l.date, l.nombre_horaires_rue, l.nombre_horaires_remuneration,
+  select l.id, l.mission_id, l.emplacement_id, l.date, case when l.presence_recruteur is distinct from false then l.nombre_horaires_rue else 0 end as nombre_horaires_rue, l.nombre_horaires_remuneration,
     l.utilisateur_id, m.responsable_equipe_id,
     e.categorie, e.nom as emplacement_nom
   from lots l
