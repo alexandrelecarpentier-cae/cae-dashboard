@@ -489,30 +489,80 @@
     }
   }
 
-  async function refreshData() {
-    try {
-      const p = new URLSearchParams();
-      if (selectedRm) p.set('id_rm', selectedRm);
-      if (selectedClient) p.set('id_client', selectedClient);
-      if (selectedMission) p.set('id_mission', selectedMission);
-      if (dateFrom && dateTo) { p.set('date_from', dateFrom); p.set('date_to', dateTo); }
+  // Chargement par section : chaque bloc s'affiche dès que sa requête
+  // répond (les requêtes partent toutes en parallèle, y compris avant la fin
+  // du chargement de Chart.js). Les listes RM / associations ne sont
+  // demandées qu'une fois.
+  let epoch = 0;
+  let cur = {};
+  let listsRequested = false;
+  const chartReady = ensureChartJs();
 
-      const res = await fetch('/api/rm-collecte?' + p.toString(), { cache: 'no-store' });
-      const data = await res.json();
-      if (!res.ok || data.error) throw new Error(data.error || 'Erreur inconnue');
-      render(data);
+  function renderKpisNow() {
+    const total = (cur.missions || []).find((r) => r.code_mission === 'TOTAL') || {};
+    renderKpis(total, cur.suiviJour || [], cur.fpe || null);
+  }
+  const SECTION_RENDER = {
+    missions: (rows) => { cur.missions = rows; renderMissionsTable(rows); renderKpisNow(); },
+    fpe: (rows) => { cur.fpe = rows[0] || null; renderKpisNow(); },
+    suiviJour: (rows) => { cur.suiviJour = rows; renderKpisNow(); renderWeeklyTable(rows); renderDailyTable(rows); },
+    age: (rows) => chartReady.then(() => renderAgePie(rows)),
+    gender: (rows) => chartReady.then(() => renderGenderPie(rows)),
+    suspects: (rows) => renderSuspectsTable(rows),
+  };
+
+  async function getSection(section, p) {
+    const res = await fetch('/api/rm-collecte?section=' + section + (p ? '&' + p : ''), { cache: 'no-store' });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'Erreur inconnue');
+    return data;
+  }
+
+  async function refreshData() {
+    const ep = ++epoch;
+    cur = {};
+    const p = new URLSearchParams();
+    if (selectedRm) p.set('id_rm', selectedRm);
+    if (selectedClient) p.set('id_client', selectedClient);
+    if (selectedMission) p.set('id_mission', selectedMission);
+    if (dateFrom && dateTo) { p.set('date_from', dateFrom); p.set('date_to', dateTo); }
+    const qs = p.toString();
+    contentEl.style.opacity = firstLoadDone ? '.55' : '1';
+    let failed = null;
+
+    const jobs = Object.keys(SECTION_RENDER).map((section) =>
+      getSection(section, qs).then((data) => {
+        if (ep !== epoch) return;
+        stateEl.classList.add('hidden');
+        contentEl.classList.remove('hidden');
+        SECTION_RENDER[section](data.rows || []);
+      }).catch((err) => {
+        if (ep !== epoch) return;
+        failed = failed || err;
+        console.warn('Fetch /api/rm-collecte (' + section + ') failed:', err);
+      }));
+
+    if (!listsRequested) {
+      listsRequested = true;
+      jobs.push(getSection('lists', '').then((d) => buildFilterLists(d.rmList || [], d.clientList || []))
+        .catch(() => { listsRequested = false; }));
+    }
+
+    await Promise.all(jobs);
+    if (ep !== epoch) return;
+    contentEl.style.opacity = '1';
+    if (failed) {
+      liveMode = false;
+      document.getElementById('errorDetail').textContent = failed.message;
+      document.getElementById('errorBanner').classList.add('show');
+      if (!firstLoadDone) {
+        stateEl.textContent = 'Connexion impossible : ' + failed.message;
+        stateEl.classList.add('error');
+      }
+    } else {
       liveMode = true;
       firstLoadDone = true;
       document.getElementById('errorBanner').classList.remove('show');
-    } catch (err) {
-      liveMode = false;
-      document.getElementById('errorDetail').textContent = err.message;
-      document.getElementById('errorBanner').classList.add('show');
-      console.warn('Fetch /api/rm-collecte failed:', err);
-      if (!firstLoadDone) {
-        stateEl.textContent = 'Connexion impossible : ' + err.message;
-        stateEl.classList.add('error');
-      }
     }
     document.getElementById('syncTime').textContent =
       new Date().toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
@@ -822,10 +872,10 @@
   setInterval(tickCountdown, 1000);
 
   // INIT
-  ensureChartJs().then((ok) => {
+  chartReady.then((ok) => {
     if (!ok) console.warn('Chart.js indisponible (2 CDN testés) — les graphiques resteront vides, le reste de la page fonctionne normalement.');
-    refreshData();
   });
+  refreshData();
 })();
 </script>
 

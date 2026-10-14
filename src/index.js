@@ -83,7 +83,7 @@ export default {
       if (url.pathname === '/api/rd') return await handleRdDashboard(url, env);
       if (url.pathname === '/api/mission-suivi') return await handleMissionSuivi(url, env);
       if (url.pathname === '/api/re-collecte') return await handleReCollecte(url, env);
-      if (url.pathname === '/api/rm-collecte') return await handleRmCollecte(url, env);
+      if (url.pathname === '/api/rm-collecte') return await handleRmCollecte(url, env, ctx);
       if (url.pathname === '/api/challenge') return await handleChallenge(env);
       if (url.pathname === '/api/salarie') return await handleSalarie(url, env);
       if (url.pathname === '/api/emplacement') return await handleEmplacement(url, env);
@@ -532,7 +532,7 @@ async function handleReCollecte(url, env) {
 // autres dashboards de ce fichier, il n'y a pas de mission cible fixe :
 // pas de resolveMissionId ici.
 // ---------------------------------------------------------------
-async function handleRmCollecte(url, env) {
+async function handleRmCollecte(url, env, ctx) {
   const configError = requireConfig(env);
   if (configError) return jsonResponse({ error: configError }, 500);
 
@@ -554,6 +554,48 @@ async function handleRmCollecte(url, env) {
   const dateRange = date_from && date_to ? { from: date_from, to: date_to } : null;
 
   const queries = buildRmCollecteQueries(id_rm || null, id_client || null, dateRange, id_mission || null);
+
+  // Mode par section (?section=missions|age|gender|suspects|suiviJour|fpe|lists) :
+  // le front lance les sections en parallèle et affiche chacune dès qu'elle
+  // arrive (au lieu d'attendre la plus lente, la liste des suspects). Cache
+  // Cloudflare : 2 min (1 h si la période est entièrement passée ; 1 h pour
+  // les listes RM / associations, qui changent rarement).
+  const section = url.searchParams.get('section') || '';
+  if (section) {
+    const builders = {
+      missions: () => queries.missions, age: () => queries.age, gender: () => queries.gender,
+      suspects: () => queries.suspectsList, suiviJour: () => queries.suiviJour, fpe: () => queries.fpe,
+    };
+    if (section !== 'lists' && !builders[section]) return jsonResponse({ error: 'section invalide' }, 400);
+    const today = new Date().toISOString().slice(0, 10);
+    const ttl = section === 'lists' || (date_to && date_to < today) ? 3600 : 120;
+    const cache = typeof caches !== 'undefined' ? caches.default : null;
+    const keyUrl = new URL(url.toString());
+    keyUrl.searchParams.delete('refresh');
+    keyUrl.searchParams.sort();
+    const cacheKey = new Request(keyUrl.toString());
+    if (cache && url.searchParams.get('refresh') !== '1') {
+      const hit = await cache.match(cacheKey);
+      if (hit) return hit;
+    }
+    try {
+      let body;
+      if (section === 'lists') {
+        const [rmList, clientList] = await Promise.all([runQuery(env, buildRmListQuery()), runQuery(env, buildClientListQuery())]);
+        body = { rmList, clientList };
+      } else {
+        body = { rows: await runQuery(env, builders[section]()) };
+      }
+      const res = new Response(JSON.stringify(body), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=' + ttl },
+      });
+      if (cache && ctx) ctx.waitUntil(cache.put(cacheKey, res.clone()));
+      return res;
+    } catch (e) {
+      return jsonResponse({ error: String(e.message || e) }, 502);
+    }
+  }
 
   try {
     const [missions, age, gender, suspectsList, suiviJour, fpe, rmList, clientList] = await Promise.all([
