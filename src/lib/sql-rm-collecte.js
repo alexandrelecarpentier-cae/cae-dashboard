@@ -262,16 +262,23 @@ ORDER BY nb DESC;`;
 }
 
 function buildRmListQuery() {
-  // Une ligne par personne (nom) : une même personne peut avoir plusieurs comptes
-  // utilisateurs (ex. doublons) → ids regroupés, séparés par des virgules.
-  return `SELECT string_agg(DISTINCT x.responsable_mission_id::text, ',') AS id, x.nom FROM (
-SELECT m.responsable_mission_id, trim(coalesce(uip.prenom || ' ' || uip.nom, u.email)) AS nom
-FROM missions m
-LEFT JOIN utilisateurs u ON u.id = m.responsable_mission_id
-LEFT JOIN utilisateur_informations_personnelles uip ON uip.utilisateur_id = m.responsable_mission_id
-WHERE m.responsable_mission_id IS NOT NULL
-  ${excludeClientsClause('m')}
-) x GROUP BY x.nom ORDER BY x.nom;`;
+  // Une ligne par personne : une même personne peut avoir plusieurs comptes
+  // utilisateurs et une saisie différente du prénom/nom (casse, accents, espaces
+  // multiples) → clé normalisée (minuscules, sans accents, espaces réduits),
+  // ids regroupés séparés par des virgules, nom affiché en « Prénom Nom ».
+  return `SELECT string_agg(DISTINCT x.responsable_mission_id::text, ',') AS id,
+  min(initcap(lower(x.nom))) AS nom
+FROM (
+  SELECT m.responsable_mission_id,
+    regexp_replace(trim(coalesce(uip.prenom || ' ' || uip.nom, u.email)), '\\s+', ' ', 'g') AS nom
+  FROM missions m
+  LEFT JOIN utilisateurs u ON u.id = m.responsable_mission_id
+  LEFT JOIN utilisateur_informations_personnelles uip ON uip.utilisateur_id = m.responsable_mission_id
+  WHERE m.responsable_mission_id IS NOT NULL
+    ${excludeClientsClause('m')}
+) x
+GROUP BY translate(lower(x.nom), 'àâäáãéèêëíìîïóòôöõúùûüçñ', 'aaaaaeeeeiiiiooooouuuucn')
+ORDER BY nom;`;
 }
 
 function buildClientListQuery() {
