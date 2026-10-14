@@ -90,7 +90,7 @@ heures as (
   -- mise en place de cette déclaration) mais exclut les lots explicitement
   -- marqués comme non déclarés (heures_remuneration_completes = false).
   select mission_id,
-    sum(nombre_horaires_rue) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) as heures_rue,
+    sum(nombre_horaires_rue) as heures_rue,
     sum(nombre_horaires_remuneration) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0 ) as heures_remuneration,
     count(*) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) as jours_presence,
     count(*) as nb_lots
@@ -157,7 +157,7 @@ heures as (
   -- que les heures rémunérées déclarées (coalesce(...,true) préserve
   -- l'historique où ce flag n'existait pas encore).
   select
-    sum(nombre_horaires_rue) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) as heures_rue_total,
+    sum(nombre_horaires_rue) as heures_rue_total,
     sum(nombre_horaires_remuneration) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0 ) as heures_remuneration_total,
     count(*) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) as jours_presence_total,
     count(*) as nb_lots_total

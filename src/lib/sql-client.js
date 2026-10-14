@@ -146,7 +146,7 @@ kpi_dons as (
 ),
 kpi_heures as (
   select sum(nombre_horaires_rue) as heures_rue, sum(nombre_horaires_remuneration) as heures_rem
-  from scoped_lots where coalesce(nombre_horaires_remuneration, 0) <> 0
+  from scoped_lots
 ),
 kpi_age as (
   select avg(age_donateur) as age_moyen from scoped_dons
@@ -215,7 +215,7 @@ eligible_missions as (
 ),
 heures_par_mission as (
   select l.mission_id,
-    sum(l.nombre_horaires_rue) filter (where coalesce(l.nombre_horaires_remuneration, 0) <> 0) as heures_rue,
+    sum(l.nombre_horaires_rue) as heures_rue,
     sum(l.nombre_horaires_remuneration) filter (where coalesce(l.nombre_horaires_remuneration, 0) <> 0) as heures_rem
   from scoped_lots l
   join eligible_missions em on em.id = l.mission_id

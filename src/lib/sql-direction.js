@@ -69,14 +69,14 @@ function buildGlobalStatsQuery(p) {
 select
   (select count(*) from lots_f) as nb_lots,
   (select count(distinct mission_id) from lots_f) as nb_missions,
-  (select sum(nombre_horaires_rue) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) from lots_f) as heures_rue,
+  (select sum(nombre_horaires_rue) from lots_f) as heures_rue,
   (select sum(nombre_horaires_remuneration) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) from lots_f) as heures_remuneration,
   (select count(distinct id) from dons_f) as bs_reel,
-  case when (select sum(nombre_horaires_rue) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) from lots_f) > 0
-    then (select count(distinct id) from dons_f)::float / (select sum(nombre_horaires_rue) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) from lots_f)
+  case when (select sum(nombre_horaires_rue) from lots_f) > 0
+    then (select count(distinct id) from dons_f)::float / (select sum(nombre_horaires_rue) from lots_f)
     else null end as taux_reel,
   case when (select sum(nombre_horaires_remuneration) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) from lots_f) > 0
-    then (select sum(nombre_horaires_rue) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) from lots_f)::float / (select sum(nombre_horaires_remuneration) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) from lots_f)
+    then (select sum(nombre_horaires_rue) from lots_f)::float / (select sum(nombre_horaires_remuneration) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) from lots_f)
     else null end as ratio_h,
   (select avg(montant) from dons_f) as don_moyen,
   (select percentile_cont(0.5) within group (order by (created_at::date - date_de_naissance)::float / 365.25) from dons_f where date_de_naissance is not null) as age_median,

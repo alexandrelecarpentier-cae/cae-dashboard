@@ -45,12 +45,13 @@ function parisTrunc(col, grain) {
 }
 
 // Base commune : lots de la période + BS (dons valides) et montant par lot.
-// Heures de rue / rémunérées : uniquement sur les lots PRÉSENTS (heures
-// rémunérées ≠ 0), règle commune du projet (cf. NOTE-INDICATEURS.md).
+// Heures de rue : TOUTES les heures de rue des lots (taux réel = BS / heures de
+// rue, 14/10/2026) ; heures rémunérées : uniquement les lots présents
+// (heures rémunérées ≠ 0). Cf. NOTE-INDICATEURS.md.
 function lotStatsCte(p, withAges = false) {
   return `with lf as (
   select l.id, l.date, l.mission_id, l.utilisateur_id, m.client_id,
-    case when coalesce(l.nombre_horaires_remuneration, 0) <> 0 then l.nombre_horaires_rue end as hr,
+    l.nombre_horaires_rue as hr,
     case when coalesce(l.nombre_horaires_remuneration, 0) <> 0 then l.nombre_horaires_remuneration end as hrem,
     (coalesce(l.nombre_horaires_remuneration, 0) = 0) as absent
   from lots l

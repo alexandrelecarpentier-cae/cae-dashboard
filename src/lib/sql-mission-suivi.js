@@ -41,7 +41,7 @@ function buildWeeklyQuery(id_mission, id_utilisateur, dateRange) {
 ),
 heures_semaine AS (
   SELECT DATE_TRUNC('week', date)::date AS semaine,
-    SUM(CASE WHEN coalesce(nombre_horaires_remuneration, 0) <> 0 THEN nombre_horaires_rue ELSE 0 END) AS h_rue
+    SUM(coalesce(nombre_horaires_rue, 0)) AS h_rue
   FROM mission_lots GROUP BY 1
 ),
 bs_semaine AS (
@@ -60,7 +60,7 @@ function buildAllDaysStatsQuery(id_mission, id_utilisateur, dateRange) {
   const dateFilter = dateUpToTodayClause('l.date', dateRange);
   return `WITH lots_all AS (
   SELECT l.id, l.date, l.utilisateur_id,
-    CASE WHEN coalesce(l.nombre_horaires_remuneration, 0) <> 0 THEN l.nombre_horaires_rue ELSE 0 END AS heures_rue,
+    coalesce(l.nombre_horaires_rue, 0) AS heures_rue,
     CASE WHEN coalesce(l.nombre_horaires_remuneration, 0) <> 0 THEN l.nombre_horaires_remuneration ELSE 0 END AS heures_rem
   FROM lots l
   WHERE l.mission_id = '${id_mission}'

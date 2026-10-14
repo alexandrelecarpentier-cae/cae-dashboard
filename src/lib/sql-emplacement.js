@@ -36,7 +36,7 @@ lots_e as (
 ),
 jours_mission as (
   select mission_id, date,
-    sum(nombre_horaires_rue) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) as heures_rue_jour,
+    sum(nombre_horaires_rue) as heures_rue_jour,
     count(distinct utilisateur_id) as nb_recruteurs_jour
   from lots_e
   group by 1,2
@@ -95,7 +95,7 @@ dons_e as (
 ),
 jours as (
   select l.date,
-    sum(l.nombre_horaires_rue) filter (where coalesce(l.nombre_horaires_remuneration, 0) <> 0) as heures_rue_jour,
+    sum(l.nombre_horaires_rue) as heures_rue_jour,
     count(distinct l.utilisateur_id) as nb_recruteurs_jour
   from lots_e l
   group by 1

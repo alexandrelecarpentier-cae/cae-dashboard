@@ -51,7 +51,7 @@ function buildRdTableQuery(id_mission, dateRange) {
   const dateFilter = dateFilterClause('l.date', dateRange);
   return `WITH lots_mission AS (
   SELECT l.id, l.utilisateur_id, l.date, (coalesce(l.nombre_horaires_remuneration, 0) <> 0) AS present, l.absence_id,
-    CASE WHEN coalesce(l.nombre_horaires_remuneration, 0) <> 0 THEN l.nombre_horaires_rue ELSE 0 END AS heures_rue,
+    coalesce(l.nombre_horaires_rue, 0) AS heures_rue,
     CASE WHEN coalesce(l.nombre_horaires_remuneration, 0) <> 0 THEN l.nombre_horaires_remuneration ELSE 0 END AS heures_rem
   FROM lots l WHERE l.mission_id = '${id_mission}'
     ${dateFilter}

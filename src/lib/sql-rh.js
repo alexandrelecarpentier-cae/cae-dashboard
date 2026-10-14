@@ -60,7 +60,7 @@ agg as (
   select
     count(*) as nb_lots,
     count(distinct mission_id) as nb_missions,
-    sum(nombre_horaires_rue) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) as heures_rue,
+    sum(nombre_horaires_rue) as heures_rue,
     sum(nombre_horaires_remuneration) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) as heures_remuneration,
     count(*) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) as jours_presence,
     count(*) filter (where emplacement_id is not null) as lots_emplacement_renseigne
@@ -86,7 +86,7 @@ par_mission as (
   select mission_id,
     count(*) as nb_lots,
     count(distinct utilisateur_id) as nb_recruteurs,
-    sum(nombre_horaires_rue) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) as heures_rue,
+    sum(nombre_horaires_rue) as heures_rue,
     sum(nombre_horaires_remuneration) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) as heures_remuneration,
     count(*) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) as jours_presence,
     count(*) filter (where emplacement_id is not null) as lots_emplacement_renseigne
@@ -293,7 +293,7 @@ dons_f as (
 par_recruteur as (
   select utilisateur_id,
     count(*) as nb_lots,
-    sum(nombre_horaires_rue) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) as heures_rue,
+    sum(nombre_horaires_rue) as heures_rue,
     sum(nombre_horaires_remuneration) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) as heures_remuneration,
     count(*) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) as jours_presence,
     count(*) filter (where emplacement_id is not null) as lots_emplacement_renseigne
@@ -347,7 +347,7 @@ recruteur_rows as (
 total_agg as (
   select
     count(*) as nb_lots,
-    sum(nombre_horaires_rue) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) as heures_rue,
+    sum(nombre_horaires_rue) as heures_rue,
     sum(nombre_horaires_remuneration) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) as heures_remuneration,
     count(*) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) as jours_presence,
     count(*) filter (where emplacement_id is not null) as lots_emplacement_renseigne
