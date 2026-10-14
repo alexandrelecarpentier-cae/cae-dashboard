@@ -570,7 +570,7 @@ async function handleRmCollecte(url, env, ctx) {
     };
     if (section !== 'lists' && !builders[section]) return jsonResponse({ error: 'section invalide' }, 400);
     const today = new Date().toISOString().slice(0, 10);
-    const ttl = section === 'lists' || (date_to && date_to < today) ? 3600 : 120;
+    const ttl = date_to && date_to < today ? 3600 : 120;
     const cache = typeof caches !== 'undefined' ? caches.default : null;
     const keyUrl = new URL(url.toString());
     keyUrl.searchParams.delete('refresh');
@@ -583,7 +583,7 @@ async function handleRmCollecte(url, env, ctx) {
     try {
       let body;
       if (section === 'lists') {
-        const [rmList, clientList] = await Promise.all([runQuery(env, buildRmListQuery()), runQuery(env, buildClientListQuery())]);
+        const [rmList, clientList] = await Promise.all([runQuery(env, buildRmListQuery(id_client || null, dateRange)), runQuery(env, buildClientListQuery(id_rm || null, dateRange))]);
         body = { rmList, clientList };
       } else {
         body = { rows: await runQuery(env, builders[section]()) };
@@ -607,8 +607,8 @@ async function handleRmCollecte(url, env, ctx) {
       runQuery(env, queries.suspectsList),
       runQuery(env, queries.suiviJour),
       runQuery(env, queries.fpe),
-      runQuery(env, buildRmListQuery()),
-      runQuery(env, buildClientListQuery()),
+      runQuery(env, buildRmListQuery(id_client || null, dateRange)),
+      runQuery(env, buildClientListQuery(id_rm || null, dateRange)),
     ]);
 
     return jsonResponse({ missions, age, gender, suspectsList, suiviJour, fpe: fpe[0] || null, rmList, clientList });

@@ -476,17 +476,22 @@
   dateFromEl.value = dateFrom; dateToEl.value = dateTo;
   setActiveQuickTag('today');
 
+  // Listes RM / associations : reconstruites à chaque changement de filtre pour ne
+  // proposer que les valeurs présentes dans le périmètre (période + autre filtre).
+  // La sélection courante est conservée même si elle sort du périmètre.
   function buildFilterLists(rmList, clientList) {
-    if (!rmSelectEl.dataset.built) {
-      rmSelectEl.innerHTML = '<option value="">Tous les RM</option>' +
-        rmList.map((r) => `<option value="${r.id}">${esc(r.nom)}</option>`).join('');
-      rmSelectEl.dataset.built = '1';
-    }
-    if (!clientSelectEl.dataset.built) {
-      clientSelectEl.innerHTML = '<option value="">Toutes les associations</option>' +
-        clientList.map((c) => `<option value="${c.id}">${esc(c.nom)}</option>`).join('');
-      clientSelectEl.dataset.built = '1';
-    }
+    const fill = (el, firstLabel, list, selected) => {
+      const items = list.slice();
+      if (selected && !items.some((x) => String(x.id) === String(selected))) {
+        const old = Array.from(el.options).find((o) => o.value === selected);
+        if (old) items.push({ id: selected, nom: old.textContent });
+      }
+      el.innerHTML = '<option value="">' + firstLabel + '</option>' +
+        items.map((x) => `<option value="${x.id}">${esc(x.nom)}</option>`).join('');
+      el.value = selected || '';
+    };
+    fill(rmSelectEl, 'Tous les RM', rmList, selectedRm);
+    fill(clientSelectEl, 'Toutes les associations', clientList, selectedClient);
   }
 
   // Chargement par section : chaque bloc s'affiche dès que sa requête
@@ -542,11 +547,14 @@
         console.warn('Fetch /api/rm-collecte (' + section + ') failed:', err);
       }));
 
-    if (!listsRequested) {
-      listsRequested = true;
-      jobs.push(getSection('lists', '').then((d) => buildFilterLists(d.rmList || [], d.clientList || []))
-        .catch(() => { listsRequested = false; }));
-    }
+    // Listes de filtres : dépendent de la période et de l'autre filtre (pas de la mission).
+    const pl = new URLSearchParams();
+    if (selectedRm) pl.set('id_rm', selectedRm);
+    if (selectedClient) pl.set('id_client', selectedClient);
+    if (dateFrom && dateTo) { pl.set('date_from', dateFrom); pl.set('date_to', dateTo); }
+    jobs.push(getSection('lists', pl.toString()).then((d) => {
+      if (ep === epoch) buildFilterLists(d.rmList || [], d.clientList || []);
+    }).catch((err) => console.warn('Fetch lists failed:', err)));
 
     await Promise.all(jobs);
     if (ep !== epoch) return;

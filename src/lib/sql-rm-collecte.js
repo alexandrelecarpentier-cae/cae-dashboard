@@ -60,6 +60,7 @@ function missionScopeCTE(rmId, clientId, dateRange, missionId) {
     : '';
   return `SELECT m.id, m.code_mission, m.date_debut, m.date_fin, m.format, m.ville_principale,
     m.objectif_bulletin_theorique AS objectif,
+    m.responsable_mission_id AS rm_id, m.client_id AS client_id,
     c.nom AS client,
     coalesce(uip_rm.prenom || ' ' || uip_rm.nom, u_rm.email) AS rm,
     coalesce(uip_re.prenom || ' ' || uip_re.nom, u_re.email) AS re
@@ -261,34 +262,39 @@ GROUP BY 1
 ORDER BY nb DESC;`;
 }
 
-function buildRmListQuery() {
-  // Une ligne par personne : une même personne peut avoir plusieurs comptes
-  // utilisateurs et une saisie différente du prénom/nom (casse, accents, espaces
-  // multiples, suffixe de grade « RD »/« RE »… dans le nom, « Li Kioune » vs « Likioune »)
-  // → clé normalisée (minuscules, sans accents, sans espaces ni tirets),
-  // ids regroupés séparés par des virgules, nom affiché en « Prénom Nom ».
-  return `SELECT string_agg(DISTINCT x.responsable_mission_id::text, ',') AS id,
+// Listes de filtres (RM / associations) restreintes aux missions du périmètre
+// courant : période + autre filtre (la liste RM tient compte de l'association
+// choisie, la liste des associations du RM choisi) — mais jamais de son propre
+// filtre, pour pouvoir en changer.
+// RM : une ligne par personne — une même personne peut avoir plusieurs comptes
+// utilisateurs et une saisie différente du nom (casse, accents, espaces,
+// suffixe de grade « RD »/« RE », « Li Kioune » vs « Likioune ») → clé
+// normalisée (minuscules, sans accents, sans espaces ni tirets), ids regroupés
+// séparés par des virgules, nom affiché en « Prénom Nom ».
+function buildRmListQuery(clientId, dateRange) {
+  return `WITH fm AS (
+  ${missionScopeCTE(null, clientId, dateRange, null)}
+)
+SELECT string_agg(DISTINCT x.rm_id::text, ',') AS id,
   min(initcap(lower(x.nom))) AS nom
 FROM (
-  SELECT m.responsable_mission_id,
-    regexp_replace(regexp_replace(trim(coalesce(uip.prenom || ' ' || uip.nom, u.email)), '\\s+', ' ', 'g'), '\\s+(rd|re|rm|rdc|rde)$', '', 'i') AS nom
-  FROM missions m
-  LEFT JOIN utilisateurs u ON u.id = m.responsable_mission_id
-  LEFT JOIN utilisateur_informations_personnelles uip ON uip.utilisateur_id = m.responsable_mission_id
-  WHERE m.responsable_mission_id IS NOT NULL
-    ${excludeClientsClause('m')}
+  SELECT fm.rm_id,
+    regexp_replace(regexp_replace(trim(fm.rm), '\\s+', ' ', 'g'), '\\s+(rd|re|rm|rdc|rde)$', '', 'i') AS nom
+  FROM fm
+  WHERE fm.rm_id IS NOT NULL AND fm.rm IS NOT NULL
 ) x
 GROUP BY regexp_replace(translate(lower(x.nom), 'àâäáãéèêëíìîïóòôöõúùûüçñ', 'aaaaaeeeeiiiiooooouuuucn'), '[^a-z0-9@.]', '', 'g')
 ORDER BY nom;`;
 }
 
-function buildClientListQuery() {
-  return `SELECT DISTINCT c.id, c.nom
-FROM clients c
-JOIN missions m ON m.client_id = c.id
-WHERE c.nom IS NOT NULL
-  ${excludeClientsDirectClause('c')}
-ORDER BY c.nom;`;
+function buildClientListQuery(rmId, dateRange) {
+  return `WITH fm AS (
+  ${missionScopeCTE(rmId, null, dateRange, null)}
+)
+SELECT DISTINCT fm.client_id AS id, fm.client AS nom
+FROM fm
+WHERE fm.client IS NOT NULL
+ORDER BY fm.client;`;
 }
 
 // Liste des bulletins suspects, toutes missions filtrées confondues
