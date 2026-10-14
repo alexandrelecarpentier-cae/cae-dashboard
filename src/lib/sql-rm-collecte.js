@@ -264,20 +264,21 @@ ORDER BY nb DESC;`;
 function buildRmListQuery() {
   // Une ligne par personne : une même personne peut avoir plusieurs comptes
   // utilisateurs et une saisie différente du prénom/nom (casse, accents, espaces
-  // multiples) → clé normalisée (minuscules, sans accents, espaces réduits),
+  // multiples, suffixe de grade « RD »/« RE »… dans le nom, « Li Kioune » vs « Likioune »)
+  // → clé normalisée (minuscules, sans accents, sans espaces ni tirets),
   // ids regroupés séparés par des virgules, nom affiché en « Prénom Nom ».
   return `SELECT string_agg(DISTINCT x.responsable_mission_id::text, ',') AS id,
   min(initcap(lower(x.nom))) AS nom
 FROM (
   SELECT m.responsable_mission_id,
-    regexp_replace(trim(coalesce(uip.prenom || ' ' || uip.nom, u.email)), '\\s+', ' ', 'g') AS nom
+    regexp_replace(regexp_replace(trim(coalesce(uip.prenom || ' ' || uip.nom, u.email)), '\\s+', ' ', 'g'), '\\s+(rd|re|rm|rdc|rde)$', '', 'i') AS nom
   FROM missions m
   LEFT JOIN utilisateurs u ON u.id = m.responsable_mission_id
   LEFT JOIN utilisateur_informations_personnelles uip ON uip.utilisateur_id = m.responsable_mission_id
   WHERE m.responsable_mission_id IS NOT NULL
     ${excludeClientsClause('m')}
 ) x
-GROUP BY translate(lower(x.nom), 'àâäáãéèêëíìîïóòôöõúùûüçñ', 'aaaaaeeeeiiiiooooouuuucn')
+GROUP BY regexp_replace(translate(lower(x.nom), 'àâäáãéèêëíìîïóòôöõúùûüçñ', 'aaaaaeeeeiiiiooooouuuucn'), '[^a-z0-9@.]', '', 'g')
 ORDER BY nom;`;
 }
 
