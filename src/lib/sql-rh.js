@@ -41,6 +41,7 @@ function baseCte(p) {
   from lots l
   join missions m on m.id = l.mission_id
   where ${filtersClause(p)}
+    and (coalesce(l.heures_remuneration_completes, true) or l.date < CURRENT_DATE)
     ${excludeClientsClause('m')}
 ),
 dons_f as (
@@ -282,6 +283,7 @@ function buildRecruteursParMissionQuery(id_mission, dateRange) {
   select l.id, l.utilisateur_id, l.emplacement_id, case when l.presence_recruteur is distinct from false then l.nombre_horaires_rue else 0 end as nombre_horaires_rue, l.nombre_horaires_remuneration
   from lots l
   where l.mission_id = '${id_mission}'
+    and (coalesce(l.heures_remuneration_completes, true) or l.date < CURRENT_DATE)
     ${dateFilter}
 ),
 dons_f as (

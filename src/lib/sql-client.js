@@ -149,7 +149,7 @@ kpi_heures as (
   from scoped_lots
 ),
 kpi_age as (
-  select avg(age_donateur) as age_moyen from scoped_dons
+  select percentile_cont(0.5) within group (order by age_donateur) as age_median from scoped_dons
 )
 select
   (select nb_missions from kpi_missions) as nb_missions,
@@ -161,7 +161,7 @@ select
   case when (select heures_rue from kpi_heures) > 0
     then (select nb_dons from kpi_dons)::float / (select heures_rue from kpi_heures)
     else null end as taux_reel,
-  (select age_moyen from kpi_age) as age_moyen;`,
+  (select age_median from kpi_age) as age_median;`,
 
     genre: `${cte}
 select civilite, count(distinct id) as nb
@@ -197,7 +197,7 @@ group by 1,2 order by 1;`,
 
     // Suivi des missions : une ligne par mission du périmètre filtré (+
     // une ligne TOTAL), avec exactement les mêmes indicateurs que les
-    // KPIs globaux ci-dessus (bulletins, taux réel, don moyen, âge moyen,
+    // KPIs globaux ci-dessus (bulletins, taux réel, don moyen, âge médian,
     // heures rue/rém) — comparable dans l'esprit au tableau "Suivi des
     // missions" de /rm-collecte.html, mais avec le jeu d'indicateurs de
     // CE dashboard plutôt que celui de rm-collecte (tx_transfo, score
@@ -225,7 +225,7 @@ dons_par_mission as (
   select l.mission_id,
     count(distinct d.id) as nb_dons,
     avg(d.montant) as don_moyen,
-    avg(d.age_donateur) as age_moyen
+    percentile_cont(0.5) within group (order by d.age_donateur) as age_median
   from scoped_dons d
   join scoped_lots l on l.id = d.lot_id
   join eligible_missions em on em.id = l.mission_id
@@ -240,7 +240,7 @@ mission_rows as (
     coalesce(hm.heures_rem,0) as heures_rem,
     coalesce(dm.nb_dons,0) as nb_dons,
     dm.don_moyen,
-    dm.age_moyen,
+    dm.age_median,
     case when coalesce(hm.heures_rue,0) > 0 then coalesce(dm.nb_dons,0)::float / hm.heures_rue else null end as taux_reel
   from eligible_missions em
   left join heures_par_mission hm on hm.mission_id = em.id
@@ -250,7 +250,7 @@ total_heures as (
   select sum(heures_rue) as heures_rue, sum(heures_rem) as heures_rem from heures_par_mission
 ),
 total_dons as (
-  select count(distinct d.id) as nb_dons, avg(d.montant) as don_moyen, avg(d.age_donateur) as age_moyen
+  select count(distinct d.id) as nb_dons, avg(d.montant) as don_moyen, percentile_cont(0.5) within group (order by d.age_donateur) as age_median
   from scoped_dons d
   join scoped_lots l on l.id = d.lot_id
   join eligible_missions em on em.id = l.mission_id
@@ -265,7 +265,7 @@ total_row as (
     coalesce((select heures_rem from total_heures),0) as heures_rem,
     coalesce((select nb_dons from total_dons),0) as nb_dons,
     (select don_moyen from total_dons) as don_moyen,
-    (select age_moyen from total_dons) as age_moyen,
+    (select age_median from total_dons) as age_median,
     case when coalesce((select heures_rue from total_heures),0) > 0
       then coalesce((select nb_dons from total_dons),0)::float / (select heures_rue from total_heures)
       else null end as taux_reel

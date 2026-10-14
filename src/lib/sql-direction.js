@@ -31,6 +31,7 @@ function baseCte(p) {
   from lots l
   join missions m on m.id = l.mission_id
   where ${filtersClause(p)}
+    and (coalesce(l.heures_remuneration_completes, true) or l.date < CURRENT_DATE)
     ${excludeClientsClause('m')}
 ),
 dons_f as (
@@ -61,7 +62,7 @@ absences_f as (
 //   autres dashboards du projet (/client, /rd, /mission, /rm-collecte,
 //   /salarie, /emplacement, /site-prive, /rh...), alignée le 9/2026.
 // - ratio_h = heures de rue / heures rémunérées.
-// - don_moyen, age_median, pct_plus_25 ans = mêmes formules que /rd
+// - don_moyen, age_median, pct_moins_25 = mêmes formules que /rd
 //   ("3 critères qualité"), sur les dons valides du périmètre.
 // - absenteisme = 1 - taux de présence hors AM (voir baseCte).
 function buildGlobalStatsQuery(p) {
@@ -81,9 +82,9 @@ select
   (select avg(montant) from dons_f) as don_moyen,
   (select percentile_cont(0.5) within group (order by (created_at::date - date_de_naissance)::float / 365.25) from dons_f where date_de_naissance is not null) as age_median,
   case when (select count(*) from dons_f where date_de_naissance is not null) > 0
-    then (select count(*) from dons_f where date_de_naissance is not null and (created_at::date - date_de_naissance)::float / 365.25 >= 25)::float
+    then (select count(*) from dons_f where date_de_naissance is not null and (created_at::date - date_de_naissance)::float / 365.25 < 25)::float
          / (select count(*) from dons_f where date_de_naissance is not null)
-    else null end as pct_plus_25,
+    else null end as pct_moins_25,
   case when (select sum(jour_presence) + sum(jour_absence) from absences_f) > 0
     then (select sum(jour_absence_hors_am) from absences_f)::float / (select sum(jour_presence) + sum(jour_absence) from absences_f)
     else null end as absenteisme;`;

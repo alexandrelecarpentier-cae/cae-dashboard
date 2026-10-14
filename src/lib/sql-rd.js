@@ -54,6 +54,7 @@ function buildRdTableQuery(id_mission, dateRange) {
     case when l.presence_recruteur is distinct from false then l.nombre_horaires_rue else 0 end AS heures_rue,
     CASE WHEN coalesce(l.nombre_horaires_remuneration, 0) <> 0 THEN l.nombre_horaires_remuneration ELSE 0 END AS heures_rem
   FROM lots l WHERE l.mission_id = '${id_mission}'
+    AND (coalesce(l.heures_remuneration_completes, true) or l.date < CURRENT_DATE)
     ${dateFilter}
 ),
 dons_mission AS (

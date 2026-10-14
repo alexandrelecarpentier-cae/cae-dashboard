@@ -32,7 +32,7 @@ function buildMissionsQuery(id_emplacement, dateRange) {
 lots_e as (
   select l.id, l.mission_id, l.date, l.utilisateur_id, case when l.presence_recruteur is distinct from false then l.nombre_horaires_rue else 0 end as nombre_horaires_rue, l.nombre_horaires_remuneration
   from lots l join e on l.emplacement_id = e.id
-  where 1=1 ${dateClause(dateRange)}
+  where (coalesce(l.heures_remuneration_completes, true) or l.date < CURRENT_DATE) ${dateClause(dateRange)}
 ),
 jours_mission as (
   select mission_id, date,
@@ -85,7 +85,7 @@ lots_e as (
   from lots l
   join e on l.emplacement_id = e.id
   join missions m on m.id = l.mission_id
-  where 1=1 ${excludeClientsClause('m')} ${dateClause(dateRange)}
+  where (coalesce(l.heures_remuneration_completes, true) or l.date < CURRENT_DATE) ${excludeClientsClause('m')} ${dateClause(dateRange)}
 ),
 dons_e as (
   select d.id, d.montant, l.date

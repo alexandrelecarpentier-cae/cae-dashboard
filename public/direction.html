@@ -222,7 +222,7 @@
           <thead>
             <tr>
               <th>Mission</th><th>Association</th><th>Statut</th><th>Début</th>
-              <th class="num">Objectif</th><th class="num">Jours</th><th class="num">Objectif prorata</th><th class="num">BS réel</th><th class="num">Avancement</th>
+              <th class="num">Objectif</th><th class="num">Jours d'activité</th><th class="num">Objectif prorata</th><th class="num">BS réel</th><th class="num">Avancement</th>
             </tr>
           </thead>
           <tbody id="tbl-objectif"></tbody>
@@ -426,7 +426,7 @@
       { v: fmtPct(s.ratio_h), l: 'Ratio heures rue/rém.' },
       { v: s.don_moyen != null ? fmtEuro(s.don_moyen) : '—', l: 'Don moyen' },
       { v: s.age_median != null ? fmtNum(s.age_median, 1) + ' ans' : '—', l: 'Âge médian donateur' },
-      { v: fmtPct(s.pct_plus_25), l: 'Donateurs +25 ans' },
+      { v: fmtPct(s.pct_moins_25), l: 'Donateurs −25 ans' },
       { v: fmtPct(s.absenteisme), l: 'Absentéisme', sub: 'Hors arrêt maladie' },
       { v: fmtPct(fpe.taux_fpe), l: 'Taux de FPE' },
     ];

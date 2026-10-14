@@ -87,6 +87,7 @@ lots_mission AS (
     CASE WHEN coalesce(l.nombre_horaires_remuneration, 0) <> 0 THEN l.nombre_horaires_remuneration ELSE 0 END AS heures_rem
   FROM lots l
   WHERE l.mission_id IN (SELECT id FROM filtered_missions)
+    AND (coalesce(l.heures_remuneration_completes, true) or l.date < CURRENT_DATE)
     ${dateFilter}
 ),
 dons_mission AS (

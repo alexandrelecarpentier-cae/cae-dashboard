@@ -1,237 +1,71 @@
 # Indicateurs — Dashboard CAE
 
-## Mode staging/prod (9/2026)
+Une ligne par indicateur : **formule précise** → dashboards où il apparaît. Mise à jour 14/10/2026 (harmonisation des noms et des périmètres).
 
-Un badge cliquable en bas à droite de chaque page (`◇ PROD` / `◆ STAGING`) bascule la base Metabase interrogée par toutes les routes `/api/*` : Production (id 3, par défaut) ou Staging (id 4, `.../databases/4-staging`). Le choix est mémorisé dans un cookie (`dashboard_db_mode`), lu côté serveur sur chaque requête — un rechargement de page suffit à changer de base, pas besoin de redéployer. Le cookie est partagé par toutes les pages du domaine, donc le mode choisi reste actif en naviguant d'un dashboard à l'autre. Exception : `/rm` reste toujours branché sur Production, car il s'appuie sur une carte Metabase déjà construite (n°514) qui est liée à sa propre base au moment de sa création — le cookie n'a pas d'effet sur les questions Metabase, seulement sur les requêtes SQL natives de ce projet.
+## Périmètre commun (toutes les formules ci-dessous)
 
-## Définitions communes
+- **Dons valides** : statut ∈ (`nouveau`, `en_attente`, `transmis`). **BS au sens large** : valides + `incomplet` + `annule`.
+- **Lots** : `lots.date <= aujourd'hui` ; lots dont `heures_remuneration_completes = faux` ignorés le jour même (`/direction`, `/direction-suivi`, `/mission`, `/rd`, `/re-collecte`, `/rm-collecte`, `/rh`, `/emplacement`, `/site-prive`, `/salarie`). `/client` exclut toute la journée en cours. `/challenge` : pas d'exclusion (classement du jour).
+- **Présence d'un lot** : heures rémunérées (`nombre_horaires_remuneration`) ≠ 0. **Heures de rue** : lots dont `presence_recruteur` n'est pas faux (`is distinct from false`) ; sinon 0 (heures « fantômes » conservées en base pour un recruteur absent, ≈ 5 500 h en 2026). Même règle que la question Metabase 486.
+- **Clients exclus** : 2 clients de test + « ONG de test » (sauf `/rd`, `/re-collecte`, `/re-mobilisation`, `/rd-mobilisation`) ; `AL`, `[Demo] Stores`. **Missions `type_offre = 'mobilisation'`** exclues de tout sauf `/re-mobilisation` et `/rd-mobilisation` (non filtrable : `/rm`, cartes de `/rh-suivi`/`/rh-export`). Mécanisme : `excludeClientsClause` (vues multi-missions) ou validation d'id en amont (fiches à id unique).
+- **Staging** : `?staging=1` interroge la base Metabase Staging (id 4) au lieu de Production (id 3) ; `/rm` toujours Production.
+- **Âge d'un donateur** : `(dons.created_at::date − date de naissance) / 365.25`. Dons sans date de naissance : comptés dans « Autre » (tranches) et exclus des % d'âge (dénominateur = dons avec date de naissance connue ; couverture ~100 % en 2026, ~15 % sur les anciennes missions).
 
-- **Dons valides** : statut ∈ (`nouveau`, `en_attente`, `transmis`).
-- **BS au sens large** : statut ∈ (`nouveau`, `en_attente`, `transmis`, `incomplet`, `annule`).
-- **Présence d'un lot (règle 10/2026)** : un lot est *présent* si ses heures rémunérées (`nombre_horaires_remuneration`) sont non nulles, *absent* sinon (jours de présence/absence, taux de présence, heures rémunérées). Exception : les **heures de rue** suivent `presence_recruteur` (voir ci-dessous). Limite connue : ~900 lots (2026, surtout sites privés) ont `presence_recruteur = faux` mais des heures rémunérées ≠ 0 ; ils restent comptés « présents » pour le taux de présence.
-- **Lots futurs exclus (10/2026)** : les lots sont pré-créés sur toute la durée de la mission ; tous les calculs (taux de présence, absentéisme, jours) ignorent les lots dont la date est postérieure à aujourd'hui (`l.date <= CURRENT_DATE`). Sans cela, le taux de présence « mission entière » était sous-estimé (ex. 5 jours présents / 25 lots = 20 % au lieu de 100 %).
-- **Heures de rue** (14/10/2026) : sommées uniquement sur les lots dont `presence_recruteur` n'est **pas faux** (`presence_recruteur is distinct from false`, null = présent) ; le **taux réel** = BS réel / heures de rue ainsi calculées. Motif : pour un recruteur absent, `nombre_horaires_rue` conserve les heures prévues par défaut alors que l'app affiche 0 h (≈ 5 500 h fantômes en 2026). Même règle que la question Metabase 486. **Heures rémunérées** : sommées sur les lots *présents* (heures rém. ≠ 0), inchangé. Effet : taux réel 2026 ≈ 0,375 → 0,392 ; années précédentes inchangées (< 0,001).
-- **Âge d'un donateur** : `(date de signature du don − date de naissance) / 365.25`, toujours calculé par rapport à `dons.created_at`, jamais par rapport à la date du jour.
-- **Score qualité** : `don moyen × % donateurs +25 ans`, calculé sur les dons valides. Barème identique sur tous les dashboards qui l'affichent (`/rd`, `/re-collecte`, `/mission`, `/rm-collecte`, `/salarie`) :
-  - 0 à 3 : Très Faible
-  - 4 à 5,5 : Faible
-  - 5,5 à 6,5 : Moyen
-  - 6,5 à 8 : Bon
-  - 8 et plus : Très Bon
+## Indicateurs
 
-## Conventions de format d'affichage
+| Indicateur | Formule | Dashboards |
+|---|---|---|
+| **BS réel** (= Nb dons) | `count(distinct dons.id)` dons valides | tous |
+| **BS rue** | `count(distinct dons.id)` BS au sens large | `/rd`, `/re-collecte`, `/mission`, `/rm-collecte` |
+| **Heures de rue** | `sum(nombre_horaires_rue)` sur lots avec `presence_recruteur ≠ faux` | tous sauf `/rm` |
+| **Heures rémunérées** | `sum(nombre_horaires_remuneration)` sur lots présents (≠ 0) | `/client`, `/mission`, `/rd`, `/re-collecte`, `/rm-collecte`, `/rh`, `/salarie`, `/direction`, `/direction-suivi` |
+| **Taux réel** | `BS réel / heures de rue` (brut, 3 décimales) ; agrégats toujours en moyenne pondérée (Σ BS / Σ heures) | `/client`, `/mission`, `/rd`, `/re-collecte`, `/rm-collecte`, `/salarie`, `/rh`, `/direction`, `/direction-suivi`, `/emplacement`, `/site-prive`, `/assistant-site-prive`, `/challenge`, `/rm` (reconstruit côté client depuis la carte 514) |
+| **Taux de transformation** (`tx_transfo`) | `100 × BS réel / BS rue` (affiché à l'unité) | `/rd`, `/re-collecte`, `/mission`, `/rm-collecte`, `/rm` |
+| **Don moyen** | `avg(montant)` dons valides (€, 2 décimales) | tous sauf `/challenge`, `/mobilisation` |
+| **Âge médian** | `percentile_cont(0.5)` de l'âge des donateurs, dons valides (1 décimale) | `/client`, `/challenge` (par mission, ≥ 3 dons), `/rd`, `/re-collecte`, `/mission`, `/rm-collecte`, `/direction`, `/direction-suivi` |
+| **% donateurs −25 ans** (`pct_moins_25`) | `100 × dons valides avec âge < 25 / dons valides avec date de naissance connue` (1 décimale) | `/rd`, `/re-collecte`, `/mission`, `/rm-collecte`, `/salarie`, `/direction` |
+| **Score qualité** | `don moyen × (1 − % −25 ans)` ; barème : 0–3 Très faible · 3–5,5 Faible · 5,5–6,5 Moyen · 6,5–8 Bon · > 8 Très bon (2 décimales sur `/rm-collecte` et `/salarie`, 1 ailleurs) | `/rd`, `/re-collecte`, `/mission`, `/rm-collecte`, `/salarie` |
+| **Ratio h** (heures rue / rém.) | `heures de rue / heures rémunérées` (affiché en %, 1 décimale) | `/rd`, `/re-collecte`, `/mission`, `/rm-collecte`, `/salarie`, `/direction`, `/direction-suivi` |
+| **Taux de présence** | `100 × lots présents / nb lots` (≤ 100 %) | `/rd`, `/re-collecte`, `/mission`, `/rh` |
+| **% absence** | `lots sans heures rémunérées / lots` (= 1 − taux de présence) | `/direction-suivi` |
+| **Absentéisme** | `1 − jours de présence hors arrêt maladie / (jours de présence + absence)` ; seules les absences « maladie » sont exclues | `/direction` |
+| **Présence des RD** (suivi quotidien) | `100 × Σ RD présents / Σ RD attendus` par jour (RD attendus = recruteurs distincts hors RE ayant un lot ; présents = heures rémunérées ≠ 0) | `/rm-collecte` |
+| **Nb lots** | `count(lots)` de la période | `/direction`, `/direction-suivi` (colonne « Lots »), `/rd`, `/rh` (colonne « Lots ») |
+| **Nb jours d'activité** | dates distinctes avec lot (par site, emplacement ou mission) | `/site-prive`, `/assistant-site-prive`, `/emplacement`, `/direction` (avancement) |
+| **Nb recruteurs** | `count(distinct utilisateur_id)` des lots, RE inclus | `/direction-suivi`, `/rm-collecte`, `/rh` |
+| **Nb RD** | recruteurs distincts hors responsable d'équipe (RE = `missions.responsable_equipe_id`) ; format « RD+RE » (ex. 3+1) | `/site-prive`, `/assistant-site-prive` ; grade RD/RDC/RDE sur `/direction` |
+| **Nb missions** | `count(distinct missions.id)` ayant au moins un lot dans la période ; `/client` : statut ∈ (terminée, en cours, en attente) | `/client`, `/direction`, `/direction-suivi`, `/site-prive` |
+| **Villes de mission** | `missions.ville_principale` des missions du salarié (contrat ou lot), dédoublonnées sans tenir compte de la casse ; infobulle avec la formule sur chaque indicateur de la fiche | `/salarie` |
+| **Tranche d'âge** | `18-20` ([18,21[), `21-25` ([21,26[), `26-35`, `36-50`, `50 et +` (≥ 51), `Autre` (âge inconnu ou < 18) | `/client`, `/rd`, `/re-collecte`, `/mission`, `/rm-collecte` |
+| **Genre** | `Hommes` (monsieur), `Femmes` (madame), `Autre/NC` | `/client`, `/rd`, `/re-collecte`, `/mission`, `/rm-collecte` |
+| **Bulletins par jour** | `count(distinct dons.id)` valides par jour (et par RD) | `/client`, `/mission`, `/rd`, `/re-collecte`, `/rm-collecte` |
+| **Dons suspects** | motif ≠ « Ok » parmi 14 règles par priorité (test, mineur, fraude = nom recruteur, coordonnées recruteur, autre recruteur, montant ≥ 100, sans email, téléphone non communiqué / suspect, email mal orthographié / faux, adresse < 6 car., hors heures 20h–9h ou dimanche, donateur multiple > 5 dons). Périmètre statuts : `/rd`/`/re-collecte` + annulés ; `/rm-collecte` sans les `transmis` | `/rd`, `/re-collecte`, `/mission`, `/rm-collecte` |
+| **Objectif / % atteint** | `objectif_bulletin_theorique` réparti à parts égales sur les jours de lots ; objectif prorata = objectif × jours réalisés / jours de la mission ; % = BS réel / objectif. `/rm-collecte` : BS cumulés depuis le début / objectif | `/rm-collecte`, `/re-collecte`, `/direction` |
+| **Taux de FPE** | `contrats avec avenant fin_period_essai / contrats du périmètre` ; `/rh` et `/rm-collecte` : split employeur / salarié (libellé) ; `/direction` : global | `/rh`, `/rm-collecte`, `/direction` |
+| **Badge FPE / début-fin de contrat** | `FPE` si le contrat le plus récent du recruteur sur la mission porte l'avenant ; dates de ce contrat | `/rd`, `/re-collecte`, `/mission`, `/rh` |
+| **Taux de complétion emplacement** | `lots avec emplacement_id / lots` (1 décimale) | `/rh` |
+| **Recrutements / candidatures** | `count(distinct contrats.id)` par `date_debut` ; événements `candidate.create` TeamTailor dédupliqués | `/rh` |
+| **Délai de complétion d'équipe** | début du contrat du dernier recruteur arrivé − début de mission | `/rh` |
+| **Anciens / nouveaux, grades** | anciens = ≥ 3 missions ; RD/RDC/RDE d'après le contrat le plus récent | `/direction` |
+| **Horaires 1er / dernier BS** | heure de Paris de min/max `dons.created_at` valides du jour | `/rm-collecte`, `/emplacement` |
+| **Taux réel par jour de semaine / mois** | `Σ BS / Σ heures` par jour de semaine (1 = lundi) ou mois calendaire | `/emplacement` |
+| **Classement sites / enseignes** | taux réel pondéré par site / enseigne (liste fermée) ; sites sans heures exclus | `/site-prive`, `/assistant-site-prive` |
+| **Top recruteurs / équipes** | `count(distinct dons)` par recruteur (jour, semaine, dernière heure) ; taux réel par équipe sur la semaine en cours ; missions `en_cours` | `/challenge` |
+| **Volume de dons par statut** | dons créés sur la période (`created_at`), tous statuts, CozApp (`old_cae_id` nul) / BO | `/direction-suivi` |
+| **Transmissions / dépôts / facturation** | dons valides créés (à transmettre = nouveau + en attente, transmis) ; dépôts = `date_transmission` dans la période ; facturation = `transmis` hors BO par client × type | `/direction-suivi` |
+| **Taux de rencontre** | `passages « porte ouverte » / (logements visités − « non conforme »)` | `/re-mobilisation`, `/rd-mobilisation` |
+| **Taux de traitement** | `logements visités / logements_count` de l'habitation | `/re-mobilisation`, `/rd-mobilisation` |
+| **Nb logements théorique / trouvés** | `sum(nombre_logements)` / `sum(logements_count)` | `/re-mobilisation`, `/rd-mobilisation` |
+| **Passages par logement** | `avg(passages_count)` des logements visités ; statut = dernier passage | `/re-mobilisation`, `/rd-mobilisation` |
 
-Règles communes à tous les dashboards (demande explicite, 9/2026) ; les écarts encore présents sur des indicateurs non listés ci-dessous n'ont pas été touchés (hors périmètre de la demande) :
+## Formats d'affichage
 
-- **Taux réel** : toujours affiché brut (pas un pourcentage), sur **3 décimales** (ex : `0,354`).
-- **Taux de transformation (`tx_transfo`)** : affiché en pourcentage **arrondi à l'unité**, sans décimale (ex : `74 %`).
-- **Ratio heures rue / heures rémunérées (`ratio_h`, `taux_h`)** : converti en pourcentage et affiché à **1 décimale** (ex : `71,0 %` pour un ratio brut de 0,71), et non plus comme un nombre décimal brut.
-- **Taux de présence / taux d'absence, % donateurs (−25 ans, +25 ans), taux de complétion, taux de FPE** : pourcentages à **1 décimale**.
-- **Don moyen** : euros à **2 décimales** (ex : `18,42€`).
-- **Âge moyen / âge médian** : entier (0 décimale) sur `/client` (âge moyen) ; 1 décimale sur `/rd`, `/re-collecte`, `/mission`, `/rm-collecte` (âge médian).
-- **Score qualité** : nombre brut à 1 ou 2 décimales selon le dashboard (2 sur `/rm-collecte`, 1 ailleurs), toujours accompagné du badge textuel du barème ci-dessus (Très faible/Faible/Moyen/Bon/Très bon).
-- **Comptages** (nb dons, nb missions, BS réel/rue/suspects, nb recruteurs, etc.) : entiers, sans décimale.
+Taux réel brut 3 décimales · tx_transfo % à l'unité · ratio h, taux de présence, % −25 ans, taux de complétion : % 1 décimale · don moyen € 2 décimales · âge médian 1 décimale · comptages entiers.
 
----
+## Réserves connues
 
-## /client
-
-- **Nb missions** : `count(distinct missions.id)` sur statut ∈ (`terminee`, `en_cours`, `en_attente`).
-- **Nb dons** : `count(distinct dons.id)` (dons valides).
-- **Don moyen** : `avg(dons.montant)` (dons valides).
-- **Heures rue / heures rémunérées** : sommes sur les lots filtrés.
-- **Taux réel** : `nb dons valides / heures de rue` (affiché brut, 3 décimales).
-- **Âge moyen** : `avg(âge)` (dons valides), affiché arrondi à l'entier.
-- **Tranche d'âge** (répartition) : `18-20` (18 ≤ âge < 21), `21-25` (21 ≤ âge < 26), `26-35` (26 ≤ âge < 36), `36-50` (36 ≤ âge < 51), `50 et +` (âge ≥ 51), `Autre` (âge inconnu).
-- **Journée en cours toujours exclue** : tous les indicateurs basés sur les lots/dons (heures, nb dons, don moyen, taux réel, âge moyen, tranches d'âge, graphes bulletins, tableau "Suivi des missions"...) n'incluent jamais la date du jour, quel que soit le filtre de période choisi (données du jour incomplètes/non fiables tant qu'il n'est pas terminé). Le raccourci de période "Aujourd'hui" a été retiré du dashboard pour cette raison (demande explicite, 9/2026).
-- Bloc infos mission + résultats globaux figé (sticky) sous le header au scroll ; taux réel positionné en dernier dans le bloc KPI (demandes explicites, 9/2026).
-- Camemberts genre et tranche d'âge : pourcentage de chaque part affiché dans la légende et l'infobulle (1 décimale), également ajouté à l'export CSV "Profil des donateurs". Les dons dont l'âge du donateur est inconnu restent comptés dans "Autre" plutôt qu'exclus (cf. audit de complétude ci-dessous).
-- Filtres : passent sur plusieurs lignes plutôt que défiler horizontalement sur les écrans de moins de 720px de large.
-- **Complétude des données d'âge** : l'âge d'un don dépend de `donateurs.date_de_naissance`, disponible seulement quand `dons.donateur_id` est renseigné. Or ce champ est resté vide pour la quasi-totalité des dons antérieurs à 2025 (migration de données) : 100 % des dons de 2017 à 2024 n'ont pas de `donateur_id`, contre 0,2 % en 2026 (quasi complet). Sur les missions actives ("en_cours"), la couverture est de 100 % ; elle tombe à ~15 % sur les missions terminées plus anciennes. Aucune clé de correspondance alternative fiable n'existe pour récupérer ces dons a posteriori (`old_cae_don_id` ne recouvre que ~100 dons sur les 348 000 concernés). La requête elle-même (LEFT JOIN) n'exclut aucun don : ceux sans âge connu sont comptés dans la tranche "Autre" plutôt qu'omis.
-
-## /mission (suivi de mission)
-
-- **Taux réel par semaine** : `sum(dons valides) / sum(heures de rue)` par semaine.
-- **Table équipe, camemberts âge/genre, bulletins/jour, dons suspects** : identiques à `/rd` (voir plus bas — réutilise les mêmes requêtes).
-- **Taux réel par jour** : `bs_reel du jour / heures_rue du jour` (affiché brut, 3 décimales).
-- **Ratio heures (par jour)** : `heures_rue / heures_remuneration` (affiché en pourcentage, 1 décimale).
-- **Don moyen (par jour)** : `avg(montant)` des dons valides du jour.
-- **% donateurs −25 ans (par jour)** : `100 × (nb dons valides du jour avec âge < 25) / (nb dons valides du jour dont la date de naissance du donateur est connue)` — dénominateur harmonisé le 9/2026 (audit) sur la même convention que `/salarie`/`/direction` (voir note sur `pct_moins_25`/`pct_plus_25` ci-dessous).
-
-## /rd (et repris par /re-collecte, /mission)
-
-- **Taux de transformation (`tx_transfo`)** : `100 × BS réel / BS au sens large` (affiché en pourcentage arrondi à l'unité).
-- **Taux réel** : `BS réel / heures de rue` (affiché brut, 3 décimales).
-- **Don moyen** : `avg(montant)` (dons valides), affiché en euros à 2 décimales.
-- **Âge médian** : médiane (`percentile_cont(0.5)`) de l'âge des donateurs (dons valides), affiché à 1 décimale.
-- **% donateurs −25 ans (`pct_moins_25`)** : `100 × (nb dons valides avec âge < 25) / (nb dons valides dont la date de naissance du donateur est connue)` (affiché en pourcentage, 1 décimale). **Formule harmonisée le 9/2026** (audit) : avant cette date, le dénominateur était le BS réel total (y compris les dons sans date de naissance connue, qui ne peuvent jamais compter au numérateur), ce qui sous-estimait mécaniquement le % sur les missions où la donnée d'âge est incomplète — voir "Complétude des données d'âge" sous `/client`. Cette correction rend `pct_moins_25` cohérent avec `pct_plus_25` de `/salarie` et `/direction`, qui utilisaient déjà ce dénominateur. Sur les missions récentes (couverture ~100 %), le chiffre ne change pas ; sur les missions anciennes ou incomplètes, il peut augmenter sensiblement (ex. observé : 28,1 % → 37,7 % sur une mission à 75 % de couverture ; `null`/« — » au lieu de `0 %` quand aucune date de naissance n'est connue sur le périmètre).
-- **Ratio heures (`ratio_h`)** : `heures_rue / heures_rem` (affiché en pourcentage, 1 décimale — ex : `71,0 %`).
-- **Taux de présence** (champ `taux_presence` ; anciennement nommé à tort "taux d'absence" — corrigé le 9/2026, la formule mesure bien une présence : plus la valeur est haute, plus la personne est présente sur les heures prévues, ce qui est l'inverse de ce que le nom "absence" laissait penser) : `100 × jours avec heures rémunérées ≠ 0 / nombre de lots` (donc ≤ 100 %) (affiché en pourcentage, 1 décimale).
-- **Score qualité** : `don moyen × % donateurs +25 ans` (voir barème commun dans Définitions communes) ; affiché à 1 décimale, accompagné du badge textuel du barème.
-- **Badge FPE** : `'FPE'` si le contrat le plus récent du recruteur sur la mission porte un avenant de catégorie `fin_period_essai`.
-- **Répartition par tranche d'âge** : mêmes bornes que `/client` (18-20, 21-25, 26-35, 36-50, 50+).
-- **Répartition par genre** : `Hommes` (civilité = monsieur), `Femmes` (civilité = madame), `Autre/NC` sinon.
-- **Bulletins par jour** : `count(distinct dons.id)` (dons valides) groupé par jour et par RD.
-- **Motif de don suspect** (13 règles, dans l'ordre de priorité — la première qui matche l'emporte) :
-  1. `🧪 Test` — email/prénom/nom du donateur contient "test".
-  2. `🚨 Donateur mineur` — date de naissance postérieure à (date du don − 18 ans).
-  3. `🚩 Suspicion fraude` — nom du donateur = nom du recruteur actuel.
-  4. `🆔 Coordonnées du recruteur` — email ou téléphone du donateur = email/téléphone du recruteur actuel.
-  5. `🆔 Coordonnées d'un autre recruteur` — email/téléphone du donateur = email/téléphone d'un autre recruteur (tiers).
-  6. `⚠️ Montant élevé` — montant ≥ 100.
-  7. `🚫 Donateur sans email` — email contient "nomail".
-  8. `📵 Téléphone non communiqué` — téléphone = `0000000000` ou motif `0[067]0000000`.
-  9. `✏️ Email mal orthographié` — format d'email invalide, ou domaine dans une liste de fautes courantes (gamil.com, gmai.com, etc.).
-  10. `📧 Faux email` — domaine jetable (yopmail, tempmail, mailinator, etc.).
-  11. `📱 Téléphone suspect` — 6 chiffres identiques consécutifs ou plus dans le numéro.
-  12. `🏠 Adresse trop courte` — adresse < 6 caractères.
-  13. `🌙 Don hors heures ouvrées` — créé entre 20h et 9h ou un dimanche (uniquement pour les dons non issus de l'ancien système).
-  14. `👥 Donateur multiple` — le donateur (par email) a plus d'un don au total.
-  15. Sinon `✅ Ok`.
-  - Un don est compté "suspect" si son motif ≠ `✅ Ok`, sauf `👥 Donateur multiple` qui n'est retenu que si le donateur a strictement plus de 5 dons au total.
-
-## /re-collecte
-
-- Reprend telles quelles les requêtes de `/rd` (table, âge, genre, bulletins/jour, motif de don suspect, taux de présence) et de `/mission` (taux réel par semaine).
-- **Objectif sur la période** (KPI, 10/2026) : l'objectif `objectif_bulletin_theorique` est réparti à parts égales sur les jours distincts avec lot de la mission. *Attendu à ce jour* = objectif × (jours de lot de la période déjà écoulés, ≤ aujourd'hui / jours de lot de la mission) ; *Réalisé* = BS valides (`nouveau`/`en_attente`/`transmis`) sur la période, jusqu'à aujourd'hui. KPI « Réalisé / attendu à ce jour » + % d'atteinte ; « Objectif de la période » = objectif × jours période / jours mission ; « Objectif mission atteint (cumul) » = BS cumulés depuis le début / objectif. Sans filtre de dates, la période = toute la mission. Approximation (pas d'objectif par jour en base) ; indépendant du filtre RD.
-- **Début / fin de contrat** (table équipe, 10/2026) : dates du contrat le plus récent du RD sur la mission (même règle que le badge FPE).
-- Sur `/re-collecte` et `/mission`, possibilité de filtrer sur un RD en cliquant sur sa ligne dans la table équipe, en plus du select déjà existant (demande explicite, 9/2026).
-- **Liste des bulletins suspects** : mêmes 13 règles de motif que `/rd`, sur le périmètre statut ∈ (`nouveau`, `en_attente`, `transmis`, `annule`). Colonnes affichées (restreint le 9/2026, demande explicite) : Date / Statut / Motif / Montant / Donateur / RD (prénom + NOM) — l'adresse et l'email du donateur ne sont ni affichés ni remontés par la requête.
-
-## /rm-collecte
-
-- **Nb RD** : `count(distinct utilisateur_id)` des lots de la mission.
-- **Taux de transformation (`tx_transfo`)**, **Taux réel**, **Don moyen**, **Âge médian**, **% donateurs −25 ans (`pct_moins_25`)**, **Ratio heures (`ratio_h`)** : mêmes formules et mêmes formats d'affichage que `/rd` (voir ci-dessus, y compris le dénominateur harmonisé de `pct_moins_25`), agrégées par mission (et une ligne TOTAL toutes missions confondues). Possibilité de filtrer la table "Suivi des missions" sur une seule mission en cliquant sur sa ligne (demande explicite, 9/2026).
-- **Répartition par tranche d'âge** et **par genre** : mêmes formules que `/rd`.
-- **Liste des bulletins suspects** : mêmes 13 règles de motif que `/rd`, sur le périmètre statut ∈ (`nouveau`, `en_attente`, `annule`) — les dons déjà `transmis` sont exclus (contrôle qualité considéré comme fait).
-- **Suivi quotidien** (par mission et par jour, jusqu'à aujourd'hui, demande explicite 10/2026) :
-  - **RD attendus** : RD distincts (hors responsable d'équipe de la mission) ayant un lot ce jour-là ; **RD présents** : parmi eux, ceux dont les heures rémunérées du lot sont non nulles (un lot du jour sans heures encore saisies compte donc comme absent).
-  - **Taux de présence des RD** : `100 × Σ RD présents / Σ RD attendus` (KPI global sur la période + par jour). À ne pas confondre avec le « taux de présence » en heures de `/rd` (`jours présents / lots`).
-  - **BS RE** : dons valides saisis sur les lots du responsable d'équipe de la mission (`missions.responsable_equipe_id`), par jour.
-  - **Horaires 1er / dernier BS** : heure de Paris du premier et du dernier don valide du jour (`dons.created_at`, hypothèse : l'heure de création = l'heure de réalisation du BS).
-  - **Objectif jour / semaine** : `missions.objectif_bulletin_theorique` réparti à parts égales sur les jours de lots de la mission (tous lots, y compris à venir) ; objectif d'une semaine ISO = objectif × (jours de lots de la semaine / jours de lots de la mission). Approximation, la base ne porte pas d'objectif par jour. % atteint = BS réel / objectif.
-- **Objectif BS mission / % atteint** (table « Suivi des missions ») : BS réels cumulés depuis le début de la mission (hors filtre de période) / `objectif_bulletin_theorique` ; la ligne TOTAL se limite aux missions ayant un objectif.
-- **Taux de FPE employeur / salarié** : `nb contrats avec FPE de cette initiative / nb contrats` des missions du périmètre (avenant de catégorie `fin_period_essai`, initiative détectée sur le libellé « employeur » / « salarié », comme `sql-rh.js`).
-
-## /challenge
-
-- **Top recruteurs (jour/semaine/dernière heure)** : classement par `count(distinct dons.id)` (dons valides), sur les missions `en_cours`.
-- **Top équipes (semaine en cours)** : classement par taux réel = `sum(BS réel) / sum(heures de rue)`, du lundi de la semaine en cours à aujourd'hui.
-- **Âge moyen par mission (classement)** : `avg(âge)` (dons valides) par mission `en_cours`, minimum 3 dons requis pour figurer au classement.
-- **Recruteurs actifs du jour** : recruteurs ayant un lot daté d'aujourd'hui sur une mission `en_cours`.
-
-## /salarie
-
-- **Missions** (10/2026) : union des missions issues des contrats et des lots (anciennes données : lots sans contrat). **Fin du dernier contrat** = `max(date_fin)` des contrats ; « En cours » si un contrat n'est pas terminé. Villes de mission dédoublonnées sans tenir compte de la casse.
-
-- **Taux réel** : `BS réel / heures de rue` (affiché brut, 3 décimales).
-- **Taux h (`taux_h`)** : `heures de rue / heures rémunérées` (heures rémunérées limitées aux lots où `heures_remuneration_completes` est vrai ou non renseigné), affiché en pourcentage, 1 décimale.
-- **Taux d'absence** : `jours avec heures rémunérées ≠ 0 / nombre de lots` (≤ 100 %), affiché en pourcentage, 1 décimale.
-- **Don moyen** : `avg(montant)` (dons valides), affiché en euros à 2 décimales.
-- **% donateurs +25 ans (`pct_plus_25`)** : `(nb dons valides avec âge ≥ 25) / (nb dons valides dont la date de naissance du donateur est connue)`, affiché en pourcentage, 1 décimale.
-- **Score qualité** : `don moyen × % donateurs +25 ans` (voir barème commun dans Définitions communes), affiché à 1 décimale avec le badge du barème.
-- **Depuis la dernière mission** : aujourd'hui − date du dernier lot passé (`lots.date <= aujourd'hui`) du salarié ; « Aujourd'hui » si 0 ; « — » si aucun lot (remplace « depuis le dernier contrat », 10/2026).
-- Les 5 indicateurs ci-dessus existent en 3 déclinaisons : par mission, en cumul sur toute la carrière ("résumé"), et en cumul sur les 270 dernières heures rémunérées déclarées ("statut global").
-- Note : le champ nommé "Taux d'absence" dans cette section de la note utilise en réalité la même formule que le "Taux de présence" de `/rd`/`/re-collecte`/`/mission`/`/rh` (`jours avec heures rémunérées ≠ 0 / nombre de lots` (≤ 100 %)) ; le champ SQL sous-jacent (`taux_presence`) et le libellé affiché sur `/salarie.html` ont déjà été corrigés en ce sens (9/2026, cf. tâche #158/#186) — coquille de nom corrigée dans cette note.
-
-## /emplacement
-
-- **Filtre de dates** (10/2026) : `date_from`/`date_to` filtrent sur `lots.date` (missions passées, stats globales, graphiques, horaires). Section « Missions passées ici » avant « Suivi — horaires » ; cliquer une mission filtre le suivi sur celle-ci (re-clic = retire le filtre).
-
-- **Taux réel** (par mission ayant utilisé cet emplacement, et global tous jours confondus) : `BS réel / heures de rue` (affiché brut, 3 décimales).
-- **Don moyen** (par mission, et global) : `avg(montant)` (dons valides), affiché en euros à 2 décimales.
-- **Nombre moyen de recruteurs par jour** : `avg(nb recruteurs distincts par jour)`.
-- **Horaires du premier et du dernier BS par jour** (10/2026) : par jour et par mission, heure de Paris du premier et du dernier don valide (`dons.created_at`) aux lots de cet emplacement.
-- **Taux réel par jour de la semaine** (1=lundi..7=dimanche, toutes missions/années confondues) : `sum(BS réel du jour de semaine) / sum(heures de rue du jour de semaine)`.
-- **Taux réel par mois calendaire** (1=janvier..12=décembre, toutes années confondues) : `sum(BS réel du mois) / sum(heures de rue du mois)`.
-
-## /site-prive
-
-(Périmètre : emplacements où `type_emplacement = 'prive'`.)
-
-- **Taux réel** (global, par typologie d'emplacement, par enseigne, par mission, par site, par jour d'activité, par période jour/semaine/mois) : `BS réel / heures de rue`, toujours en moyenne pondérée (somme des BS réels ÷ somme des heures). Affiché brut, 3 décimales.
-- **Don moyen** (global, par typologie, par enseigne, par mission, par site) : `avg(montant)` (dons valides), affiché en euros à 2 décimales.
-- **Enseigne** (demande explicite, 9/2026) : correspondance sur une liste fermée d'enseignes (Carrefour City/Market/Hyper/Carrefour, Intermarché Express/Contact/Hyper/Intermarché, Auchan/Auchan Hyper, U Express/Super U/Hyper U, Monoprix, Leclerc Express/Leclerc, Biocoop, La Vie Claire, Otera, CCO, Pharmacie, Castorama, Leroy Merlin, Mr Bricolage, Brico Dépôt, Decathlon, Intersport, Botanic, Animalis, B&M, Cultura), testée du nom le plus spécifique au plus générique (ex. "Carrefour City" avant "Carrefour"). Tout emplacement ne correspondant à aucune entrée tombe dans "Autres". Remplace l'ancienne heuristique "premier mot du nom".
-- **Filtres ville / département** (demande explicite, 9/2026) : ville = `emplacements.ville` exacte ; département = 2 premiers chiffres de `emplacements.code_postal` (3 premiers pour les DOM 97x/98x). Ne distingue pas 2A/2B (Corse), tous deux sous "20".
-- **Récap par mission** (demande explicite, 9/2026) : une ligne par mission du périmètre filtré (nb d'emplacements couverts, heures rue, BS réel, taux réel, don moyen) — vue globale, pas de détail par site.
-- **Classement des sites privés** (demande explicite, 9/2026) : un site par ligne, taux réel = moyenne pondérée sur la période sélectionnée (filtre Du/Au), triés par taux réel décroissant — permet d'identifier le meilleur SP sur une période donnée (ex. le mois en cours). Sites sans heure de rue sur la période exclus.
-- **RD / RE par emplacement/jour/mission** (table "Emplacements", demande explicite, 9/2026 — utilisé par /assistant-site-prive) : nb_rd/nb_re = recruteurs distincts présents ce jour-là, différenciés selon qu'ils sont ou non `missions.responsable_equipe_id` (même logique que le rôle affiché sur /salarie).
-
-## /assistant-site-prive
-
-Version restreinte de `/site-prive` à destination des ASP (assistant(e)s site privé), demande explicite 9/2026. Mêmes formules que `/site-prive` (voir ci-dessus), mais :
-
-- **Filtres** : recherche par code mission + dates (Total/Aujourd'hui/Hier/Du-Au) + recherche par site privé uniquement. Pas de filtre association, ville ou département.
-- **Pas d'accès** aux statistiques globales par ville, par département, au récap "toutes missions confondues", ni au filtre association — restriction appliquée côté serveur (`/api/assistant-site-prive` ignore tout paramètre id_client/ville/departement, même envoyé manuellement), pas seulement côté affichage.
-- **Effectif RD+RE par emplacement/jour/mission** (table "Emplacements") : affiché au format "3+1" (3 recruteurs + 1 responsable d'équipe), pour vérifier l'effectif présent sans ouvrir les diagrammes de performance de la mission. RE = personne dont l'`utilisateur_id` correspond au `responsable_equipe_id` de la mission ce jour-là ; tous les autres recruteurs distincts présents sont comptés en RD.
-
-## /rh
-
-- **Taux réel** (global et par mission) : `BS réel / heures de rue` (affiché brut, 3 décimales).
-- **Taux de présence** (global, par mission, par recruteur) : `jours avec heures rémunérées ≠ 0 / nombre de lots` (≤ 100 %) (affiché en pourcentage, 1 décimale). Champ SQL et libellé affiché corrigés le 9/2026 (audit) : portait auparavant le nom `taux_absence` alors que la formule mesure l'inverse (bug identique à celui déjà corrigé sur `/rd` et `/salarie`, propagation manquée à l'époque).
-- **Taux de complétion de saisie — emplacement** : `(nb lots où emplacement_id est renseigné) / (nb lots total)`, affiché en pourcentage, 1 décimale.
-- **Taux de FPE** (global, par initiative employeur/salarié) : `nb contrats avec avenant "fin de période d'essai" (par initiative) / nb contrats du périmètre`, basé sur `contrats.date_debut`.
-- **Nb recrutements par jour/semaine/mois** : `count(distinct contrats.id)` par période, sur `contrats.date_debut`.
-- **Nb candidatures par jour/semaine/mois** : nb d'événements `candidate.create` distincts (dédupliqués par id candidat) reçus de TeamTailor, par période.
-- **Délai de complétion d'équipe** : `date de début de contrat du dernier recruteur arrivé sur la mission − date de début de la mission`.
-- **Badge FPE par recruteur** : `'FPE'` si le contrat le plus récent du recruteur sur la mission porte un avenant de catégorie `fin_period_essai`.
-- **Don moyen par recruteur** (table détail mission) : `avg(montant)` (dons valides).
-
-## /direction
-
-Vue COMEX cross-clients (aucun `id_client`/`id_mission` de filtrage — porte sur l'ensemble du périmètre non exclu).
-
-- **Taux réel** : `BS réel / heures de RUE`, même formule que partout ailleurs dans le projet. **Aligné le 9/2026** (demande explicite) : ce KPI utilisait auparavant `BS réel / heures RÉMUNÉRÉES` (formule dite "point mort" d'un document source), volontairement différente du "taux réel" standard — jugé source de confusion trop importante pour être maintenu tel quel ; supprimé du dashboard.
-- **Don moyen, âge médian, % donateurs +25 ans (`pct_plus_25`)** : mêmes formules que `/rd` (`pct_plus_25` sur dénominateur "dons avec date de naissance connue", cohérent avec `/salarie`).
-- **Absentéisme** : `1 − (taux de présence hors arrêts maladie)`, où seuls les jours d'absence au motif "maladie" sont exclus du numérateur (les absences "autorisées" restent comptées comme de l'absentéisme). Définition **différente** de `taux_absence_injustifiee` de `/rd` (qui exclut à la fois "maladie" ET "autorisée"). Règle non tranchée sur le périmètre exact des arrêts maladie à exclure — signalé dans le code comme non définitif.
-- **Ratios d'effectif** : part des recruteurs "anciens" (≥ 3 missions) vs "nouveaux" ; répartition RD/RDC/RDE d'après le grade du contrat le plus récent de chaque personne.
-- **Taux de FPE** : `nb contrats avec avenant fin de période d'essai / nb contrats du périmètre`, sans distinction employeur/salarié (contrairement à `/rh` qui distingue les deux).
-- **Avancement des missions à objectif** (10/2026) : filtré par période (`date_from`/`date_to`). Missions retenues : statut `en_cours` ou `terminee` (annulées et en attente exclues), avec objectif renseigné et au moins un lot dans la période. `BS réel (lots de la période, ≤ aujourd'hui) / objectif prorata`, où `objectif prorata = objectif × jours réalisés dans la période / jours de la mission` (jours = dates distinctes des lots). Avancement vide si aucun jour réalisé. Tri : début de mission le plus récent d'abord. Plus de limite de lignes.
-- **Ratios /direction** (anciens/nouveaux, RDC/RD, RDE/RDC, heures rue/rém.) : affichés en **pourcentage** (1 décimale). Le taux réel reste un nombre brut à 3 décimales partout (arrondi SQL corrigé à 3 décimales sur /rd, /mission, /re-collecte).
-
-## /direction-suivi (10/2026)
-
-Reprise du dashboard Metabase « Direction » (id 41), onglets Suivi et Transmission. API : `/api/direction-suivi?section=…` (une requête par section, chargées au scroll ; cache serveur 120 s période en cours / 1 h période close ; `refresh=1` pour l'ignorer). SQL : `sql-direction-suivi.js`.
-
-- **Filtre de période** : deux réglages indépendants — « Regrouper par » (année / mois / semaine / jour, utilisé pour les graphiques d'évolution : global, statuts, dépôts) et une plage « Du / Au » (raccourcis disponibles, « Tout » = sans bornes). La plage s'applique à toutes les sections ; bornes en heure de Paris. URL : `?grain=&from=&to=&tab=`.
-- **Suivi global / client / mission / recruteur** : filtrés sur `lots.date` (≤ aujourd'hui). Mêmes conventions que le reste du projet : dons valides = nouveau/en_attente/transmis ; heures de rue : lots avec presence_recruteur ≠ faux ; heures rém. uniquement sur lots présents (heures rém. ≠ 0) ; taux réel = BS réel / heures rue (3 décimales) ; heures rue/rém. et % absence en % (1 décimale) ; don moyen en € (2 décimales). Âge médian = âge au don (médiane). Limites : 500 missions, 500 recruteurs.
-- **Volume de dons par statut** : dons créés (`dons.created_at`) sur la période, tous statuts, séparés CozApp (`old_cae_id` nul) / BO.
-- **Transmissions** : dons valides créés sur la période, par client (nouveau + en attente = « à transmettre », transmis) + paramètres de transmission du client.
-- **Dépôts** : dons dont `date_transmission` est dans la période (pas de split CozApp/BO). **Facturation** : dons `transmis` hors BO, `date_transmission` dans la période, par client × type de don (ou mois) ; détail par mission chargé à la demande.
-- Clients exclus : `excludeClientsClause('m')` ; `id_client` du détail refusé s'il est exclu.
-- Écarts possibles avec Metabase 41 : conventions de ce projet (lots présents, ≤ aujourd'hui) ; onglets « Missions à venir », « Recrutement », « Suspects » et autres filtres Metabase non repris.
-
-## Client « ONG de test » (13/10/2026)
-
-Exclu de tous les dashboards (au même titre que les 2 autres clients de test : `EXCLUDED_CLIENT_IDS` / `EXCLUDED_CLIENT_NAMES`), **sauf** `/rd`, `/re-collecte`, `/re-mobilisation` et son détail `/rd-mobilisation`, qui l'acceptent (option `allowTest`). Il n'apparaît donc pas dans la liste de `/rm`, mais ses missions restent consultables sur ces pages avec leur lien direct. Dans les modales ouvertes depuis ces pages (ex. `/mission`), il reste bloqué.
-
-## Missions de type « mobilisation » (14/10/2026)
-
-Les missions dont `type_offre = 'mobilisation'` sont exclues de tous les calculs (agrégats cross-missions via `excludeClientsClause`, `/client`, et accès direct par mission sur `/mission`, `/rd`, `/re-collecte`). Seuls `/re-mobilisation` et `/rd-mobilisation` les affichent. Non filtrables car basés sur des cartes Metabase : `/rm` (carte 514) et les cartes de `/rh-suivi` / `/rh-export`.
-
-## /rm
-
-**Formules de la carte Metabase hors périmètre de cet audit au niveau du code** : ce dashboard ne construit aucune requête SQL dans ce projet. Il consomme une question Metabase déjà existante (carte n°514, "Missions en cours") via `/api/rm-missions` — la logique de calcul de cette carte vit dans Metabase, pas dans `sql-*.js`, et n'a donc pas pu être vérifiée dans le cadre de cet audit (elle nécessiterait d'inspecter la définition de la carte 514 directement dans Metabase). Le seul traitement fait ici est un filtrage a posteriori des lignes dont le nom de client figure dans la liste des clients exclus (`EXCLUDED_CLIENT_NAMES`), par nom plutôt que par id (id non exposé par la carte). **Point de vigilance** : le champ "Donateurs <25" (`pct25`, colonne Metabase "% < 25") est recalculé côté client à partir d'une moyenne pondérée des valeurs journalières renvoyées par la carte, mais la formule interne de cette colonne (quel dénominateur ? cf. la convention harmonisée dans `pct_moins_25`/`pct_plus_25` ci-dessus) n'a pas pu être vérifiée puisqu'elle est calculée par Metabase et non par ce projet — possible incohérence avec la convention désormais harmonisée partout ailleurs, non vérifiable sans ouvrir la carte 514 dans Metabase.
-- **Taux réel** (par mission, JS côté client) : reconstruit en moyenne pondérée à partir des lignes journalières de la carte (`heures_rue_estimées = Σ(BS réel du jour / Taux réel du jour)`, puis `taux_reel = Σ BS réel / Σ heures_rue_estimées`) — cohérent avec la convention "toujours en moyenne pondérée, jamais moyenne de taux journaliers" utilisée partout ailleurs dans le projet, sous réserve que la colonne "Taux réel" de la carte Metabase elle-même suive bien BS réel/heures de rue (non vérifiable en dehors de Metabase).
-- **Transfo** : `BS réel / BS au sens large`, même formule que `tx_transfo` ailleurs. **Corrigé lors de cet audit** : affiché avec 1 décimale (`fmtPct` par défaut) au lieu de l'arrondi à l'unité appliqué à `tx_transfo` sur tous les autres dashboards (convention établie explicitement, cf. "Conventions de format d'affichage" ci-dessus) — code-only, aucune formule changée, juste l'affichage aligné à 0 décimale sur le KPI global et la carte par mission.
-
-## Protection des clients exclus (contrôle transverse, vérifié 9/2026)
-
-Trois clients de démo/test sont exclus de tous les dashboards (cf. `excluded-clients.js`). Deux mécanismes coexistent et ont été vérifiés cohérents lors de cet audit :
-
-- **Filtrage SQL direct** (`excludeClientsClause`/`excludeClientsDirectClause`) : utilisé par les dashboards multi-missions/cross-clients (`/rm-collecte`, `/rh`, `/direction`, `/challenge`, `/salarie`, `/emplacement`), qui listent ou agrègent plusieurs missions dans une même requête.
-- **Validation en amont de l'id reçu en paramètre** : pour les dashboards scopés à UNE seule entité (une mission, un client), l'id est vérifié avant toute requête — `readClientId()` rejette un `id_client` exclu (`/client`), et `missionIsExcluded()` rejette un `id_mission` exclu (`/re-mobilisation`, `/rd-mobilisation`, résolution de mission). C'est pourquoi `sql-mobilisation.js` et `sql-client.js` n'ont pas besoin d'appeler `excludeClientsClause` en interne : la protection est faite un cran au-dessus, dans `index.js`/`metabase.js`. Vérifié en lisant le code des deux mécanismes : pas de trou identifié.
-
-## /mobilisation (re-mobilisation, rd-mobilisation)
-
-- **Statut d'un logement** : statut de son passage le plus récent.
-- **Nb logements théorique / trouvés** : `sum(habitations.nombre_logements)` / `sum(habitations.logements_count)` sur les habitations de la mission.
-- **Taux de rencontre** : `nb passages "porte ouverte" / (nb logements visités − nb logements "non conforme")`.
-- **Taux de traitement** (par habitation) : `nb logements visités / logements_count de l'habitation`.
-- **Nombre moyen de passages par logement** : `avg(logements.passages_count)` sur les logements visités.
-
-
-## Évolutions 10/2026 (lot 2)
-- **/client — nb_missions et « Suivi des missions »** : avec une période sélectionnée, une mission est retenue dès qu'elle a au moins un lot dans la période (plus de simple chevauchement date_debut/date_fin).
-- **Tranches d'âge** (/client, /rd, /rm-collecte) : bornes semi-ouvertes `>= 18 < 21`, `>= 21 < 26`, `>= 26 < 36`, `>= 36 < 51`, `>= 51` (plus de trou aux bornes). « Autre » = âge inconnu ou < 18 ans (le filtre « Autre » de /client est aligné sur le graphe).
-- **/salarie — heures non complétées** (`heures_remuneration_completes = false`) : le lot est ignoré le jour même (encore saisissable), puis pris en compte dès le lendemain avec les heures saisies (0 si jamais complétées → absence). Heures de rue et heures rémunérées sont donc calculées sur le même périmètre (taux heures rue/rém. cohérent).
+- ~900 lots (2026, surtout sites privés) ont `presence_recruteur = faux` mais des heures rémunérées ≠ 0 : ils restent comptés « présents » pour le taux de présence.
+- `/rm` consomme la carte Metabase 514 : formules (dont le dénominateur de « % < 25 ») non vérifiables côté projet.
+- `/client` exclut la journée en cours (petit écart de taux réel avec les autres dashboards en cours de journée).
+- Les requêtes d'âge / genre / suspects de `/rd` et `/rm-collecte` n'appliquent pas encore la règle « lots non complétés ignorés le jour même » (effet limité à la journée en cours).
+- Objectifs par jour : approximation, la base ne porte pas d'objectif journalier.

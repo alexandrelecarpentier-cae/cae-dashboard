@@ -69,6 +69,7 @@ function baseCte(p) {
   join emplacements e on e.id = l.emplacement_id
   join missions m on m.id = l.mission_id
   where ${filtersClause(p)}
+    and (coalesce(l.heures_remuneration_completes, true) or l.date < CURRENT_DATE)
     ${excludeClientsClause('m')}
 ),
 dons_f as (

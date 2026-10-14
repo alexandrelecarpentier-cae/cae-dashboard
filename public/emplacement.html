@@ -395,7 +395,7 @@
     const totalBs = missions.reduce((s, m) => s + (Number(m.bs_reel) || 0), 0);
     const kpis = [
       { v: fmtNum(missions.length), l: 'Missions' },
-      { v: stats.nb_jours_total != null ? fmtNum(stats.nb_jours_total) : '—', l: 'Jours' },
+      { v: stats.nb_jours_total != null ? fmtNum(stats.nb_jours_total) : '—', l: 'Jours d\'activité' },
       { v: stats.recruteurs_moyen_jour != null ? fmtNum(stats.recruteurs_moyen_jour, 1) : '—', l: 'Recruteurs / jour' },
       { v: fmtNum(totalBs), l: 'BS réel cumulé' },
       { v: stats.taux_reel_global != null ? fmtNum(stats.taux_reel_global, 3) : '—', l: 'Taux réel global' },

@@ -57,6 +57,7 @@ function lotStatsCte(p, withAges = false) {
   from lots l
   join missions m on m.id = l.mission_id
   where ${lotsWhere(p)}
+    and (coalesce(l.heures_remuneration_completes, true) or l.date < CURRENT_DATE)
     ${excludeClientsClause('m')}
 ),
 dl as (

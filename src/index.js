@@ -1061,12 +1061,11 @@ async function handleSalarie(url, env) {
   const queries = buildSalarieQueries(id_utilisateur);
 
   try {
-    const [identite, missions, performance, resume, statutGlobal, profil] = await Promise.all([
+    const [identite, missions, performance, resume, profil] = await Promise.all([
       runQuery(env, queries.identite),
       runQuery(env, queries.missions),
       runQuery(env, queries.performance),
       runQuery(env, queries.resume),
-      runQuery(env, queries.statutGlobal),
       runQuery(env, queries.profil),
     ]);
 
@@ -1075,8 +1074,8 @@ async function handleSalarie(url, env) {
       ...m,
       ...(perfByMission.get(m.mission_id) || {
         bs_reel: 0, heures_rue: 0, heures_remuneration: 0, nb_lots: 0,
-        taux_reel: null, taux_h: null, taux_presence: null,
-        don_moyen: null, pct_plus_25: null, score_qualite: null,
+        taux_reel: null, ratio_h: null,
+        don_moyen: null, pct_moins_25: null, score_qualite: null,
       }),
     }));
 
@@ -1084,7 +1083,6 @@ async function handleSalarie(url, env) {
       identite: identite[0] || null,
       missions: missionsAvecPerf,
       resume: resume[0] || null,
-      statutGlobal: statutGlobal[0] || null,
       profil: profil[0] || null,
     });
   } catch (e) {

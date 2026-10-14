@@ -276,7 +276,6 @@
       : '';
 
     const resume = data.resume || {};
-    const statut = data.statutGlobal || {};
     const profil = data.profil || {};
     // Profil de recherche (demande explicite, 10/2026) : statut actif/inactif
     // à la date du jour, ville de résidence, villes de mission (emplacements),
@@ -300,52 +299,18 @@
       </div>
 
       <div class="kpi-grid">
-        <div class="kpi"><div class="val">${actifTxt}</div><div class="lbl">Statut à ce jour</div></div>
-        <div class="kpi"><div class="val">${permisTxt}</div><div class="lbl">Permis</div></div>
-        <div class="kpi"><div class="val">${joursTxt}</div><div class="lbl">Depuis la dernière mission</div></div>
-        <div class="kpi">${txtVal(profil.ville_residence)}<div class="lbl">Ville de résidence</div></div>
-        <div class="kpi" style="grid-column:1 / -1;">${txtVal(profil.villes_mission)}<div class="lbl">Villes de mission</div></div>
-        <div class="kpi"><div class="val">${resume.nb_missions != null ? fmtNum(resume.nb_missions) : '—'}</div><div class="lbl">Missions</div></div>
-        <div class="kpi"><div class="val">${fmtDate(resume.premiere_mission_le)}</div><div class="lbl">Première mission</div></div>
-        <div class="kpi"><div class="val">${finContratTxt}</div><div class="lbl">Fin du dernier contrat</div></div>
-        <div class="kpi"><div class="val">${resume.bs_reel_total != null ? fmtNum(resume.bs_reel_total) : '—'}</div><div class="lbl">BS réel cumulé</div></div>
-        <div class="kpi"><div class="val">${resume.heures_rue_total != null ? fmtNum(resume.heures_rue_total, 1) : '—'}</div><div class="lbl">Heures de rue totales</div></div>
-        <div class="kpi"><div class="val">${resume.heures_remuneration_total != null ? fmtNum(resume.heures_remuneration_total, 1) : '—'}</div><div class="lbl">Heures rémunérées totales</div></div>
-        <div class="kpi"><div class="val">${fmtPct(resume.taux_h_total)}</div><div class="lbl">Taux heures rue / rémunérées</div></div>
-        <div class="kpi"><div class="val">${resume.taux_presence_total != null ? fmtPct(resume.taux_presence_total) : '—'}</div><div class="lbl">Taux de présence</div></div>
-      </div>
-
-      <div class="section-label">
-        <span class="diamond"></span>Statut global — 270 dernières heures rémunérées
-        <span class="info-wrap">
-          <button type="button" class="info-btn" id="statutInfoBtn" aria-label="Règles de calcul">i</button>
-          <div class="info-panel" id="statutInfoPanel">
-            <h4>Calcul</h4>
-            <p>Sur les lots des 270 dernières heures rémunérées <b>déclarées</b> (heures non déclarées exclues) :<br>
-            Score qualité = Don moyen × % de donateurs de plus de 25 ans (âge calculé à la date du don).</p>
-            <h4>Barème</h4>
-            <ul>
-              <li><span>0 à 3</span><b>Très faible</b></li>
-              <li><span>4 à 5,5</span><b>Faible</b></li>
-              <li><span>5,5 à 6,5</span><b>Moyen</b></li>
-              <li><span>6,5 à 8</span><b>Bon</b></li>
-              <li><span>8 et plus</span><b>Très bon</b></li>
-            </ul>
-          </div>
-        </span>
-      </div>
-      <div class="score-card">
-        <div>
-          <div class="score-val">${statut.score_qualite_270 != null ? fmtNum(statut.score_qualite_270, 2) : '—'}</div>
-          <div class="score-lbl">Don moyen × % donateurs +25 ans</div>
-        </div>
-        <div>${scoreBadgeHtml(statut.score_qualite_270)}</div>
-      </div>
-      <div class="metric-grid">
-        <div class="metric"><div class="v">${statut.don_moyen_270 != null ? fmtMoney(statut.don_moyen_270) : '—'}</div><div class="l">Don moyen</div></div>
-        <div class="metric"><div class="v">${statut.pct_plus_25_270 != null ? fmtPct(statut.pct_plus_25_270) : '—'}</div><div class="l">Donateurs +25 ans</div></div>
-        <div class="metric"><div class="v">${statut.bs_reel_270 != null ? fmtNum(statut.bs_reel_270) : '—'}</div><div class="l">BS réel (270h)</div></div>
-        <div class="metric"><div class="v">${statut.heures_remuneration_270 != null ? fmtNum(statut.heures_remuneration_270, 1) : '—'}</div><div class="l">Heures rémunérées évaluées</div></div>
+        <div class="kpi"><div class="val">${actifTxt}</div><div class="lbl" title="Actif = au moins un lot à venir (aujourd'hui compris) sur une mission en cours, ou un contrat non terminé ; sinon Inactif." style="cursor:help;">Statut à ce jour</div></div>
+        <div class="kpi"><div class="val">${permisTxt}</div><div class="lbl" title="utilisateur_situations.permis_de_conduire (Oui / Non / Non renseigné)." style="cursor:help;">Permis</div></div>
+        <div class="kpi"><div class="val">${joursTxt}</div><div class="lbl" title="Aujourd'hui − date du dernier lot passé (lots.date ≤ aujourd'hui) ; « Aujourd'hui » si 0 ; « — » si aucun lot." style="cursor:help;">Depuis la dernière mission</div></div>
+        <div class="kpi">${txtVal(profil.ville_residence)}<div class="lbl" title="utilisateur_informations_contact.ville." style="cursor:help;">Ville de résidence</div></div>
+        <div class="kpi" style="grid-column:1 / -1;">${txtVal(profil.villes_mission)}<div class="lbl" title="Villes principales (missions.ville_principale) des missions du salarié (contrat ou lot), dédoublonnées sans tenir compte de la casse." style="cursor:help;">Villes de mission</div></div>
+        <div class="kpi"><div class="val">${resume.nb_missions != null ? fmtNum(resume.nb_missions) : '—'}</div><div class="lbl" title="Nombre de missions distinctes avec un contrat ou au moins un lot du salarié (clients exclus non comptés)." style="cursor:help;">Missions</div></div>
+        <div class="kpi"><div class="val">${fmtDate(resume.premiere_mission_le)}</div><div class="lbl" title="Date de début la plus ancienne parmi les missions du salarié." style="cursor:help;">Première mission</div></div>
+        <div class="kpi"><div class="val">${finContratTxt}</div><div class="lbl" title="max(contrats.date_fin) ; « En cours » si un contrat n'est pas terminé." style="cursor:help;">Fin du dernier contrat</div></div>
+        <div class="kpi"><div class="val">${resume.bs_reel_total != null ? fmtNum(resume.bs_reel_total) : '—'}</div><div class="lbl" title="count(distinct dons) au statut nouveau / en_attente / transmis, sur les lots du salarié jusqu'à aujourd'hui." style="cursor:help;">BS réel cumulé</div></div>
+        <div class="kpi"><div class="val">${resume.heures_rue_total != null ? fmtNum(resume.heures_rue_total, 1) : '—'}</div><div class="lbl" title="Σ nombre_horaires_rue des lots avec presence_recruteur ≠ faux (lots ≤ aujourd'hui ; heures rémunérées non complétées ignorées le jour même)." style="cursor:help;">Heures de rue totales</div></div>
+        <div class="kpi"><div class="val">${resume.heures_remuneration_total != null ? fmtNum(resume.heures_remuneration_total, 1) : '—'}</div><div class="lbl" title="Σ nombre_horaires_remuneration des lots présents (heures rémunérées ≠ 0)." style="cursor:help;">Heures rémunérées totales</div></div>
+        <div class="kpi"><div class="val">${fmtPct(resume.ratio_h_total)}</div><div class="lbl" title="Heures de rue / heures rémunérées (affiché en %)." style="cursor:help;">Ratio h rue/rém</div></div>
       </div>
 
       <div class="section-label"><span class="diamond"></span>Historique des missions</div>
@@ -353,12 +318,12 @@
         <table>
           <thead>
             <tr>
-              <th>Mission</th><th>Client</th><th>Rôle</th><th>Format</th><th>RE</th><th>RM</th>
+              <th>Mission</th><th>Client</th><th title="Grade du contrat le plus récent sur la mission (RD, RDC, RDE…) ; RE / RM si la personne est responsable d'équipe / de mission." style="cursor:help;">Rôle</th><th>Format</th><th title="Responsable d'équipe de la mission." style="cursor:help;">RE</th><th title="Responsable de mission." style="cursor:help;">RM</th>
               <th>Début</th><th>Fin</th>
-              <th class="num">BS réel</th><th class="num">Taux réel</th>
-              <th class="num">Taux h</th><th class="num">Taux présence</th>
-              <th class="num">Don moyen</th><th class="num">+25 ans</th>
-              <th>Score qualité</th>
+              <th title="count(distinct dons) au statut nouveau / en_attente / transmis sur les lots du salarié pour cette mission." style="cursor:help;" class="num">BS réel</th><th title="BS réel / heures de rue (lots avec presence_recruteur ≠ faux)." style="cursor:help;" class="num">Taux réel</th>
+              <th title="Heures de rue / heures rémunérées (en %)." style="cursor:help;" class="num">Ratio h</th>
+              <th title="avg(montant) des dons valides." style="cursor:help;" class="num">Don moyen</th><th title="100 × dons valides avec donateur < 25 ans (âge à la date du don) / dons valides dont la date de naissance est connue." style="cursor:help;" class="num">−25 ans</th>
+              <th title="Don moyen × (1 − % donateurs −25 ans). Barème : 0–3 Très faible · 3–5,5 Faible · 5,5–6,5 Moyen · 6,5–8 Bon · > 8 Très bon." style="cursor:help;">Score qualité</th>
             </tr>
           </thead>
           <tbody id="missionList"></tbody>
@@ -366,25 +331,9 @@
       </div>
     `;
 
-    const infoBtn = document.getElementById('statutInfoBtn');
-    const infoPanel = document.getElementById('statutInfoPanel');
-    if (infoBtn && infoPanel) {
-      infoBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        infoPanel.classList.toggle('show');
-        infoBtn.classList.toggle('active');
-      });
-      document.addEventListener('click', (e) => {
-        if (!infoPanel.contains(e.target) && e.target !== infoBtn) {
-          infoPanel.classList.remove('show');
-          infoBtn.classList.remove('active');
-        }
-      });
-    }
-
     const listEl = document.getElementById('missionList');
     if (!missions.length) {
-      listEl.innerHTML = '<tr><td colspan="15" class="empty">Aucune mission enregistrée</td></tr>';
+      listEl.innerHTML = '<tr><td colspan="14" class="empty">Aucune mission enregistrée</td></tr>';
       return;
     }
     const formatLabel = (f) => ({ street: 'Street', sitesprives: 'Site privé', hybride: 'Hybride' }[f] || f || '—');
@@ -402,10 +351,9 @@
         <td>${fmtDate(m.date_fin)}</td>
         <td class="num">${fmtNum(m.bs_reel)}</td>
         <td class="num">${m.taux_reel != null ? fmtNum(m.taux_reel, 3) : '—'}</td>
-        <td class="num">${fmtPct(m.taux_h)}</td>
-        <td class="num">${m.taux_presence != null ? fmtPct(m.taux_presence) : '—'}</td>
+        <td class="num">${fmtPct(m.ratio_h)}</td>
         <td class="num">${m.don_moyen != null ? fmtMoney(m.don_moyen) : '—'}</td>
-        <td class="num">${m.pct_plus_25 != null ? fmtPct(m.pct_plus_25) : '—'}</td>
+        <td class="num">${m.pct_moins_25 != null ? fmtPct(m.pct_moins_25) : '—'}</td>
         <td>${m.score_qualite != null ? fmtNum(m.score_qualite, 2) : '—'}${scoreBadgeHtml(m.score_qualite)}</td>
       </tr>`;
     }).join('');

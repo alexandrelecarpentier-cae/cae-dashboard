@@ -549,7 +549,7 @@ function closeModal(){
 /* ───────── Colonnes de performance communes ───────── */
 function pc(k, l, f, extra){ return Object.assign({key:k, label:l, num:true, fmt:f}, extra || {}); }
 var PERF_COLS = [
-  pc('nb_jours','Jours',fi), pc('heures_rue','H. rue',f1), pc('heures_rem','H. rém.',f1),
+  pc('nb_jours','Lots',fi), pc('heures_rue','H. rue',f1), pc('heures_rem','H. rém.',f1),
   pc('bs_reel','BS réels',fi,{bar:true}), pc('taux_reel','Taux réel',f3), pc('don_moyen','Don moyen',feur),
   pc('ratio_h','H. rue / rém.',fpct), pc('pct_absence','% absence',fpct)
 ];
@@ -559,7 +559,7 @@ function kpi(v, l, sub){ return '<div class="kpi"><div class="val">' + esc(v) + 
 RENDER.kpis = function(rows){
   var r = rows[0] || {};
   SEC.kpis.innerHTML = '<div class="kpi-scroll">' +
-    kpi(fi(r.nb_missions), 'Missions') + kpi(fi(r.nb_rd), 'Recruteurs') + kpi(fi(r.nb_jours), 'Lots (jours)') +
+    kpi(fi(r.nb_missions), 'Missions') + kpi(fi(r.nb_rd), 'Recruteurs') + kpi(fi(r.nb_jours), 'Lots') +
     kpi(f1(r.heures_rue), 'Heures rue') + kpi(f1(r.heures_rem), 'Heures rémunérées') +
     kpi(fi(r.bs_reel), 'BS réels') + kpi(f3(r.taux_reel), 'Taux réel', 'BS / heure rue') +
     kpi(fpct(r.ratio_h), 'Heures rue / rém.') + kpi(feur(r.don_moyen), 'Don moyen') + kpi(fpct(r.pct_absence), '% absence') +

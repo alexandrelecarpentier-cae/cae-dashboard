@@ -36,6 +36,7 @@ function buildWeeklyQuery(id_mission, id_utilisateur, dateRange) {
   SELECT l.id, l.date, case when l.presence_recruteur is distinct from false then l.nombre_horaires_rue else 0 end AS nombre_horaires_rue, l.nombre_horaires_remuneration
   FROM lots l
   WHERE l.mission_id = '${id_mission}'
+    AND (coalesce(l.heures_remuneration_completes, true) or l.date < CURRENT_DATE)
     ${rdFilter}
     ${dateFilter}
 ),
@@ -64,6 +65,7 @@ function buildAllDaysStatsQuery(id_mission, id_utilisateur, dateRange) {
     CASE WHEN coalesce(l.nombre_horaires_remuneration, 0) <> 0 THEN l.nombre_horaires_remuneration ELSE 0 END AS heures_rem
   FROM lots l
   WHERE l.mission_id = '${id_mission}'
+    AND (coalesce(l.heures_remuneration_completes, true) or l.date < CURRENT_DATE)
     ${dateFilter}
     ${rdFilter}
 ),
