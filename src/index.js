@@ -828,6 +828,20 @@ async function handleAssistantSitePrive(url, env) {
   if (date_from && !RE_DATE.test(date_from)) return jsonResponse({ error: 'date_from invalide' }, 400);
   if (date_to && !RE_DATE.test(date_to)) return jsonResponse({ error: 'date_to invalide' }, 400);
 
+  // Pas de mission sélectionnée : aucune donnée de performance, seulement les
+  // listes qui alimentent les filtres.
+  if (!id_mission) {
+    try {
+      const [missionList, emplacementList] = await Promise.all([
+        runQuery(env, buildSitePriveMissionListQuery()),
+        runQuery(env, buildSitePriveEmplacementListQuery()),
+      ]);
+      return jsonResponse({ requiresMission: true, missionList, emplacementList });
+    } catch (e) {
+      return jsonResponse({ error: String(e.message || e) }, 502);
+    }
+  }
+
   const queries = buildSitePriveQueries({
     id_mission: id_mission || null,
     id_client: null,
@@ -842,7 +856,7 @@ async function handleAssistantSitePrive(url, env) {
     const [
       globalStats, parTypologie, parEnseigne, classementSp, emplacementsActivite,
       tauxParJour, tauxParSemaine, tauxParMois,
-      missionList, emplacementList,
+      missionList, emplacementList, missionInfo,
     ] = await Promise.all([
       runQuery(env, queries.globalStats),
       runQuery(env, queries.parTypologie),
@@ -854,9 +868,11 @@ async function handleAssistantSitePrive(url, env) {
       runQuery(env, queries.tauxParMois),
       runQuery(env, buildSitePriveMissionListQuery()),
       runQuery(env, buildSitePriveEmplacementListQuery()),
+      runQuery(env, `select code_mission, code_mission_client, date_debut, date_fin, type_mission, format, ville_principale from missions where id = '${id_mission}'`),
     ]);
 
     return jsonResponse({
+      info: missionInfo[0] || null,
       globalStats: globalStats[0] || null,
       parTypologie,
       parEnseigne,

@@ -110,6 +110,13 @@
   .rdre{font-weight:800;}
   .rdre .re{color:var(--red);}
 
+  .mission-info-title{font-size:13px; font-weight:800; margin-bottom:10px;}
+  .mission-info-title .sub{font-weight:600; color:var(--muted); font-size:11.5px; margin-left:6px;}
+  .mission-info-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:10px;}
+  @media (min-width:600px){ .mission-info-grid{grid-template-columns:repeat(3,1fr);} }
+  @media (min-width:900px){ .mission-info-grid{grid-template-columns:repeat(5,1fr);} }
+  .mission-info-item .lbl{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px; font-weight:700;}
+  .mission-info-item .val{font-size:14px; font-weight:700;}
   #state{padding:60px 16px; text-align:center; color:var(--muted); font-size:14px;}
   #state.error{color:var(--red);}
   .hidden{display:none;}
@@ -164,7 +171,7 @@
       <div class="filter-field">
         <div class="filter-label">Code mission</div>
         <div class="search-wrap">
-          <input class="control" type="text" id="f-mission-search" placeholder="Toutes les missions" autocomplete="off">
+          <input class="control" type="text" id="f-mission-search" placeholder="Choisir une mission" autocomplete="off">
           <div class="search-suggestions" id="missionSuggestions"></div>
         </div>
       </div>
@@ -201,6 +208,11 @@
 </header>
 
 <div id="state">Chargement des données depuis Metabase…</div>
+
+<div class="card hidden" id="missionInfoCard" style="max-width:1200px;margin:10px auto;"><div class="card-inner">
+  <div class="mission-info-title" id="missionInfoTitle"></div>
+  <div class="mission-info-grid" id="missionInfoGrid"></div>
+</div></div>
 
 <main id="content" class="hidden">
   <div class="section-label"><span class="diamond"></span>Évolution du taux réel</div>
@@ -428,7 +440,7 @@
   setupSearchField(missionSearchEl, missionSuggestionsEl, {
     getCache: () => missionsCache,
     labelFn: missionLabel,
-    allLabel: 'Toutes les missions',
+    allLabel: 'Aucune mission',
     onSelect: (id, label) => {
       selectedMissionId = id; selectedMissionLabel = label;
       missionSearchEl.value = label;
@@ -546,15 +558,50 @@
     document.getElementById('liveDiamond').classList.toggle('off', !liveMode);
   }
 
-  function render(data) {
-    stateEl.classList.add('hidden');
-    contentEl.classList.remove('hidden');
+  const MISSION_TYPE_LABELS = {
+    paris: 'Paris', province: 'Province', domtom: 'DOM-TOM', lyon: 'Lyon',
+    itinerante: 'Itinérante', itinérante: 'Itinérante',
+    speciale: 'Spéciale', spéciale: 'Spéciale', CDI: 'CDI',
+  };
+  const MISSION_FORMAT_LABELS = {
+    street: 'Rue', hybride: 'Hybride',
+    site_prive: 'Site privé', sites_privees: 'Site privé', sitesprives: 'Site privé', CDI: 'CDI',
+  };
+  function fmtDateFr(d) { return d ? new Date(d).toLocaleDateString('fr-FR') : '—'; }
 
+  function renderMissionInfo(info) {
+    const card = document.getElementById('missionInfoCard');
+    if (!info) { card.classList.add('hidden'); return; }
+    const fields = [
+      { l: 'Date de début', v: fmtDateFr(info.date_debut) },
+      { l: 'Date de fin', v: fmtDateFr(info.date_fin) },
+      { l: 'Type', v: MISSION_TYPE_LABELS[info.type_mission] || info.type_mission || '—' },
+      { l: 'Format', v: MISSION_FORMAT_LABELS[info.format] || info.format || '—' },
+      { l: 'Ville', v: info.ville_principale || '—' },
+    ];
+    card.classList.remove('hidden');
+    document.getElementById('missionInfoTitle').innerHTML =
+      `Mission <span class="sub">${[info.code_mission_client, info.code_mission].filter(Boolean).map(esc).join(' / ')}</span>`;
+    document.getElementById('missionInfoGrid').innerHTML = fields.map((f) => `
+      <div class="mission-info-item"><div class="lbl">${f.l}</div><div class="val">${esc(f.v)}</div></div>`).join('');
+  }
+
+  function render(data) {
     if (!listsBuilt) {
       missionsCache = data.missionList || [];
       emplacementsCache = data.emplacementList || [];
       listsBuilt = true;
     }
+    if (data.requiresMission) {
+      contentEl.classList.add('hidden');
+      document.getElementById('missionInfoCard').classList.add('hidden');
+      stateEl.textContent = 'Sélectionnez une mission pour afficher les résultats.';
+      stateEl.classList.remove('hidden');
+      return;
+    }
+    stateEl.classList.add('hidden');
+    contentEl.classList.remove('hidden');
+    renderMissionInfo(data.info);
 
     // Filtre défensif des typologies non renseignées : la requête backend
     // les exclut déjà à la source, ce filtre couvre uniquement un éventuel

@@ -55,14 +55,32 @@ dons_mission as (
   select l.mission_id, count(distinct d.id) as bs_reel, avg(d.montant) as don_moyen
   from lots_e l join dons d on d.lot_id = l.id and d.statut in ${STATUTS_VALIDES}
   group by 1
+),
+-- Mission entière (tous lots, tous emplacements) : même calcul que /mission.
+lots_m as (
+  select l.id, l.mission_id,
+    case when l.presence_recruteur is distinct from false then l.nombre_horaires_rue else 0 end as nombre_horaires_rue
+  from lots l
+  where l.mission_id in (select mission_id from par_mission)
+    and (coalesce(l.heures_remuneration_completes, true) or l.date < CURRENT_DATE) ${dateClause(dateRange)}
+),
+heures_m as (select mission_id, sum(nombre_horaires_rue) as heures_rue_mission from lots_m group by 1),
+dons_m as (
+  select l.mission_id, count(distinct d.id) as bs_reel_mission
+  from lots_m l join dons d on d.lot_id = l.id and d.statut in ${STATUTS_VALIDES}
+  group by 1
 )
 select m.id as mission_id, m.code_mission, m.code_mission_client, m.statut_mission, cl.nom as client_nom,
   pm.nb_jours, pm.heures_rue, pm.premiere_date, pm.derniere_date, pm.dates_lots,
   pm.recruteurs_moyen_jour,
   coalesce(dm.bs_reel,0) as bs_reel,
   dm.don_moyen,
-  case when coalesce(pm.heures_rue,0) > 0 then coalesce(dm.bs_reel,0)::float / pm.heures_rue else null end as taux_reel
+  case when coalesce(pm.heures_rue,0) > 0 then coalesce(dm.bs_reel,0)::float / pm.heures_rue else null end as taux_reel,
+  hm.heures_rue_mission, coalesce(dmm.bs_reel_mission,0) as bs_reel_mission,
+  case when coalesce(hm.heures_rue_mission,0) > 0 then coalesce(dmm.bs_reel_mission,0)::float / hm.heures_rue_mission else null end as taux_reel_mission
 from par_mission pm
+left join heures_m hm on hm.mission_id = pm.mission_id
+left join dons_m dmm on dmm.mission_id = pm.mission_id
 join missions m on m.id = pm.mission_id
 left join clients cl on cl.id = m.client_id
 left join dons_mission dm on dm.mission_id = pm.mission_id
