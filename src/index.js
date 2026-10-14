@@ -261,9 +261,11 @@ async function handleClientMissions(url, env) {
 // Vrai si la mission appartient à un client exclu (cf. excluded-clients.js).
 // Utilisé partout où un id_mission arrive directement depuis l'URL (lien,
 // favori...) sans passer par une liste qui filtrerait déjà ces clients.
-async function missionIsExcluded(env, id_mission, allowTest = false) {
+async function missionIsExcluded(env, id_mission, allowTest = false, allowMobilisation = false) {
   const rows = await runQuery(env, buildMissionClientQuery(id_mission));
-  return !!rows[0] && isExcludedClient(rows[0].client_id, { allowTest });
+  if (!rows[0]) return false;
+  if (!allowMobilisation && rows[0].type_offre === 'mobilisation') return true;
+  return isExcludedClient(rows[0].client_id, { allowTest });
 }
 
 // Résout id_mission à partir des paramètres d'URL : accepte soit id_mission
@@ -1146,7 +1148,7 @@ async function handleReMobilisation(url, env) {
   if (configError) return jsonResponse({ error: configError }, 500);
 
   try {
-    if (await missionIsExcluded(env, id_mission, true)) return jsonResponse({ error: 'mission introuvable' }, 404);
+    if (await missionIsExcluded(env, id_mission, true, true)) return jsonResponse({ error: 'mission introuvable' }, 404);
   } catch (e) {
     return jsonResponse({ error: String(e.message || e) }, 502);
   }
@@ -1189,7 +1191,7 @@ async function handleRdMobilisation(url, env) {
   if (configError) return jsonResponse({ error: configError }, 500);
 
   try {
-    if (await missionIsExcluded(env, id_mission, true)) return jsonResponse({ error: 'mission introuvable' }, 404);
+    if (await missionIsExcluded(env, id_mission, true, true)) return jsonResponse({ error: 'mission introuvable' }, 404);
   } catch (e) {
     return jsonResponse({ error: String(e.message || e) }, 502);
   }

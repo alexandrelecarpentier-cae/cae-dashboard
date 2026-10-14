@@ -28,7 +28,10 @@ function excludedClientsSqlList() {
 // À utiliser dans une requête où un alias sur `missions` (donnant accès à
 // client_id) est en scope — ex. excludeClientsClause('m') -> "AND m.client_id NOT IN (...)".
 function excludeClientsClause(missionAlias) {
-  return `AND ${missionAlias}.client_id NOT IN (${excludedClientsSqlList()})`;
+  // Exclut aussi les missions de type "mobilisation" (type_offre) de tous les
+  // calculs cross-missions (demande explicite 14/10/2026) : seuls les
+  // dashboards /re-mobilisation et /rd-mobilisation les affichent.
+  return `AND ${missionAlias}.client_id NOT IN (${excludedClientsSqlList()}) AND coalesce(${missionAlias}.type_offre, '') <> 'mobilisation'`;
 }
 
 // À utiliser dans une requête où un alias sur `clients` directement est en
@@ -48,7 +51,7 @@ function isExcludedClient(id_client, { allowTest = false } = {}) {
 // une mission d'un client exclu, sur les dashboards scopés à une seule
 // mission qui ne joignent pas forcément `clients` eux-mêmes).
 function buildMissionClientQuery(id_mission) {
-  return `select client_id from missions where id = '${id_mission}' limit 1;`;
+  return `select client_id, type_offre from missions where id = '${id_mission}' limit 1;`;
 }
 
 export {

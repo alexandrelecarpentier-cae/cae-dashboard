@@ -19,7 +19,7 @@ function formatValuesFor(format) {
 }
 
 function missionFilters(p) {
-  const clauses = [`m.client_id = '${p.id_client}'`];
+  const clauses = [`m.client_id = '${p.id_client}'`, `coalesce(m.type_offre, '') <> 'mobilisation'`];
   if (p.code_mission_cae) clauses.push(`m.code_mission = '${p.code_mission_cae}'`);
   if (p.code_mission_asso) clauses.push(`m.code_mission_client = '${p.code_mission_asso}'`);
   if (p.statut_mission) clauses.push(`m.statut_mission = '${p.statut_mission}'`);
@@ -306,6 +306,7 @@ function buildMissionsListQuery(id_client) {
        m.date_debut, m.date_fin, m.ville_principale, m.type_mission, m.format
 from missions m
 where m.client_id = '${id_client}' and m.statut_mission in ('en_cours','terminee')
+  and coalesce(m.type_offre, '') <> 'mobilisation'
 order by m.date_debut desc nulls last
 limit 100;`;
 }
