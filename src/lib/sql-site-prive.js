@@ -44,7 +44,8 @@ function departementSqlExpr(col) {
 
 function filtersClause(p) {
   const clauses = [
-    `e.type_emplacement = 'prive'`,
+    // emplacements privés + lots sans emplacement (14/10/2026 : pour que les totaux d'une mission collent à /mission)
+    `(e.type_emplacement = 'prive' or l.emplacement_id is null)`,
     `m.format in (${sqlList(formatValuesFor(p.format))})`,
   ];
   if (p.id_mission) clauses.push(`m.id = '${p.id_mission}'`);
@@ -66,7 +67,7 @@ function baseCte(p) {
     l.utilisateur_id, m.responsable_equipe_id,
     e.categorie, e.nom as emplacement_nom
   from lots l
-  join emplacements e on e.id = l.emplacement_id
+  left join emplacements e on e.id = l.emplacement_id
   join missions m on m.id = l.mission_id
   where ${filtersClause(p)}
     and (coalesce(l.heures_remuneration_completes, true) or l.date < CURRENT_DATE)
@@ -302,19 +303,38 @@ order by bs_reel desc nulls last;`;
 // moyen) — comparable dans l'esprit à "Suivi des missions" sur /client,
 // mais restreint aux emplacements privés (périmètre de cette page).
 function buildParMissionQuery(p) {
+  // Taux réel / heures / BS de chaque mission = ENSEMBLE de la mission (tous emplacements, même
+  // taux que /mission), quel que soit le filtre emplacement / ville / département ; seules les
+  // missions ayant au moins un lot dans le périmètre filtré sont listées. La période Du/Au reste
+  // appliquée.
+  const dateClauses = [];
+  if (p.date_from) dateClauses.push(`l.date >= '${p.date_from}'`);
+  if (p.date_to) dateClauses.push(`l.date <= '${p.date_to}'`);
+  const dateSql = dateClauses.length ? ' and ' + dateClauses.join(' and ') : '';
   return `${baseCte(p)},
+scope_missions as (select distinct mission_id from lots_f),
+lots_m as (
+  select l.id, l.mission_id, l.emplacement_id,
+    case when l.presence_recruteur is distinct from false then l.nombre_horaires_rue else 0 end as nombre_horaires_rue
+  from lots l
+  join missions m on m.id = l.mission_id
+  where l.mission_id in (select mission_id from scope_missions)
+    and (coalesce(l.heures_remuneration_completes, true) or l.date < CURRENT_DATE)${dateSql}
+    ${excludeClientsClause('m')}
+),
 par_mission as (
   select l.mission_id,
     count(distinct l.emplacement_id) as nb_emplacements,
     sum(l.nombre_horaires_rue) as heures_rue
-  from lots_f l
+  from lots_m l
   group by 1
 ),
 dons_mission as (
   select l.mission_id,
     count(distinct d.id) as bs_reel, avg(d.montant) as don_moyen
-  from dons_f d
-  join lots_f l on l.id = d.lot_id
+  from dons d
+  join lots_m l on l.id = d.lot_id
+  where d.statut in ${STATUTS_VALIDES}
   group by 1
 )
 select pm.mission_id, m.code_mission, m.code_mission_client, cl.nom as client_nom,
