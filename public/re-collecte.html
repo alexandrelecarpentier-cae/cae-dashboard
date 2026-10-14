@@ -150,8 +150,15 @@
 <style id="touch-scroll-fix">
   /* Durcissement tactile (Android / WebView bas de gamme, 10/2026) : la page doit toujours
      défiler au doigt, même en passant par un graphique ou un tableau. */
-  html{overflow-x:hidden; overflow-y:auto; height:auto; -webkit-text-size-adjust:100%; touch-action:pan-x pan-y pinch-zoom;}
-  body{height:auto; min-height:100%; overflow-x:hidden; overflow-y:visible; touch-action:pan-x pan-y pinch-zoom; -webkit-overflow-scrolling:touch;}
+  html{height:auto; -webkit-text-size-adjust:100%; touch-action:pan-x pan-y pinch-zoom;}
+  body{height:auto; touch-action:pan-x pan-y pinch-zoom;}
+  /* WebView de l'application (Android 15+/16, affichage bord à bord) : la fenêtre peut passer sous la barre
+     de navigation / la barre d'onglets de l'app, ce qui masque le bas de la page. Marge basse généreuse
+     (sur écran tactile) + espaceur final pour que le dernier bloc puisse toujours être amené au-dessus. */
+  @media (pointer:coarse), (hover:none){
+    main{padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 160px) !important;}
+    body::after{content:""; display:block; height:calc(env(safe-area-inset-bottom, 0px) + 80px);}
+  }
   canvas{touch-action:pan-y pinch-zoom !important; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;}
   .chart-box{touch-action:pan-y pinch-zoom;}
   /* flou d'arrière-plan et animations en boucle : coûteux sur GPU d'entrée de gamme, inutiles ici */
@@ -160,7 +167,29 @@
   #refreshFill{transition:none !important;}
   .table-wrap, .table-scroll{-webkit-overflow-scrolling:touch; overscroll-behavior-x:contain; touch-action:pan-x pan-y;}
   select.control, input.control{touch-action:manipulation;}
+  /* Page affichée dans une iframe (application CAE) : le défilement du document peut être verrouillé par
+     l'iframe parente (scrolling="no", hauteur fixe, WebView…). On défile alors dans un conteneur interne
+     de la page, qui reste toujours scrollable au doigt (script ci-dessous : html.in-frame). */
+  html.in-frame, html.in-frame body{height:100%; overflow:hidden;}
+  html.in-frame #frameScroller{position:absolute; top:0; right:0; bottom:0; left:0; height:100%; overflow-x:hidden; overflow-y:scroll;
+    -webkit-overflow-scrolling:touch; overscroll-behavior:contain; touch-action:pan-y pinch-zoom;}
 </style>
+<script>
+  (function () {
+    var framed = false;
+    try { framed = window.self !== window.top; } catch (e) { framed = true; }
+    if (!framed) return;
+    document.documentElement.classList.add('in-frame');
+    function wrap() {
+      if (document.getElementById('frameScroller')) return;
+      var sc = document.createElement('div');
+      sc.id = 'frameScroller';
+      while (document.body.firstChild) sc.appendChild(document.body.firstChild);
+      document.body.appendChild(sc);
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wrap); else wrap();
+  })();
+</script>
 <script>
   // 1) Chart.js ne doit pas capter les gestes tactiles (sinon le doigt posé sur un graphique ne fait
   //    plus défiler la page) : on retire les événements touch et les animations dès son chargement.
@@ -532,9 +561,11 @@
 
   // Conserve la position de scroll pendant une actualisation (le contenu est reconstruit)
   async function refreshData() {
-    const y = window.scrollY;
+    const sc = () => document.getElementById('frameScroller');
+    const getY = () => (sc() ? sc().scrollTop : window.scrollY);
+    const y = getY();
     try { await refreshDataInner(); } finally {
-      requestAnimationFrame(() => { if (Math.abs(window.scrollY - y) > 2) window.scrollTo(0, y); });
+      requestAnimationFrame(() => { if (Math.abs(getY() - y) > 2) { if (sc()) sc().scrollTop = y; else window.scrollTo(0, y); } });
     }
   }
   async function refreshDataInner() {
