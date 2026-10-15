@@ -108,7 +108,13 @@ dons_u as (
     count(distinct d.id) as bs_reel,
     count(distinct d.id) filter (where don.date_de_naissance is not null) as nb_dons_avec_naissance,
     avg(d.montant) as don_moyen,
-    count(distinct d.id) filter (where (d.created_at::date - don.date_de_naissance) / 365.25 < 25) as nb_dons_moins_25
+    count(distinct d.id) filter (where (d.created_at::date - don.date_de_naissance) / 365.25 < 25) as nb_dons_moins_25,
+    -- âge médian (âge à la date du don, dons avec date de naissance connue ;
+    -- percentile_cont ignore les null) et genre (monsieur = Hommes, madame =
+    -- Femmes, le reste = Autre/NC) : mêmes définitions que /rd et /mission
+    percentile_cont(0.5) within group (order by (d.created_at::date - don.date_de_naissance)::float / 365.25) as age_median,
+    count(distinct d.id) filter (where don.civilite = 'monsieur') as nb_hommes,
+    count(distinct d.id) filter (where don.civilite = 'madame') as nb_femmes
   from lots_u l
   join dons d on d.lot_id = l.id and d.statut in ${STATUTS_VALIDES}
   left join donateurs don on don.id = d.donateur_id
@@ -122,6 +128,10 @@ select h.mission_id,
   case when coalesce(h.heures_rue,0) > 0 then coalesce(d.bs_reel,0)::float / h.heures_rue else null end as taux_reel,
   case when coalesce(h.heures_remuneration,0) > 0 then coalesce(h.heures_rue,0)::float / h.heures_remuneration else null end as ratio_h,
   d.don_moyen,
+  d.age_median,
+  coalesce(d.nb_hommes,0) as nb_hommes,
+  coalesce(d.nb_femmes,0) as nb_femmes,
+  coalesce(d.bs_reel,0) - coalesce(d.nb_hommes,0) - coalesce(d.nb_femmes,0) as nb_autre_genre,
   case when coalesce(d.nb_dons_avec_naissance,0) > 0 then coalesce(d.nb_dons_moins_25,0)::float / d.nb_dons_avec_naissance else null end as pct_moins_25,
   case when coalesce(d.nb_dons_avec_naissance,0) > 0 and d.don_moyen is not null
     then d.don_moyen * (1 - coalesce(d.nb_dons_moins_25,0)::float / d.nb_dons_avec_naissance)
@@ -162,8 +172,15 @@ heures as (
   from lots_u
 ),
 dons_u as (
-  select count(distinct d.id) as bs_reel
-  from lots_u l join dons d on d.lot_id = l.id and d.statut in ${STATUTS_VALIDES}
+  -- âge médian et genre globaux : mêmes définitions que par mission
+  -- (cf. buildPerformanceParMissionQuery), sur tous les dons valides du salarié.
+  select count(distinct d.id) as bs_reel,
+    percentile_cont(0.5) within group (order by (d.created_at::date - don.date_de_naissance)::float / 365.25) as age_median,
+    count(distinct d.id) filter (where don.civilite = 'monsieur') as nb_hommes,
+    count(distinct d.id) filter (where don.civilite = 'madame') as nb_femmes
+  from lots_u l
+  join dons d on d.lot_id = l.id and d.statut in ${STATUTS_VALIDES}
+  left join donateurs don on don.id = d.donateur_id
 )
 select
   (select min(m.date_debut) from missions m join ms on ms.mission_id = m.id where 1=1 ${excludeClientsClause('m')}) as premiere_mission_le,
@@ -171,7 +188,11 @@ select
   (select count(distinct m.id) from missions m join ms on ms.mission_id = m.id where 1=1 ${excludeClientsClause('m')}) as nb_missions,
   h.heures_rue_total, h.heures_remuneration_total, h.nb_lots_total,
   case when coalesce(h.heures_remuneration_total,0) > 0 then coalesce(h.heures_rue_total,0)::float / h.heures_remuneration_total else null end as ratio_h_total,
-  d.bs_reel as bs_reel_total
+  d.bs_reel as bs_reel_total,
+  d.age_median as age_median_total,
+  d.nb_hommes as nb_hommes_total,
+  d.nb_femmes as nb_femmes_total,
+  d.bs_reel - d.nb_hommes - d.nb_femmes as nb_autre_genre_total
 from heures h cross join dons_u d;`;
 }
 

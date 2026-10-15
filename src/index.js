@@ -1092,6 +1092,7 @@ async function handleSalarie(url, env) {
         bs_reel: 0, heures_rue: 0, heures_remuneration: 0, nb_lots: 0,
         taux_reel: null, ratio_h: null,
         don_moyen: null, pct_moins_25: null, score_qualite: null,
+        age_median: null, nb_hommes: 0, nb_femmes: 0, nb_autre_genre: 0,
       }),
     }));
 

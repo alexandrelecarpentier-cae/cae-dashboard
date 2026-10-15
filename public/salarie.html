@@ -175,6 +175,18 @@
     if (n === null || n === undefined) return '—';
     return (Number(n) * 100).toLocaleString('fr-FR', { maximumFractionDigits: digits, minimumFractionDigits: digits }) + ' %';
   }
+  // Répartition de genre (cf. NOTE-INDICATEURS.md) : Hommes (monsieur) / Femmes (madame) / Autre-NC,
+  // en % de l'ensemble des dons valides ; null si aucun don.
+  function genrePcts(h, f, a) {
+    const tot = Number(h || 0) + Number(f || 0) + Number(a || 0);
+    if (!tot) return null;
+    return { h: Number(h || 0) / tot, f: Number(f || 0) / tot, a: Number(a || 0) / tot };
+  }
+  function genreTxt(h, f, a) {
+    const g = genrePcts(h, f, a);
+    if (!g) return '—';
+    return fmtPct(g.h, 0) + ' H · ' + fmtPct(g.f, 0) + ' F';
+  }
   function fmtMoney(n, digits = 2) {
     if (n === null || n === undefined) return '—';
     return Number(n).toLocaleString('fr-FR', { maximumFractionDigits: digits, minimumFractionDigits: digits }) + ' €';
@@ -315,6 +327,8 @@
         <div class="kpi"><div class="val">${fmtDate(resume.premiere_mission_le)}</div><div class="lbl" data-tip="Date de début la plus ancienne parmi les missions du salarié.">Première mission</div></div>
         <div class="kpi"><div class="val">${finContratTxt}</div><div class="lbl" data-tip="max(contrats.date_fin) ; « En cours » si un contrat n'est pas terminé.">Fin du dernier contrat</div></div>
         <div class="kpi"><div class="val">${resume.bs_reel_total != null ? fmtNum(resume.bs_reel_total) : '—'}</div><div class="lbl" data-tip="count(distinct dons) au statut nouveau / en_attente / transmis, sur les lots du salarié jusqu'à aujourd'hui.">BS réel cumulé</div></div>
+        <div class="kpi"><div class="val">${resume.age_median_total != null ? fmtNum(resume.age_median_total, 1) + ' ans' : '—'}</div><div class="lbl" data-tip="percentile_cont(0,5) de l'âge des donateurs (date du don − date de naissance) / 365,25, dons valides du salarié (1 décimale). Dons sans date de naissance exclus.">Âge médian</div></div>
+        <div class="kpi"><div class="val" style="font-size:14px;line-height:1.3;">${genreTxt(resume.nb_hommes_total, resume.nb_femmes_total, resume.nb_autre_genre_total)}</div><div class="lbl" data-tip="Répartition des dons valides par civilité du donateur : Hommes (monsieur) / Femmes (madame) ; le reste (Autre/NC)${genrePcts(resume.nb_hommes_total, resume.nb_femmes_total, resume.nb_autre_genre_total) ? ' = ' + fmtPct(genrePcts(resume.nb_hommes_total, resume.nb_femmes_total, resume.nb_autre_genre_total).a, 0) + ' ici' : ''}. % de l'ensemble des dons valides.">Répartition H / F</div></div>
         <div class="kpi"><div class="val">${resume.heures_rue_total != null ? fmtNum(resume.heures_rue_total, 1) : '—'}</div><div class="lbl" data-tip="Σ nombre_horaires_rue des lots avec presence_recruteur ≠ faux (lots ≤ aujourd'hui ; heures rémunérées non complétées ignorées le jour même).">Heures de rue totales</div></div>
         <div class="kpi"><div class="val">${resume.heures_remuneration_total != null ? fmtNum(resume.heures_remuneration_total, 1) : '—'}</div><div class="lbl" data-tip="Σ nombre_horaires_remuneration des lots présents (heures rémunérées ≠ 0).">Heures rémunérées totales</div></div>
         <div class="kpi"><div class="val">${fmtPct(resume.ratio_h_total)}</div><div class="lbl" data-tip="Heures de rue / heures rémunérées (affiché en %).">Ratio h rue/rém</div></div>
@@ -329,7 +343,7 @@
               <th>Début</th><th>Fin</th>
               <th data-tip="count(distinct dons) au statut nouveau / en_attente / transmis sur les lots du salarié pour cette mission." class="num">BS réel</th><th data-tip="BS réel / heures de rue (lots avec presence_recruteur ≠ faux)." class="num">Taux réel</th>
               <th data-tip="Heures de rue / heures rémunérées (en %)." class="num">Ratio h</th>
-              <th data-tip="avg(montant) des dons valides." class="num">Don moyen</th><th data-tip="100 × dons valides avec donateur < 25 ans (âge à la date du don) / dons valides dont la date de naissance est connue." class="num">−25 ans</th>
+              <th data-tip="avg(montant) des dons valides." class="num">Don moyen</th><th data-tip="percentile_cont(0,5) de l'âge des donateurs à la date du don (dons valides avec date de naissance connue), 1 décimale." class="num">Âge médian</th><th data-tip="Dons valides par civilité du donateur : Hommes (monsieur) / Femmes (madame) ; Autre/NC compté au dénominateur." class="num">H / F</th><th data-tip="100 × dons valides avec donateur < 25 ans (âge à la date du don) / dons valides dont la date de naissance est connue." class="num">−25 ans</th>
               <th data-tip="Don moyen × (1 − % donateurs −25 ans). Barème : 0–3 Très faible · 3–5,5 Faible · 5,5–6,5 Moyen · 6,5–8 Bon · > 8 Très bon.">Score qualité</th>
             </tr>
           </thead>
@@ -373,7 +387,7 @@
 
     const listEl = document.getElementById('missionList');
     if (!missions.length) {
-      listEl.innerHTML = '<tr><td colspan="14" class="empty">Aucune mission enregistrée</td></tr>';
+      listEl.innerHTML = '<tr><td colspan="16" class="empty">Aucune mission enregistrée</td></tr>';
       return;
     }
     const formatLabel = (f) => ({ street: 'Street', sitesprives: 'Site privé', hybride: 'Hybride' }[f] || f || '—');
@@ -393,6 +407,8 @@
         <td class="num">${m.taux_reel != null ? fmtNum(m.taux_reel, 3) : '—'}</td>
         <td class="num">${fmtPct(m.ratio_h)}</td>
         <td class="num">${m.don_moyen != null ? fmtMoney(m.don_moyen) : '—'}</td>
+        <td class="num">${m.age_median != null ? fmtNum(m.age_median, 1) + ' ans' : '—'}</td>
+        <td class="num">${genreTxt(m.nb_hommes, m.nb_femmes, m.nb_autre_genre)}</td>
         <td class="num">${m.pct_moins_25 != null ? fmtPct(m.pct_moins_25) : '—'}</td>
         <td>${m.score_qualite != null ? fmtNum(m.score_qualite, 2) : '—'}${scoreBadgeHtml(m.score_qualite)}</td>
       </tr>`;
