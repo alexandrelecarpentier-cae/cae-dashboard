@@ -557,7 +557,7 @@ async function handleRmCollecte(url, env, ctx) {
 
   const queries = buildRmCollecteQueries(id_rm || null, id_client || null, dateRange, id_mission || null);
 
-  // Mode par section (?section=missions|age|gender|suspects|suiviJour|fpe|lists) :
+  // Mode par section (?section=missions|age|gender|suspects|suiviJour|fpe|salaries|lists) :
   // le front lance les sections en parallèle et affiche chacune dès qu'elle
   // arrive (au lieu d'attendre la plus lente, la liste des suspects). Cache
   // Cloudflare : 2 min (1 h si la période est entièrement passée ; 1 h pour
@@ -567,6 +567,7 @@ async function handleRmCollecte(url, env, ctx) {
     const builders = {
       missions: () => queries.missions, age: () => queries.age, gender: () => queries.gender,
       suspects: () => queries.suspectsList, suiviJour: () => queries.suiviJour, fpe: () => queries.fpe,
+      salaries: () => queries.salaries,
     };
     if (section !== 'lists' && !builders[section]) return jsonResponse({ error: 'section invalide' }, 400);
     const today = new Date().toISOString().slice(0, 10);
@@ -600,18 +601,19 @@ async function handleRmCollecte(url, env, ctx) {
   }
 
   try {
-    const [missions, age, gender, suspectsList, suiviJour, fpe, rmList, clientList] = await Promise.all([
+    const [missions, age, gender, suspectsList, suiviJour, fpe, salaries, rmList, clientList] = await Promise.all([
       runQuery(env, queries.missions),
       runQuery(env, queries.age),
       runQuery(env, queries.gender),
       runQuery(env, queries.suspectsList),
       runQuery(env, queries.suiviJour),
       runQuery(env, queries.fpe),
+      runQuery(env, queries.salaries),
       runQuery(env, buildRmListQuery(id_client || null, dateRange)),
       runQuery(env, buildClientListQuery(id_rm || null, dateRange)),
     ]);
 
-    return jsonResponse({ missions, age, gender, suspectsList, suiviJour, fpe: fpe[0] || null, rmList, clientList });
+    return jsonResponse({ missions, age, gender, suspectsList, suiviJour, fpe: fpe[0] || null, salaries, rmList, clientList });
   } catch (e) {
     return jsonResponse({ error: String(e.message || e) }, 502);
   }

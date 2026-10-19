@@ -91,6 +91,8 @@ SELECT hj.date AS date,
   coalesce(dj.bs_reel, 0) AS bs_reel,
   round(coalesce(dj.bs_reel,0)::numeric / NULLIF(hj.heures_rue,0)::numeric, 3) AS taux_reel,
   round(hj.heures_rue::numeric / NULLIF(hj.heures_rem,0)::numeric, 2) AS ratio_h,
+  round(hj.heures_rue::numeric, 2) AS heures_rue,
+  round(hj.heures_rem::numeric, 2) AS heures_rem,
   round(dj.don_moyen::numeric, 2) AS don_moyen,
   round((100.0 * coalesce(dj.nb_moins_25,0)) / NULLIF(dj.nb_dons_avec_naissance,0)::numeric, 1) AS pct_moins_25
 FROM heures_jour hj LEFT JOIN dons_jour dj ON dj.date = hj.date

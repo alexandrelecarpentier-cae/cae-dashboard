@@ -277,12 +277,28 @@
             <th>Mission</th><th>Asso</th><th>Début</th><th>Fin</th>
             <th class="num">Objectif BS</th><th class="num">% atteint</th>
             <th class="num">BS rue</th><th class="num">BS réel</th><th class="num">Taux réel</th>
-            <th class="num">Tx transfo</th><th class="num">H rue/H rém</th>
+            <th class="num">Tx transfo</th><th class="num">H rém</th><th class="num">H rue</th><th class="num">H rue/H rém</th>
             <th class="num">Score quali</th><th class="num">Don moyen</th><th class="num">Âge médian</th>
             <th>RM</th><th>RE</th><th>Ville</th>
           </tr>
         </thead>
         <tbody id="missionsTableBody"></tbody>
+      </table>
+    </div>
+  </div></div>
+
+  <div class="section-label"><span class="diamond"></span>Heures par salarié</div>
+  <div class="section-sub">Salariés présents (au moins une heure rémunérée) dans chaque mission sur la période sélectionnée.</div>
+  <div class="card"><div class="card-inner">
+    <div class="table-wrap">
+      <table id="salariesTable">
+        <thead>
+          <tr>
+            <th>Mission</th><th>Salarié</th><th class="num">Jours de présence</th>
+            <th class="num">H rémunérées</th><th class="num">H de rue</th><th class="num">H rue/H rém</th>
+          </tr>
+        </thead>
+        <tbody id="salariesTableBody"></tbody>
       </table>
     </div>
   </div></div>
@@ -514,6 +530,7 @@
     age: (rows) => chartReady.then(() => renderAgePie(rows)),
     gender: (rows) => chartReady.then(() => renderGenderPie(rows)),
     suspects: (rows) => renderSuspectsTable(rows),
+    salaries: (rows) => renderSalariesTable(rows),
   };
 
   async function getSection(section, p) {
@@ -608,6 +625,7 @@
     renderWeeklyTable(data.suiviJour || []);
     renderDailyTable(data.suiviJour || []);
     renderSuspectsTable(data.suspectsList || []);
+    renderSalariesTable(data.salaries || []);
   }
 
   function renderKpis(row, suiviJour, fpe) {
@@ -619,6 +637,8 @@
       { v: fmtNum(row.bs_incomplets), l: 'Incomplets' },
       { v: fmtNum(row.bs_annules), l: 'Annulés' },
       { v: row.ratio_h != null ? fmtRatioPct(row.ratio_h) : '—', l: 'Ratio h rue/rém' },
+      { v: row.heures_rem != null ? fmtNum(row.heures_rem, 1) : '—', l: 'Heures rémunérées' },
+      { v: row.heures_rue != null ? fmtNum(row.heures_rue, 1) : '—', l: 'Heures de rue' },
       { v: fmtNum(row.nb_rd), l: 'Recruteurs' },
     ];
     // Taux de présence des RD (demande explicite, 10/2026) : somme des RD
@@ -731,7 +751,7 @@
   function renderMissionsTable(rows) {
     const tbody = document.getElementById('missionsTableBody');
     if (!rows.length) {
-      tbody.innerHTML = '<tr><td colspan="17" class="table-empty">Aucune mission ne correspond aux filtres sélectionnés</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="19" class="table-empty">Aucune mission ne correspond aux filtres sélectionnés</td></tr>';
       return;
     }
     tbody.innerHTML = rows.map((r) => {
@@ -753,6 +773,8 @@
         <td class="num">${fmtNum(r.bs_reel)}</td>
         <td class="num">${fmtNum(r.taux_reel, 3)}</td>
         <td class="num">${fmtPct0(r.tx_transfo)}</td>
+        <td class="num">${fmtNum(r.heures_rem, 1)}</td>
+        <td class="num">${fmtNum(r.heures_rue, 1)}</td>
         <td class="num">${fmtRatioPct(r.ratio_h)}</td>
         <td class="num">${score != null ? fmtNum(score, 2) : '—'}</td>
         <td class="num">${fmtEuro(r.don_moyen)}</td>
@@ -778,6 +800,26 @@
         openMissionModal(a.dataset.code);
       });
     });
+  }
+
+  // Heures par salarié présent dans chaque mission.
+  function renderSalariesTable(rows) {
+    const tbody = document.getElementById('salariesTableBody');
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="table-empty">Aucun salarié présent sur cette période</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map((r) => {
+      const ratio = Number(r.heures_rem) > 0 ? Number(r.heures_rue) / Number(r.heures_rem) : null;
+      return `<tr>
+        <td>${esc(r.code_mission)}</td>
+        <td>${esc(r.rd || '')}</td>
+        <td class="num">${fmtNum(r.jours_presence)}</td>
+        <td class="num">${fmtNum(r.heures_rem, 1)}</td>
+        <td class="num">${fmtNum(r.heures_rue, 1)}</td>
+        <td class="num">${fmtRatioPct(ratio)}</td>
+      </tr>`;
+    }).join('');
   }
 
   // Objectif par semaine : regroupe les lignes quotidiennes par mission et

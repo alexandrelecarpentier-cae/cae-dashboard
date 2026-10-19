@@ -1,11 +1,4 @@
-<!doctype html>
-<html lang="fr">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="robots" content="noindex">
-<style>html{color-scheme:light}body{margin:0}</style>
-<title>Planning 2027 CAE</title>
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex"><style>html{color-scheme:light}body{margin:0}</style><title>Planning 2027 CAE</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 /* Layout : en-tête collant, 5 onglets, tableaux denses à défilement horizontal interne */
@@ -104,6 +97,7 @@ td.tot{font-weight:600}
 .ghead .gl{background:var(--surf)}
 .gfoot{background:var(--surf2)}.gfoot .gl{background:var(--surf2)}
 .yrsw{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}.yrsw button{border:0;background:var(--surf);color:var(--ink);padding:7px 11px;font:inherit;font-size:13px;cursor:pointer}.yrsw button[aria-selected=true]{background:var(--acc);color:#fff}
+.ref{display:block;font-size:12px;color:var(--mut);margin-top:2px;font-weight:400}
 </style>
 
 <div class="wrap">
@@ -184,6 +178,9 @@ const OLDMO="22|1|8|7257|3225|3100;22|2|7|5241|2337|3100;22|3|12|10539|4606|5150
 // Missions 2026 planifiées non démarrées : client|début|fin|format|zone|ville|RM|obj|statut
 const M26F="Croix-Rouge française|261013|261121|sp|pr|Marseille|BRANG|250|e;Solidarités International|261013|261114|st|pr|Bordeaux|AMYB|380|e;APF France handicap|261013|261114|st|pr|Rennes|ROMAIP|350|e;LPO|261013|261114|st|pr|Montpellier|ALEXAR|380|e;Greenpeace|261013|261114|st|pr|Caen|JEHSM|200|e;APF France handicap|261013|261121|st|pa|Paris|ANDREF|350|e;Croix-Rouge française|261019|261127|st|pa|||350|a;Croix-Rouge française|261020|261121|st|pr|Clermont-Ferrand||300|a;Croix-Rouge française|261020|261128|hy|pr|||180|a;Solidarités International|261020|261128|sp|pa|||0|a;Handicap International|261020|261121|st|pr|||350|a;Médecins sans frontières|261020|261121|sp|pr|||200|a;Croix-Rouge française|261026|261204|st|pa|Paris||350|a;Care France|261027|261128|st|pr|||300|a;Aides|261027|261204|st|it|||550|a;Fondation pour le Logement|261027|261128|st|sp|Nantes||0|a;Aides|261027|261219|hy|pr|||480|a;IFAW|261027|261205|st|pa|||350|a;Handicap International|261027|261128|st|pr|||380|a;Médecins sans frontières|261102|261211|st|pa|||350|a;Apprentis d'Auteuil|261103|261212|sp|pr|||200|a;Fondation Recherche Médicale|261103|261205|st|pr|||400|a;Croix-Rouge française|261103|261212|sp|pa|Paris||250|a;Petits Frères des Pauvres|261103|261205|st|pa|Paris||350|a;Handicap International|261110|261219|sp|pr|||240|a;CCFD-Terre Solidaire|261110|261219|st|pa|||350|a;APF France handicap|261110|261219|hy|pr|||180|a;Solidarités International|261110|261219|hy|pr|||180|a;SNSM|261110|261212|st|pr|||350|a;Fondation pour le Logement|261116|261225|st|pa|||350|a;Alima|261117|261219|st|pr|||380|a;Apprentis d'Auteuil|261117|261226|sp|pr|||200|a;Médecins sans frontières|261117|261219|sp|pr|||200|a;Action contre la Faim|261124|261226|sp|pr|||200|a;Aides|261124|261226|sp|pr|||200|a;Croix-Rouge française|261124|261226|sp|pr|Metz-Nancy||250|a;Sidaction|261124|261218|st|it|||350|a;Amnesty International|261124|261226|sp|pr|Clermont-Ferrand||200|a;APF France handicap|261201|270102|st|pr|||280|a;Solidarités International|261201|270109|sp|pr|Toulouse||250|a;CCFD-Terre Solidaire|261201|270109|sp|pa|Paris||0|a;Restos du Coeur|261201|270102|st|pr|||380|a;Aides|261207|270115|st|pa|Paris||350|a;IFAW|261208|270109|sp|pr|||200|a;WWF|261208|270109|st|pr|||350|a;Solidarités International|261208|270116|st|pa|Paris||350|a;Care France|261214|270122|st|pa|||350|a;La Chaîne de l'Espoir|261215|270123|st|pa|Paris||350|a;LPO|261215|270116|st|pr|Nice||300|a;UNHCR|261215|270123|sp|pa|Paris||250|a;Croix-Rouge française|261222|270130|st|pa|||350|a;Solidarités International|261222|270123|st|pr|||350|a";
 
+// Part de donateurs : client|début|RM|format|dons valides avec date de naissance|dont âge < 25 ans (âge à la date du don, /365,25). Extraction du 15/10/2026, lots jusqu'au 09/10/2026.
+const P25="Surfrider|250102|RomaiP|st|401|222;Médecins sans frontières|250102|BranG|st|240|129;UNHCR|250107|AlexaR|sp|243|113;APF France handicap|250107|SteveL|sp|263|88;Croix-Rouge française|250107|AmyB|hy|268|141;Solidarités International|250107|BranG|st|294|192;Care France|250107|RomaiP|st|410|227;Médecins sans frontières|250107|AlexaR|hy|230|87;Médecins sans frontières|250113|SteveL|st|462|262;Restos du Coeur|250113|AlexaR|st|350|156;Amnesty International|250114|BranG|st|194|111;Médecins sans frontières|250114|AmyB|sp|295|129;Croix-Rouge française|250121|AlexaR|st|356|259;Care France|250121|ANDREF|sp|310|94;Samusocial|250121|BranG|st|335|163;Handicap International|250121|AmyB|sp|271|100;Croix-Rouge française|250127|AmyB|st|291|174;Secours Catholique|250128|BranG|sp|175|65;WWF|250128|AlexaR|sp|92|28;Solidarités International|250204|SteveL|hy|285|160;Amnesty International|250204|AmyB|sp|102|38;Médecins sans frontières|250204|BranG|sp|266|111;Aides|250204|AlexaR|hy|453|175;Médecins sans frontières|250210|ANDREF|st|289|134;Solidarités International|250211|RomaiP|sp|163|48;IFAW|250211|AlexaR|st|327|174;Médecins sans frontières|250211|AmyB|sp|252|98;LPO|250211|BranG|st|221|124;Aides|250217|AlexaR|st|116|54;Sidaction|250218|SteveL|st|259|169;Solidarités International|250218|AmyB|st|50|28;Petits Frères des Pauvres|250218|ANDREF|st|292|186;CCFD-Terre Solidaire|250218|RomaiP|hy|164|53;Alima|250224|RomaiP|st|244|145;SNSM|250225|ANDREF|st|417|212;UNHCR|250225|AmyB|sp|240|103;CCFD-Terre Solidaire|250225|SteveL|sp|145|33;La Chaîne de l'Espoir|250304|AlexaR|sp|154|32;Samusocial|250304|AmyB|st|367|172;Action contre la Faim|250304|SteveL|hy|242|124;Croix-Rouge française|250310|RomaiP|st|536|295;Médecins sans frontières|250311|ANDREF|sp|247|87;Action contre la Faim|250311|BranG|st|150|110;Petits Frères des Pauvres|250311|AlexaR|sp|330|58;Care France|250318|AmyB|hy|305|131;Ligue contre le Cancer|250318|BranG|sp|225|61;Handicap International|250318|AlexaR|sp|151|50;Croix-Rouge française|250318||st|48|21;Armée du Salut|250318|ANDREF|hy|302|161;Médecins sans frontières|250324|AmyB|st|329|149;Sidaction|250324|AlexaR|st|181|120;Ligue contre le Cancer|250325|BranG|st|343|206;APF France handicap|250325|SteveL|st|217|162;Aides|250401|ANDREF|st|204|121;LPO|250401|BranG|hy|306|93;SNSM|250401|BranG|st|226|141;Amnesty International|250401|AlexaR|st|157|86;Croix-Rouge française|250401|AmyB|sp|216|78;Aides|250407|BranG|st|328|183;La Chaîne de l'Espoir|250408|BranG|sp|94|26;APF France handicap|250408|ANDREF|sp|218|55;Sidaction|250408|AmyB|st|275|173;Croix-Rouge française|250408|AlexaR|sp|203|69;SNSM|250415|ANDREF|hy|274|35;IFAW|250415|RomaiP|st|194|101;LPO|250415|BranG|hy|157|57;Action contre la Faim|250415|AlexaR|sp|293|77;Apprentis d'Auteuil|250415|SteveL|hy|270|87;Restos du Coeur|250415|AmyB|sp|197|48;APF France handicap|250422|SteveL|st|436|210;Surfrider|250422|BranG|st|267|142;Solidarités International|250422|AmyB|st|162|85;Samusocial|250422|RomaiP|st|169|77;Handicap International|250422|ANDREF|st|305|174;Handicap International|250428|ANDREF|st|260|185;Apprentis d'Auteuil|250429|BranG|hy|234|85;Fondation Recherche Médicale|250429|AmyB|hy|209|98;Ligue contre le Cancer|250429|SteveL|hy|206|70;UNHCR|250505|AlexaR|st|354|203;Association Valentin Haüy|250506|ANDREF|sp|261|104;Care France|250506|AmyB|st|302|194;CCFD-Terre Solidaire|250506|SteveL|st|209|134;Solidarités International|250506|RomaiP|hy|333|139;LPO|250513|BranG|st|161|88;Fondation pour le Logement|250513|SteveL|st|405|230;Ligue contre le Cancer|250513|AlexaR|st|214|118;Alima|250513|RomaiP|sp|139|35;Aides|250519|RomaiP|st|459|295;SNSM|250520|SteveL|st|400|226;Solidarités International|250520|BranG|hy|398|163;Petits Frères des Pauvres|250527|BranG|st|430|244;Care France|250527|SteveL|st|256|150;Fondation Recherche Médicale|250527|AmyB|hy|218|115;CCFD-Terre Solidaire|250527|RomaiP|st|326|174;Sidaction|250527|ANDREF|hy|252|106;Alima|250527|AlexaR|st|179|90;La Chaîne de l'Espoir|250602|SteveL|st|441|235;Apprentis d'Auteuil|250603|AlexaR|st|248|140;Surfrider|250603|BranG|st|280|139;Croix-Rouge française|250603|ANDREF|hy|195|90;Croix-Rouge française|250610|AmyB|hy|374|159;Aides|250610|AlexaR|st|254|111;Surfrider|250610|ANDREF|st|620|300;Apprentis d'Auteuil|250610|RomaiP|hy|253|111;Croix-Rouge française|250610|BranG|st|264|146;Médecins sans frontières|250616|AmyB|st|514|256;Association Valentin Haüy|250617|ANDREF|sp|78|22;Aides|250623|RomaiP|st|484|322;Fondation pour le Logement|250624|BranG|st|265|148;Petits Frères des Pauvres|250624|AmyB|hy|114|56;Fondation pour le Logement|250624|SteveL|hy|399|184;Médecins sans frontières|250630|ANDREF|st|426|234;Action contre la Faim|250701|AlexaR|hy|193|60;Alima|250701|SteveL|st|237|149;Association Valentin Haüy|250701|AmyB|st|399|244;Croix-Rouge française|250707|AlexaR|st|305|162;Solidarités International|250708|BranG|st|235|118;Croix-Rouge française|250708|ANDREF|hy|157|76;Secours Catholique|250708|SteveL|st|134|80;Fondation pour le Logement|250708|BenjaI|st|322|121;Croix-Rouge française|250715|SteveL|st|245|163;La Chaîne de l'Espoir|250715|BranG|st|174|99;Fondation pour le Logement|250715|AlexaR|st|220|133;Croix-Rouge française|250715|ANDREF|st|261|160;Care France|250722|SteveL|st|305|203;Break Poverty|250722|BranG|hy|180|57;Armée du Salut|250722|AlexaR|sp|61|21;Samusocial|250728|BranG|st|415|210;Armée du Salut|250729|AlexaR|hy|206|77;Croix-Rouge française|250729|SteveL|st|405|223;Aides|250729|ANDREF|st|217|153;Fondation pour le Logement|250805|BranG|hy|270|127;Secours Catholique|250805|SteveL|st|388|222;Médecins sans frontières|250811|RomaiP|st|435|252;Solidarités International|250811|BranG|st|278|178;Croix-Rouge française|250812|ANDREF|hy|158|54;Sidaction|250812|AmyB|st|231|140;Restos du Coeur|250819|RomaiP|st|261|157;Amnesty International|250819|ANDREF|st|196|124;Surfrider|250819|BranG|st|239|112;Croix-Rouge française|250825||st|223|119;Handicap International|250826|RomaiP|sp|122|29;LPO|250826|AlexaR|hy|761|308;Petits Frères des Pauvres|250826|ANDREF|sp|206|42;Ligue contre le Cancer|250902|AlexaR|hy|190|73;Handicap International|250902|RomaiP|st|166|126;Solidarités International|250902|AlexaR|hy|286|128;Croix-Rouge française|250902|BranG|hy|235|87;Restos du Coeur|250902||sp|253|57;Croix-Rouge française|250908|SteveL|st|208|138;QUATRE PATTES|250909|BranG|sp|130|38;Care France|250909|RomaiP|st|178|114;Sidaction|250909|ANDREF|st|322|200;Secours Catholique|250909||st|143|87;Action contre la Faim|250915|AlexaR|st|439|295;Alima|250916|SteveL|hy|114|56;Aides|250916|ANDREF|st|186|99;Amnesty International|250916||st|209|107;Médecins sans frontières|250916|BranG|sp|230|80;Ligue contre le Cancer|250916|RomaiP|st|158|70;Samusocial|250922|BranG|st|256|94;Fondation pour le Logement|250923|ANDREF|hy|214|71;Amnesty International|250923||hy|90|52;Ligue contre le Cancer|250923|SteveL|hy|265|128;Ligue contre le Cancer|250923|AlexaR|st|193|88;Petits Frères des Pauvres|250929|SteveL|st|536|331;Fondation pour le Logement|250930|ANDREF|sp|223|82;Croix-Rouge française|251006|ANDREF|st|294|185;Apprentis d'Auteuil|251007|BranG|sp|140|37;Aides|251007|AlexaR|st|222|106;Médecins sans frontières|251007|SteveL|sp|278|120;LPO|251007|BenjaI|hy|154|29;Fondation pour le Logement|251014|BenjaI|hy|212|103;Fondation pour le Logement|251014|AlexaR|st|218|129;APF France handicap|251014|AmyB|st|99|57;CCFD-Terre Solidaire|251014|BranG|sp|159|62;Fondation pour le Logement|251020|BenjaI|st|315|175;Médecins sans frontières|251020|ANDREF|st|192|108;APF France handicap|251021|BranG|st|207|94;Care France|251021|SteveL|st|168|106;Secours Catholique|251021|RomaiP|hy|322|149;Solidarités International|251021|AlexaR|st|179|70;Association Valentin Haüy|251028|ANDREF|st|238|126;CCFD-Terre Solidaire|251028|AmyB|hy|200|79;Apprentis d'Auteuil|251028|RomaiP|sp|207|67;Croix-Rouge française|251028|AlexaR|st|164|90;Samusocial|251103|RomaiP|st|240|114;Armée du Salut|251103|ANDREF|sp|154|40;IFAW|251104|AmyB|sp|203|77;Croix-Rouge française|251104|AlexaR|sp|327|102;Médecins sans frontières|251110|SteveL|st|345|235;Croix-Rouge française|251112|AmyB|sp|180|48;CCFD-Terre Solidaire|251112|RomaiP|sp|311|96;Amnesty International|251112|AlexaR|sp|214|104;Aides|251114|SteveL|hy|189|83;Croix-Rouge française|251117|ANDREF|hy|207|115;Care France|251118|AlexaR|sp|145|42;Croix-Rouge française|251118|AmyB|hy|146|49;SNSM|251118|RomaiP|sp|310|75;Fondation Recherche Médicale|251118|SteveL|hy|200|109;Médecins sans frontières|251118|BranG|sp|337|155;Alima|251124|AlexaR|st|163|92;Handicap International|251125|BranG|sp|235|95;Croix-Rouge française|251125|AmyB|hy|15|11;IFAW|251125|RomaiP|hy|227|85;LPO|251125|SteveL|st|120|47;SNSM|251125|ANDREF|st|185|60;Care France|251201|BranG|st|305|197;Croix-Rouge française|251202||sp|264|94;IFAW|251202|AndreF|st|225|141;Croix-Rouge française|251209|AlexaR|sp|354|84;Croix-Rouge française|251209|SteveL|st|240|134;La Chaîne de l'Espoir|251209|RomaiP|hy|167|71;Fondation pour le Logement|251215|RomaiP|st|192|82;Care France|251216|BranG|sp|253|107;Solidarités International|251219|RomaiP|st|289|212;Restos du Coeur|251222|BranG|st|352|149;Croix-Rouge française|251226|RomaiP|st|330|188;Ligue contre le Cancer|251230|BranG|st|198|96;Amnesty International|260106|AlexaR|sp|323|117;Armée du Salut|260106|RomaiP|st|329|205;Aides|260113|AlexaR|sp|324|100;Amnesty International|260113|RomaiP|sp|323|118;Médecins sans frontières|260113|BranG|st|265|153;Médecins sans frontières|260113|AmyB|sp|364|112;SNSM|260120|BranG|st|251|101;Solidarités International|260120|RomaiP|st|249|133;Restos du Coeur|260120|AlexaR|hy|353|80;CCFD-Terre Solidaire|260120|AndreF|st|317|166;Fondation pour le Logement|260126|AndreF|st|113|58;Restos du Coeur|260127|AmyB|sp|146|56;Croix-Rouge française|260127|AndreF|sp|347|141;Care France|260127|RomaiP|hy|239|150;Handicap International|260127|AlexaR|hy|401|191;Care France|260127|RomaiP|st|153|75;Aides|260203|RomaiP|st|382|226;Apprentis d'Auteuil|260203|BranG|st|288|117;IFAW|260203|AndreF|st|271|167;Croix-Rouge française|260209|AndreF|st|287|141;Petits Frères des Pauvres|260210|AmyB|sp|259|130;Handicap International|260210|AlexaR|st|205|100;Alima|260210|BranG|st|163|101;Handicap International|260210|AmyB|sp|168|96;Association Valentin Haüy|260217|AlexaR|sp|197|50;Handicap International|260217|BranG|st|197|117;Solidarités International|260217|AndreF|st|178|78;UNHCR|260220|AlexaR|sp|246|65;Médecins sans frontières|260223|AndreF|st|220|116;Care France|260224|AmyB|hy|205|109;Action contre la Faim|260224|AlexaR|st|247|113;Croix-Rouge française|260224|SteveL|sp|374|63;APF France handicap|260224|RomaiP|sp|172|66;Care France|260303|SteveL|st|322|184;Greenpeace|260303|AndreF|st|281|159;Alima|260303|RomaiP|hy|200|129;Croix-Rouge française|260303|AlexaR|st|97|49;Handicap International|260303|BranG|sp|123|39;Fondation pour le Logement|260309|AndreF|st|234|130;Croix-Rouge française|260310|AlexaR|st|419|241;Croix-Rouge française|260310|SteveL|st|404|191;APF France handicap|260310|BranG|st|312|124;QUATRE PATTES|260310|AmyB|sp|129|38;CCFD-Terre Solidaire|260312|BranG|st|261|169;Greenpeace|260312|AlexaR|st|217|87;Fondation Recherche Médicale|260312|AndreF|st|162|111;La Chaîne de l'Espoir|260317|AmyB|hy|261|145;Fondation pour le Logement|260317|RomaiP|st|121|59;Croix-Rouge française|260323|AlexaR|st|187|122;Croix-Rouge française|260324|AmyB|sp|214|76;Fondation pour le Logement|260324|SteveL|sp|226|84;Sidaction|260324|AndreF|st|275|169;Amnesty International|260330|AndreF|st|190|113;Médecins sans frontières|260331|AlexaR|sp|188|75;Fondation Recherche Médicale|260331|JehsM|hy|170|77;Solidarités International|260331|BranG|st|194|118;Action contre la Faim|260331|AmyB|st|687|364;APF France handicap|260331|RomaiP|hy|136|55;Médecins sans frontières|260407|JehsM|hy|303|80;Aides|260407|AndreF|st|349|157;Apprentis d'Auteuil|260407|BranG|hy|358|117;Médecins sans frontières|260407|BranG|st|351|181;Médecins sans frontières|260407|AmyB|sp|188|59;IFAW|260414|AmyB|st|279|146;Solidarités International|260414|SteveL|st|202|107;Croix-Rouge française|260414|JehsM|hy|654|194;Fondation pour le Logement|260414|BranG|hy|148|46;Association Valentin Haüy|260414|AndreF|st|201|126;Fondation pour le Logement|260420|AndreF|st|483|304;CCFD-Terre Solidaire|260421|RomaiP|hy|118|46;Apprentis d'Auteuil|260421|JehsM|sp|185|78;Aides|260421|BranG|st|234|133;Aides|260428|AndreF|hy|393|160;CCFD-Terre Solidaire|260428|JehsM|st|232|149;LPO|260428|AlexaR|hy|534|194;Greenpeace|260428|BranG|st|499|281;Greenpeace|260428|RomaiP|st|156|97;Restos du Coeur|260504|AlexaR|st|353|186;Aides|260505|RomaiP|hy|240|105;Sidaction|260505|AmyB|st|172|122;Aides|260505|SteveL|sp|313|113;Solidarités International|260505|AlexaR|sp|258|88;Petits Frères des Pauvres|260512|AmyB|hy|501|173;Apprentis d'Auteuil|260512|RomaiP|hy|290|165;Armée du Salut|260512|AndreF|st|135|73;Amnesty International|260512|AlexaR|st|213|96;Association Valentin Haüy|260512|SteveL|hy|374|173;Care France|260518|AndreF|st|225|106;Médecins sans frontières|260519|HillaO|sp|157|84;UNHCR|260519|JehsM|sp|263|55;Surfrider|260519|AlexaR|st|308|123;Sidaction|260526|BranG|st|220|102;Care France|260526|AmyB|st|215|154;Médecins sans frontières|260526|RomaiP|sp|350|169;Care France|260526|JehsM|st|377|184;Aides|260601|AndreF|st|192|91;Alima|260602|BranG|sp|206|74;Restos du Coeur|260602|SteveL|st|670|344;Aides|260602|AlexaR|st|235|146;APF France handicap|260602|RomaiP|st|170|100;QUATRE PATTES|260609|JehsM|sp|249|97;LPO|260609|AmyB|st|309|122;Petits Frères des Pauvres|260609|BranG|hy|373|123;Aides|260609|RomaiP|st|121|83;Solidarités International|260609|HillaO|st|391|216;UNHCR|260609|AndreF|sp|106|29;Croix-Rouge française|260615|AndreF|st|77|49;Solidarités International|260616|HillaO|sp|197|63;Alima|260616|JehsM|st|145|82;Solidarités International|260616|RomaiP|st|179|116;Aides|260616|AmyB|sp|243|97;La Chaîne de l'Espoir|260616|AlexaR|st|257|119;Croix-Rouge française|260623|BranG|st|31|15;Secours Catholique|260623|AndreF|hy|377|189;Association Valentin Haüy|260623|AlexaR|st|351|173;Médecins sans frontières|260623|JehsM|hy|228|144;SNSM|260623|AmyB|st|223|145;Médecins sans frontières|260629|AlexaR|st|726|476;Croix-Rouge française|260630|SteveL|sp|132|18;Action contre la Faim|260630|JehsM|sp|174|73;Apprentis d'Auteuil|260630|AndreF|st|341|176;Croix-Rouge française|260630|BranG|st|199|86;APF France handicap|260630|AmyB|sp|215|83;Fondation pour le Logement|260630|RomaiP|hy|288|142;Association Valentin Haüy|260707|AlexaR|sp|199|59;Fondation pour le Logement|260707|JehsM|st|346|200;Care France|260713|BranG|st|274|135;Surfrider|260715|RomaiP|sp|210|71;Fondation pour le Logement|260715|AmyB|st|254|128;Alima|260715|JehsM|st|365|189;Sidaction|260721|JehsM|st|207|105;Fondation pour le Logement|260721|AlexaR|st|274|187;Solidarités International|260721|RomaiP|st|494|270;QUATRE PATTES|260721|BranG|sp|172|55;CCFD-Terre Solidaire|260721|BranG|st|157|88;Care France|260721|AmyB|sp|286|94;Croix-Rouge française|260727|AndreF|st|252|137;Croix-Rouge française|260728|AmyB|st|194|102;CCFD-Terre Solidaire|260728|BranG|st|381|228;Médecins sans frontières|260728|RomaiP|sp|283|85;IFAW|260728|JehsM|st|392|217;Fondation pour le Logement|260804|AmyB|sp|218|88;Amnesty International|260804|RomaiP|st|403|288;WWF|260804|JehsM|st|235|145;Médecins sans frontières|260810|JehsM|st|389|252;Solidarités International|260811|RomaiP|sp|179|53;CCFD-Terre Solidaire|260811|JehsM|sp|276|102;Croix-Rouge française|260811|RomaiP|sp|174|94;Greenpeace|260818|RomaiP|st|280|140;Greenpeace|260818|AndreF|st|238|124;Secours Catholique|260818|JehsM|st|278|156;Aides|260824|AndreF|st|216|133;Croix-Rouge française|260825|RomaiP|hy|192|58;La Chaîne de l'Espoir|260825|AlexaR|st|177|58;Croix-Rouge française|260825|JehsM|hy|342|114;Solidarités International|260901|RomaiP|hy|130|50;Médecins sans frontières|260901|SteveL|sp|40|10;Apprentis d'Auteuil|260901|JehsM|st|274|170;Amnesty International|260901|AndreF|st|143|74;Petits Frères des Pauvres|260901|BranG|sp|181|47;Fondation pour le Logement|260901|AlexaR|st|442|230;Croix-Rouge française|260907|AndreF|st|273|144;Restos du Coeur|260908|SteveL|sp|364|67;Sidaction|260908|BranG|st|151|117;La Chaîne de l'Espoir|260908|AlexaR|sp|130|70;Aides|260908|AlexaR|sp|166|79;Greenpeace|260908|AndreF|st|555|317;Croix-Rouge française|260914|AndreF|st|129|78;CCFD-Terre Solidaire|260915|BranG|sp|135|70;Solidarités International|260915|AmyB|sp|159|73;LPO|260915|AlexaR|hy|382|140;Fondation Recherche Médicale|260915|AmyB|sp|265|88;Fondation pour le Logement|260915|AndreF|st|143|79;Médecins sans frontières|260921|AlexaR|st|159|94;Médecins sans frontières|260922|BranG|sp|114|54;Secours Catholique|260922|RomaiP|st|170|92;Action contre la Faim|260922|AmyB|sp|82|44;Aides|260922|JehsM|sp|106|39;Croix-Rouge française|260922|AmyB|sp|173|86;Greenpeace|260929|BranG|st|70|46;Croix-Rouge française|260929|RomaiP|st|65|45;Aides|260929|AmyB|st|139|100;Aides|261005|AndreF|st|23|8;Alima|261006|RomaiP|sp|37|15;Action contre la Faim|261006|JehsM|sp|13|5;Fondation pour le Logement|261006|BranG|st|47|20;Armée du Salut|261006|AlexaR|st|69|45";
+
 </script>
 <script>
 const $=(s,r=document)=>r.querySelector(s);
@@ -217,6 +214,12 @@ M26F.split(';').forEach(s=>{const a=s.split('|');FUT.push({cl:a[0],d0:dayN(a[1])
 const REALP=REC.filter(r=>!r.old&&r.y===PY),REALF=FUT.slice();
 if(PY<2027){for(let i=REC.length-1;i>=0;i--)if(REC[i].y>=PY)REC.splice(i,1);FUT.length=0;for(let i=MOREC.length-1;i>=0;i--)if(MOREC[i].y>=PY)MOREC.splice(i,1)}
 const MIS=REC.filter(r=>!r.old);
+const RMC={};for(const k in RMN)RMC[RMN[k]]=k;
+const ymd=d=>{const x=new Date(d*864e5);return String(x.getUTCFullYear()%100).padStart(2,'0')+String(x.getUTCMonth()+1).padStart(2,'0')+String(x.getUTCDate()).padStart(2,'0')};
+(()=>{const g={},fq={},kf=r=>r.cl+'|'+ymd(r.d0)+'|'+(RMC[r.r]||'')+'|'+r.f;
+  P25.split(';').forEach(s=>{const a=s.split('|');const k=a[0]+'|'+a[1]+'|'+a[2].toUpperCase()+'|'+a[3];const o=g[k]||(g[k]={ba:0,bm:0});o.ba+=+a[4];o.bm+=+a[5]});
+  MIS.forEach(r=>{const k=kf(r);fq[k]=(fq[k]||0)+1});
+  MIS.forEach(r=>{const k=kf(r),o=g[k];r.ba=o?o.ba/fq[k]:0;r.bm=o?o.bm/fq[k]:0})})();
 const Yan={};for(const n in Y)Yan[n]=Y[n].split(';').filter(Boolean).map(r=>r.split(',').map(Number));
 const CN=[...new Set([...REC.map(r=>r.cl),...FUT.map(r=>r.cl)])].sort((a,b)=>a.localeCompare(b,'fr'));
 const CL={};CN.forEach(n=>CL[n]={name:n});
@@ -230,22 +233,37 @@ const HIST={rdPeak:Math.max(...rdDay),rdP90:pctl([...rdDay].filter(x=>x>0),.9)};
 MIS.forEach(r=>{['r','cl','v'].forEach(key=>{const a=DM[key][r[key]];if(!a){r['c'+key]=null;return}let s=0,n=0;for(let d=Math.max(r.d0,D0);d<=Math.min(r.d1,TODAY);d++){s+=a[d-D0];n++}r['c'+key]=n?s/n:null})});
 function p90of(a){const v=[...a].filter(x=>x>0);return v.length?pctl(v,.9):0}
 (()=>{const W={};MIS.forEach(r=>{const k=Math.floor((r.d0-dayN('250106'))/7);W[k]=(W[k]||0)+1});HIST.wkMax=Math.max(...Object.values(W));HIST.wkP90=pctl(Object.values(W),.9)})();
+const REF25=(()=>{const M5=MIS.filter(r=>r.y===2025),E5=dayN('251231'),o={n:M5.length,r:{},cl:{},v:{},c:{}};
+  const st=a=>{const v=[...a].filter(x=>x>0);return v.length?{p90:Math.ceil(pctl(v,.9)),max:Math.max(...v)}:null};
+  ['r','cl','v'].forEach(key=>{const m={};M5.forEach(r=>{const k=r[key];if(!k||k==='?')return;const a=m[k]||(m[k]=new Int16Array(D1-D0+1));for(let d=Math.max(r.d0,D0);d<=Math.min(r.d1,E5);d++)a[d-D0]++});for(const k in m)o[key][k]=st(m[k])});
+  const rd=new Int16Array(D1-D0+1);M5.forEach(r=>{for(let d=Math.max(r.d0,D0);d<=Math.min(r.d1,E5);d++)rd[d-D0]+=r.recr});
+  o.rdPeak=Math.max(0,...rd);o.rdP90=Math.ceil(pctl([...rd].filter(x=>x>0),.9));
+  o.mo=Array(12).fill(0);M5.forEach(r=>o.mo[r.mo]++);
+  const W={};M5.forEach(r=>{const k=Math.floor((r.d0-dayN('250106'))/7);W[k]=(W[k]||0)+1});o.wkMax=Math.max(0,...Object.values(W));
+  let b1=0,bt=0,ba=0,bm=0;
+  M5.forEach(r=>{const c=o.c[r.cl]||(o.c[r.cl]={n:0,obj:0,bs:0,tmax:0,ba:0,bm:0,b1:0,w:{}});c.n++;c.obj+=r.obj||0;c.bs+=r.bs;c.tmax=Math.max(c.tmax,r.recr);c.ba+=r.ba||0;c.bm+=r.bm||0;if(r.mo<6)c.b1+=r.bs;const k=Math.floor((r.d0-dayN('250106'))/7);c.w[k]=(c.w[k]||0)+1;
+    bt+=r.bs;if(r.mo<6)b1+=r.bs;ba+=r.ba||0;bm+=r.bm||0});
+  for(const c in o.c){const x=o.c[c];x.wmax=Math.max(...Object.values(x.w));x.s1=x.bs?x.b1/x.bs:null}
+  o.s1=bt?b1/bt:.5;o.q=ba?1-bm/ba:.55;
+  o.cwMax=Math.max(1,...Object.values(o.c).map(x=>x.wmax));
+  const md=k=>med(Object.values(o[k]).map(x=>x.max))||0;o.clMed=md('cl');o.rmMed=md('r');o.vlMed=md('v');
+  return o})();
 const CAP={r:{},cl:{},v:{}};
 for(const key in CAP)for(const k in DM[key]){const p=p90of(DM[key][k]);CAP[key][k]=Math.max(key==='r'?3:2,Math.ceil(p))}
 
 /* ---------- réglages ---------- */
 const BASE26=(()=>{const a=Array(12).fill(0);MIS.filter(r=>r.y===YB).concat(YB===2026?FUT:[]).forEach(r=>a[r.mo]++);return a})();
-const DEF={yw:{2022:.25,2023:.5,2024:1,2025:2,2026:3},hk:1500,w:{taux:30,att:15,pres:10,trend:10,vol:20,fiab:15},tmin:.30,tmax:.46,
-  mult:100,sens:0,att:1,dmp:50,maxWk:Math.ceil(HIST.wkMax*1.1),cap:BASE26.map(x=>Math.ceil(x*1.15)),flatMarg:1.12,maxW:2,capCl:100,capRM:100,capVl:100,capRD:105,
+const DEF={yw:{2022:.25,2023:.5,2024:1,2025:2,2026:3},hk:1500,w:{taux:30,att:15,pres:10,trend:10,vol:20,fiab:15,q:10},tmin:.30,tmax:.46,
+  mult:100,sens:0,att:1,dmp:50,maxWk:Math.ceil(HIST.wkMax*1.1),cap:BASE26.map(x=>Math.ceil(x*1.15)),flatMarg:1.12,maxW:2,rdMax:Math.ceil(HIST.rdPeak*1.05),clCapDef:2,rmCapDef:4,vlCapDef:2,rmCap:{},vlCap:{},qMin:Math.round(REF25.q*100),
   resp:{'Alexandre R.':true,'Amy B.':true,'Andrea F.':true,'Bran G.':true,'Jehs M.':true,'Romain P.':true,'Steven L.':true,'Hillary O.':false,'Benjamin I.':false},
-  sc:{ref:{early:0,perf:1,smooth:.5,adj:.5,rm:1,city:.3,bal:.3,capm:1.15,rdm:1},
-      vit:{early:4,perf:.3,smooth:.1,adj:.2,rm:1,city:.2,bal:.2,capm:1.4,rdm:1.25},
-      mis:{early:0,perf:1.5,smooth:.4,adj:.5,rm:1.2,city:.3,bal:.3,capm:1.15,rdm:1},
-      rd:{early:0,perf:2,smooth:.3,adj:.4,rm:2,city:.3,bal:.2,capm:1.15,rdm:1},
-      lis:{early:0,perf:.3,smooth:4,adj:1,rm:1,city:.3,bal:.5,capm:1.15,rdm:1},
-      vil:{early:0,perf:.5,smooth:.4,adj:.4,rm:1,city:3,bal:.3,capm:1.15,rdm:1},
-      egal:{early:0,perf:1,smooth:.5,adj:.5,rm:1,city:.3,bal:0,capm:1.15,rdm:1},
-      opt:{early:0,perf:3,smooth:.1,adj:.2,rm:3,city:.3,bal:0,capm:1.5,rdm:1,vf:3}},
+  sc:{ref:{early:0,perf:1,smooth:.5,adj:.5,rm:1,city:.3,bal:.3,capAdd:0,rdMax:''},
+      vit:{early:4,perf:.3,smooth:.1,adj:.2,rm:1,city:.2,bal:.2,capAdd:4,rdMax:Math.ceil(Math.ceil(HIST.rdPeak*1.05)*1.25)},
+      mis:{early:0,perf:1.5,smooth:.4,adj:.5,rm:1.2,city:.3,bal:.3,capAdd:0,rdMax:''},
+      rd:{early:0,perf:2,smooth:.3,adj:.4,rm:2,city:.3,bal:.2,capAdd:0,rdMax:''},
+      lis:{early:0,perf:.3,smooth:4,adj:1,rm:1,city:.3,bal:.5,capAdd:0,rdMax:''},
+      vil:{early:0,perf:.5,smooth:.4,adj:.4,rm:1,city:3,bal:.3,capAdd:0,rdMax:''},
+      egal:{early:0,perf:1,smooth:.5,adj:.5,rm:1,city:.3,bal:0,capAdd:0,rdMax:''},
+      opt:{early:0,perf:3,smooth:.1,adj:.2,rm:3,city:.3,bal:0,capAdd:6,rdMax:'',vf:3}},
   sel:'vit',semDef:50};
 const SCD=[
  {id:'ref',name:'Référence : engagement 2026 identique',short:'Référence',eng:'ref',team:'ref',flat:0,desc:'Même nombre de missions que 2026 par association, mêmes équipes, placées selon les meilleurs mois.'},
@@ -256,28 +274,31 @@ const SCD=[
  {id:'vil',name:'Globaliser les villes de démarrage',short:'Villes regroupées',eng:'ref',team:'ref',flat:0,desc:'Mêmes missions, départs synchronisés dans un nombre réduit de villes (villes pôles), dans la limite de la simultanéité historique par ville.'},
  {id:'egal',name:'Répartition égale entre responsables',short:'RM à parts égales',eng:'ref',team:'ref',flat:0,equal:1,desc:'Mêmes missions et équipes, chaque responsable actif reçoit le même nombre de missions (à une près), dans la limite de ses plafonds de simultanéité.'},
  {id:'opt',name:'Optimisation maximale',short:'Optimum',eng:'best',team:'fit',flat:0,desc:'Chaque mission va à la meilleure association du client (format et zone), au meilleur mois, dans la meilleure ville, avec le meilleur responsable, et l\'équipe la plus petite qui atteint l\'objectif. Les plafonds restent respectés.'}];
-const SCP=[['early','Avance (démarrer tôt)'],['perf','Poids du mois favorable'],['smooth','Lissage des démarrages'],['adj','Écart entre missions d\'un client'],['rm','Poids de la performance du responsable'],['bal','Équilibrage entre responsables'],['city','Regroupement des villes'],['capm','Capacité mensuelle (× base 1,15)'],['rdm','Plafond de recruteurs en rue (× base)'],['vf','Poids de la performance de la ville (0 = automatique)'],['sem','Poids du critère % de dons par semestre']];
+const SCP=[['early','Avance (démarrer tôt)'],['perf','Poids du mois favorable'],['smooth','Lissage des démarrages'],['adj','Écart entre missions d\'un client'],['rm','Poids de la performance du responsable'],['bal','Équilibrage entre responsables'],['city','Regroupement des villes'],['capAdd','Démarrages en plus par mois (missions, valeur absolue)'],['rdMax','Plafond de recruteurs en rue (vide = valeur globale)'],['vf','Poids de la performance de la ville (0 = automatique)'],['sem','Poids du critère % de dons par semestre'],['qa','Poids du critère part de donateurs 25 ans et plus']];
 const clone=o=>JSON.parse(JSON.stringify(o));
+for(const id in DEF.sc){DEF.sc[id].sem=id==='vit'?.25:1;DEF.sc[id].qa=id==='vit'?.3:id==='opt'?2:1}
 let S=clone(DEF),CS={};
-for(const id in DEF.sc)DEF.sc[id].sem=id==='vit'?.25:1;
-const KEY='planning'+PY+'-v2';
+const KEY='planning'+PY+'-v3';
 try{const raw=localStorage.getItem(KEY);if(raw){const o=JSON.parse(raw);if(o&&o.S&&o.CS){S=Object.assign(clone(DEF),o.S);for(const id in DEF.sc)S.sc[id]=Object.assign({},DEF.sc[id],(o.S.sc||{})[id]);CS=o.CS}}}catch(e){}
 function save(){try{localStorage.setItem(KEY,JSON.stringify({S,CS}))}catch(e){}}
 const yw=y=>S.yw[y]!=null?+S.yw[y]:.2;
 const eng26=c=>{const e={};MIS.filter(r=>r.cl===c&&r.y===YB).concat(YB===2026?FUT.filter(r=>r.cl===c):[]).forEach(r=>{const k=r.f+'|'+r.z;e[k]=(e[k]||0)+1});return e};
 const semT=c=>{const v=CS[c]?CS[c].sem:'';return clamp(v===''||v==null?S.semDef:+v,0,100)/100};
-function cs(name){if(!CS[name])CS[name]={sem:'',eng:eng26(name),mult:100,ex:[],pref:[],exR:[],impR:'',maxW:'',bonus:0,tmax:''};return CS[name]}
+const d0Of=c=>{const C=CL[c];let x=0;MIS.filter(r=>r.cl===c&&r.y===YB).concat(YB===2026?FUT.filter(r=>r.cl===c):[]).forEach(r=>{x+=r.obj>0?r.obj:((C&&C.oa)||300)});return x};
+const dEff=c=>{const s=cs(c),C=CL[c];const m=S.mult/100*(s.mult/100)*(1+S.sens/100*((C.note||55)-55)/45);const D=s.dons===''||s.dons==null?d0Of(c):+s.dons;return D*m};
+const qTarget=c=>{const v=CS[c]?CS[c].qMin:'';if(v!==''&&v!=null)return clamp(+v,0,100)/100;const C=CL[c];return C&&C.q25!=null?C.q25:S.qMin/100};
+function cs(name){if(!CS[name])CS[name]={dons:'',minMiss:'',maxMiss:'',capCl:'',qMin:'',sem:'',eng:eng26(name),mult:100,ex:[],pref:[],exR:[],impR:'',maxW:'',bonus:0,tmax:''};return CS[name]}
 CN.forEach(cs);
 
 /* ---------- agrégats pondérés ---------- */
-function ag(fn){const a={n:0,wn:0,hr:0,bs:0,o:0,bsO:0,lots:0,pres:0,recr:0};
-  for(const r of REC){if(!fn(r))continue;const w=yw(r.y);a.n+=r.n;a.wn+=w*r.n;a.hr+=w*r.hr;a.bs+=w*r.bs;if(r.obj>0&&r.st!=='e'){a.o+=w*r.obj;a.bsO+=w*r.bs}a.lots+=w*r.lots;a.pres+=w*r.pres;a.recr+=w*r.recr}
+function ag(fn){const a={n:0,wn:0,hr:0,bs:0,o:0,bsO:0,lots:0,pres:0,recr:0,ba:0,bm:0};
+  for(const r of REC){if(!fn(r))continue;const w=yw(r.y);a.n+=r.n;a.wn+=w*r.n;a.hr+=w*r.hr;a.bs+=w*r.bs;if(r.obj>0&&r.st!=='e'){a.o+=w*r.obj;a.bsO+=w*r.bs}a.lots+=w*r.lots;a.pres+=w*r.pres;a.recr+=w*r.recr;a.ba+=w*(r.ba||0);a.bm+=w*(r.bm||0)}
   return a}
-function raw(fn){const a={n:0,hr:0,bs:0,o:0,bsO:0,lots:0,pres:0,recr:0};
-  for(const r of REC){if(!fn(r))continue;a.n+=r.n;a.hr+=r.hr;a.bs+=r.bs;if(r.obj>0&&r.st!=='e'){a.o+=r.obj;a.bsO+=r.bs}a.lots+=r.lots;a.pres+=r.pres;a.recr+=r.recr}
+function raw(fn){const a={n:0,hr:0,bs:0,o:0,bsO:0,lots:0,pres:0,recr:0,ba:0,bm:0};
+  for(const r of REC){if(!fn(r))continue;a.n+=r.n;a.hr+=r.hr;a.bs+=r.bs;if(r.obj>0&&r.st!=='e'){a.o+=r.obj;a.bsO+=r.bs}a.lots+=r.lots;a.pres+=r.pres;a.recr+=r.recr;a.ba+=r.ba||0;a.bm+=r.bm||0}
   return a}
 const tx=a=>a.hr?a.bs/a.hr:null;
-let G,Gt,Gp,Gatt,Ghpl,Glpr,MF,RF,VF,TF,PF,RMS,HUBS,CITYN;
+let G,Gt,Gp,Gatt,Ghpl,Glpr,MF,RF,VF,TF,PF,RMS,HUBS,CITYN,GQ=.55,QM=[],QR={},QV={};
 const band=T=>T<=5?0:T<=8?1:T<=11?2:T<=15?3:4;
 const BANDL=['≤ 5','6-8','9-11','12-15','16+'];
 const pband=c=>c<2.5?0:c<3.5?1:c<4.5?2:3;
@@ -285,7 +306,7 @@ const PBL=['≤ 2','3','4','5 et +'];
 function shr(a,prior,K){return (a.bs+K*prior)/(a.hr+K)}
 function prep(){
   const K=S.hk;
-  G=ag(()=>true);Gt=G.bs/G.hr;Gp=G.pres/G.lots;Gatt=G.bsO/G.o;Ghpl=G.hr/G.pres;Glpr=G.lots/G.recr;
+  G=ag(()=>true);Gt=G.bs/G.hr;Gp=G.pres/G.lots;Gatt=G.bsO/G.o;Ghpl=G.hr/G.pres;Glpr=G.lots/G.recr;GQ=G.ba?1-G.bm/G.ba:.55;
   MF=[];for(let m=0;m<12;m++){const a={hr:0,bs:0};MIS.forEach(r=>{if(r.mo===m){const w=yw(r.y);a.hr+=w*r.hr;a.bs+=w*r.bs}});MOREC.forEach(r=>{if(r.mo===m){const w=yw(r.y);a.hr+=w*r.hr;a.bs+=w*r.bs}});MF[m]=clamp(shr(a,Gt,K)/Gt*100,70,135)/100}
   RMS=[...new Set(MIS.map(r=>r.r).filter(r=>r&&r!=='?'))];
   RF={};RMS.forEach(r=>{RF[r]=clamp(shr(ag(x=>!x.old&&x.r===r),Gt,K)/Gt*100,80,125)/100});
@@ -327,8 +348,9 @@ function scoreClient(c){
     vol:clamp(100*Math.log(1+x)/Math.log(31)+15*clamp((a26-a25)/Math.max(a25,1),-1,1)),fiab:100};
   const ya=(Yan[n]||[]).filter(r=>r[0]>=2023),an=ya.reduce((s,r)=>s+r[5],0),nn=ya.reduce((s,r)=>s+r[1],0);
   c.cancel=an/Math.max(an+nn,1);c.s.fiab=clamp(100-c.cancel*400);
-  const ws=W.taux+W.att+W.pres+W.trend+W.vol+W.fiab||1;
-  c.note=(c.s.taux*W.taux+c.s.att*W.att+c.s.pres*W.pres+c.s.trend*W.trend+c.s.vol*W.vol+c.s.fiab*W.fiab)/ws;
+  c.qS=(a.ba-a.bm+150*GQ)/(a.ba+150);c.s.q=clamp(50+(c.qS-GQ)*400);
+  const ws=W.taux+W.att+W.pres+W.trend+W.vol+W.fiab+(W.q||0)||1;
+  c.note=(c.s.taux*W.taux+c.s.att*W.att+c.s.pres*W.pres+c.s.trend*W.trend+c.s.vol*W.vol+c.s.fiab*W.fiab+c.s.q*(W.q||0))/ws;
   c.nm=rc.length+REC.filter(r=>r.old&&r.cl===n).reduce((x,r)=>x+r.n,0);
   c.conf=c.rawA.n>=12?'élevée':c.rawA.n>=5?'moyenne':'faible';
   c.grade=c.note>=70?'A':c.note>=55?'B':c.note>=40?'C':'D';
@@ -352,6 +374,16 @@ function commentary(c){
   if(c.cancel>=.08)o.push('Annulations élevées : '+pc(c.cancel)+' des missions prévues depuis 2023.');
   return o}
 
+/* ---------- part de donateurs 25 ans et plus ---------- */
+const shq=(x,pr,k)=>(x.ba-x.bm+pr*k)/(x.ba+k);
+function prepQ(){
+  QM=[];for(let m=0;m<12;m++)QM[m]=clamp(shq(ag(r=>!r.old&&r.mo===m),GQ,300)-GQ,-.1,.1);
+  QR={};RMS.forEach(r=>QR[r]=clamp(shq(ag(x=>!x.old&&x.r===r),GQ,300)-GQ,-.1,.1));
+  QV={};for(const v in CITYN)QV[v]=clamp(shq(ag(x=>!x.old&&x.v===v),GQ,200)-GQ,-.1,.1);
+  for(const n of CN){const C=CL[n];C.q=shq(ag(r=>r.cl===n),GQ,150);C.qk={};for(const k in C.at){const [f,z]=k.split('|');C.qk[k]=shq(ag(r=>r.cl===n&&r.f===f&&r.z===z),C.q,150)}
+    const x=REF25.c[n];C.q25=x&&x.ba>0?1-x.bm/x.ba:null}}
+const qExp=(C,k,m,r,v)=>clamp((C.qk&&C.qk[k]!=null?C.qk[k]:(C.q||GQ))+S.dmp/100*((QM[m]||0)+(r?QR[r]||0:0)+(v?QV[v]||0:0)),.25,.97);
+
 /* ---------- moteur de planning ---------- */
 const NW=52,SZ=70;
 const wdate=i=>new Date(Date.UTC(PY,0,1+(2-new Date(Date.UTC(PY,0,1)).getUTCDay()+7)%7+7*i));
@@ -369,31 +401,43 @@ function teamFor(sc,c,k,obj,m,r,v,par){const C=CL[c],s=cs(c);
   if(sc.team==='fitcap')return Math.min(fit,clamp(Math.round(C.Tk[k]||C.Tavg),2,40));
   return fit}
 function demand(sc){const out=[];
-  for(const c of CN){const C=CL[c],s=cs(c);
-    const m=S.mult/100*(s.mult/100)*(1+S.sens/100*(C.note-55)/45);
-    let items=[];for(const k in s.eng){const n=Math.round(s.eng[k]*m);for(let i=0;i<n;i++)items.push({c,k,obj:Math.round((C.ok[k]||C.oa)/10)*10})}
-    if(!items.length)continue;
+  for(const c of CN){const C=CL[c],s=cs(c);const D=dEff(c);
+    const e=Object.entries(s.eng).filter(([k,n])=>n>0);if(!e.length||D<=0)continue;
+    const n0=e.reduce((x,[k,n])=>x+n,0),mixObj=e.reduce((x,[k,n])=>x+n*(C.ok[k]||C.oa),0)||1;
+    const nT=Math.max(1,Math.round(n0*D/mixObj));
+    const cnt0={};let left=nT;e.forEach(([k,n])=>{cnt0[k]=Math.floor(nT*n/n0);left-=cnt0[k]});
+    e.map(([k,n])=>[k,nT*n/n0-Math.floor(nT*n/n0)]).sort((a,b)=>b[1]-a[1]).forEach(([k])=>{if(left>0){cnt0[k]++;left--}});
+    let items=[];for(const k in cnt0)for(let i=0;i<cnt0[k];i++)items.push({c,k,obj:Math.round((C.ok[k]||C.oa)/10)*10});
     if(sc.eng==='merge'&&items.length>1){const B=items.reduce((x,i)=>x+i.obj,0),n2=Math.max(1,Math.ceil(B/Math.max(C.objMax,1)));
       if(n2<items.length){items.sort((a,b)=>C.at[b.k]-C.at[a.k]);items=items.slice(0,n2);const o=Math.round(B/n2/10)*10;items.forEach(i=>i.obj=o)}}
     else if(sc.eng==='best'){const ks=Object.keys(C.at).filter(k=>C.nk[k]>=2).sort((a,b)=>C.at[b]-C.at[a]);
       if(ks.length){const k=ks[0];items.forEach(i=>{i.k=k})}}
     else if(sc.eng==='realloc'&&items.length>1){const cnt={};items.forEach(i=>cnt[i.k]=(cnt[i.k]||0)+1);
-      const ks=Object.keys(cnt).sort((a,b)=>C.at[b]-C.at[a]),lo={},hi={};let left=items.length;
-      ks.forEach(k=>{lo[k]=Math.floor(cnt[k]*.5);hi[k]=C.nk[k]>=2?Math.ceil(cnt[k]*1.5):cnt[k];left-=lo[k]});
-      const res={...lo};for(const k of ks){const add=Math.min(left,hi[k]-lo[k]);res[k]+=add;left-=add}
-      for(const k of [...ks].reverse()){if(left<=0)break;const add=Math.min(left,hi[k]-res[k]);if(add>0){res[k]+=add;left-=add}}
+      const ks=Object.keys(cnt).sort((a,b)=>C.at[b]-C.at[a]),lo={},hi={};let left2=items.length;
+      ks.forEach(k=>{lo[k]=Math.floor(cnt[k]*.5);hi[k]=C.nk[k]>=2?Math.ceil(cnt[k]*1.5):cnt[k];left2-=lo[k]});
+      const res={...lo};for(const k of ks){const add=Math.min(left2,hi[k]-lo[k]);res[k]+=add;left2-=add}
+      for(const k of [...ks].reverse()){if(left2<=0)break;const add=Math.min(left2,hi[k]-res[k]);if(add>0){res[k]+=add;left2-=add}}
       items=[];ks.forEach(k=>{for(let i=0;i<res[k];i++)items.push({c,k,obj:Math.round((C.ok[k]||C.oa)/10)*10})})}
+    /* ajustement pour atteindre l'engagement en dons */
+    const dl=(sc.dadj&&sc.dadj[c])||0;
+    items.sort((a,b)=>C.at[b.k]-C.at[a.k]);
+    if(dl>0){const b=items[0];for(let i=0;i<dl;i++)items.push({c,k:b.k,obj:b.obj})}
+    else if(dl<0)items=items.slice(0,Math.max(1,items.length+dl));
+    /* contraintes de missions du client */
+    const mxM=s.maxMiss===''?Infinity:Math.max(1,+s.maxMiss),mnM=s.minMiss===''?1:Math.max(1,+s.minMiss);
+    if(items.length>mxM)items=items.slice(0,mxM);
+    while(items.length<mnM)items.push({c,k:items[0].k,obj:items[0].obj});
     items.forEach(i=>out.push(i))}
   return out}
 const mx=(a,i,n)=>{let m=0;for(let j=i;j<i+n;j++)if(a[j]>m)m=a[j];return m};
 function plan(sc){
   const dem=demand(sc),N=dem.length;
-  const capM=sc.flat?Array(12).fill(Math.ceil(N/12*S.flatMarg)):S.cap.map(x=>Math.ceil(x*sc.capm/1.15));
+  const capM=sc.flat?Array(12).fill(Math.ceil(N/12*S.flatMarg)):S.cap.map(x=>Math.max(0,Math.round(x+(+sc.capAdd||0))));
   const tot=capM.reduce((a,b)=>a+b,0);if(tot<N*1.05){const f=N*1.05/tot;for(let i=0;i<12;i++)capM[i]=Math.ceil(capM[i]*f)}
   const st=Array(SZ).fill(0),pst=Array(SZ).fill(0),mL=Array(12).fill(0),rdL=Array(SZ).fill(0);
   const rms=Object.keys(S.resp).filter(r=>S.resp[r]),rmL={},clL={},vlL={},vSt={},rmTot={},use={};
   rms.forEach(r=>{rmL[r]=Array(SZ).fill(0);rmTot[r]=0});
-  const capRD=Math.ceil(HIST.rdPeak*S.capRD/100*(sc.rdm||1)),avgSt=N/NW;
+  const capRD=Math.max(1,Math.round(sc.rdMax!==''&&sc.rdMax!=null?+sc.rdMax:S.rdMax)),avgSt=N/NW;
   const PLm=[],flags={cap:0,cl:0,rm:0,vl:0,rd:0};
   const order=[...new Set(dem.map(d=>d.c))].sort((a,b)=>(CL[b].note+cs(b).bonus)-(CL[a].note+cs(a).bonus));
   const Q={};order.forEach(c=>Q[c]=dem.filter(d=>d.c===c));
@@ -401,10 +445,10 @@ function plan(sc){
   let guard=0;
   while(order.some(c=>Q[c].length)&&guard++<2000)for(const c of order){if(!Q[c].length)continue;
     const it=Q[c].shift(),C=CL[c],s=cs(c),[f,z]=it.k.split('|'),dur=C.dur[it.k]||(f==='hy'?6:5);
-    const maxW=s.maxW===''?S.maxW:+s.maxW,capCl=Math.max(1,Math.round((CAP.cl[c]||2)*S.capCl/100));
+    const maxW=s.maxW===''?S.maxW:+s.maxW,capCl=Math.max(1,s.capCl!==''?+s.capCl:(CAP.cl[c]||S.clCapDef));
     const T0=teamFor(sc,c,it.k,it.obj,null,null,null,1);
     starts[c]=starts[c]||[];clL[c]=clL[c]||Array(SZ).fill(0);
-    const sT=semT(c);let best=null,relax=0;
+    const sT=semT(c),tq=qTarget(c),qa=sc.qa==null?1:sc.qa;let best=null,relax=0;
     for(relax=0;relax<3&&!best;relax++)for(let w=0;w<NW;w++){const m=wmonth(w);
       if(s.ex.includes(m+1))continue;
       if(relax<2&&mL[m]>=capM[m])continue;
@@ -417,6 +461,7 @@ function plan(sc){
         -.5*mL[m]/Math.max(capM[m],1)-1.2*rdp/capRD-(rdp+T0>capRD?3:0)-(sc.team==='max'?2*Math.max(0,(T0-(capRD-rdp))/T0):0)-(cl>=capCl?3:0)
         +(z==='pr'?sc.city*Math.min(1,pst[w]/3)*.8:0)+(((CN.indexOf(c)*7+w*13)%17)/17)*.02;
       {const q=m<6?0:1,tg=(q?1-sT:sT)*Bc[c],ac=acc[c][q];sco+=(sc.sem==null?1:sc.sem)*(1.5*Math.min(1,Math.max(0,tg-ac)/it.obj)-3*Math.min(1,Math.max(0,ac+.5*it.obj-tg)/it.obj))}
+      sco+=qa*(qExp(C,it.k,m,null,null)-tq)*6;
       if(!best||sco>best.sco)best={sco,w,cl}}
     if(!best)best={w:0,sco:0,cl:0};
     const w=best.w,m=wmonth(w);if(mL[m]>=capM[m])flags.cap++;if(best.cl>=capCl)flags.cl++;
@@ -424,8 +469,8 @@ function plan(sc){
     let cands=rms.filter(r=>!s.exR.includes(r));if(s.impR&&rms.includes(s.impR))cands=[s.impR];if(!cands.length)cands=rms.slice();
     if(sc.equal&&!s.impR){const mn=Math.min(...cands.map(r=>rmTot[r]));const c2=cands.filter(r=>rmTot[r]<=mn);if(c2.length)cands=c2}
     const avg=rms.reduce((x,r)=>x+rmTot[r],0)/Math.max(rms.length,1);let rb=null;
-    for(const r of cands){const peak=mx(rmL[r],w,dur),cap=Math.max(1,Math.round((CAP.r[r]||4)*S.capRM/100)),rf=C.rmf[r]?C.rmf[r].f:(RF[r]||1);
-      const sco=sc.rm*(rf-1)*4+(C.rmf[r]&&C.rmf[r].n>=3?.2:0)-sc.bal*(rmTot[r]-avg)/Math.max(avg,1)-(peak>=cap?4:0)-peak*.05+(pfOf(peak+1)-1)*3;
+    for(const r of cands){const peak=mx(rmL[r],w,dur),cap=Math.max(1,S.rmCap[r]!=null?+S.rmCap[r]:(CAP.r[r]||S.rmCapDef)),rf=C.rmf[r]?C.rmf[r].f:(RF[r]||1);
+      const sco=sc.rm*(rf-1)*4+(C.rmf[r]&&C.rmf[r].n>=3?.2:0)-sc.bal*(rmTot[r]-avg)/Math.max(avg,1)-(peak>=cap?4:0)-peak*.05+(pfOf(peak+1)-1)*3+qa*(qExp(C,it.k,m,r,null)-tq)*5;
       if(!rb||sco>rb.sco)rb={sco,r,peak,cap}}
     const r=rb?rb.r:'À affecter';if(rb){if(rb.peak>=rb.cap)flags.rm++;rmTot[r]++}
     /* ville */
@@ -436,9 +481,9 @@ function plan(sc){
       if(z==='do'){if(!pool.length)pool=[{v:'La Réunion',src:'tbd',b:0}]}
       else{if(sc.vf>1)Object.keys(CITYN).filter(x=>CITYN[x]>=4&&!DOMV.has(x)&&x!=='Paris'&&x!=='Lyon'&&!pool.some(p=>p.v===x)).forEach(x=>pool.push({v:x,src:'sugg',b:0}));
       HUBS.slice(0,sc.city>1?11:12).forEach(h=>{const q=pool.find(p=>p.v===h);if(q)q.b+=sc.city>1?.9:0;else pool.push({v:h,src:'sugg',b:sc.city>1?.9:0})})}
-      pool.forEach(p=>{const peak=vlL[p.v]?mx(vlL[p.v],w,dur):0,cap=Math.max(1,Math.round((CAP.v[p.v]||2)*S.capVl/100));
+      pool.forEach(p=>{const peak=vlL[p.v]?mx(vlL[p.v],w,dur):0,cap=Math.max(1,S.vlCap[p.v]!=null?+S.vlCap[p.v]:(CAP.v[p.v]||S.vlCapDef));
         p.peak=peak;p.cap=cap;
-        p.sc=((VF[p.v]||1)-1)*4*(sc.vf||(sc.perf>=1?1:.5))+p.b+(vSt[p.v]&&vSt[p.v][w]?sc.city*1.2:0)+(vlL[p.v]&&peak>0?sc.city*.3:0)-(peak>=cap?5:0)-.6*(use[c][p.v]||0)-(p.src==='sugg'?.15:0)});
+        p.sc=((VF[p.v]||1)-1)*4*(sc.vf||(sc.perf>=1?1:.5))+p.b+qa*(qExp(C,it.k,m,rb?rb.r:null,p.v)-tq)*6+(vSt[p.v]&&vSt[p.v][w]?sc.city*1.2:0)+(vlL[p.v]&&peak>0?sc.city*.3:0)-(peak>=cap?5:0)-.6*(use[c][p.v]||0)-(p.src==='sugg'?.15:0)});
       pool.sort((a,b)=>b.sc-a.sc);const p=pool[0];v=p.v;vs=p.src;if(p.peak>=p.cap)flags.vl++;use[c][v]=(use[c][v]||0)+1}
     /* équipe définitive et attendu */
     const par=rb?rb.peak+1:1,rr=rb?r:null;
@@ -448,7 +493,7 @@ function plan(sc){
     acc[c][m<6?0:1]+=it.obj;st[w]++;mL[m]++;starts[c].push(w);if(z==='pr')pst[w]++;
     vSt[v]=vSt[v]||{};vSt[v][w]=(vSt[v][w]||0)+1;
     const hours=T*C.lpr*C.pres*C.hpl;
-    PLm.push({c,k:it.k,f,z,v,vs,r,T,obj:it.obj,E,hours,att:E/it.obj,rate:E/hours,w,m,dur,d:wdate(w),par,note:C.note,grade:C.grade,cl:best.cl})}
+    PLm.push({c,k:it.k,f,z,v,vs,r,T,obj:it.obj,E,q:qExp(C,it.k,m,rr,v),hours,att:E/it.obj,rate:E/hours,w,m,dur,d:wdate(w),par,note:C.note,grade:C.grade,cl:best.cl})}
   PLm.sort((a,b)=>a.w-b.w||a.c.localeCompare(b.c));
   return{id:sc.id,P:PLm,st,mL,capM,rdL,capRD,flags,rmTot,rms,N}
 }
@@ -466,29 +511,44 @@ function kpis(R){const P=R.P,n=P.length,T=P.reduce((x,p)=>x+p.T,0),E=P.reduce((x
   const rmpk=Math.max(0,...R.rms.map(r=>Math.max(...R.P.length?[0]:[0])));
   const sem={},cn2={};P.forEach(p=>{const q=p.m<6?0:1;sem[p.c]=sem[p.c]||[0,0];sem[p.c][q]+=p.E;cn2[p.c]=(cn2[p.c]||0)+1});
   let sdv=0,nsd=0,sok=0;for(const c in sem){if(cn2[c]<2)continue;const tt2=sem[c][0]+sem[c][1];if(!tt2)continue;const dv=Math.abs(sem[c][0]/tt2-semT(c))*100;sdv+=dv;nsd++;if(dv<=10)sok++}
-  return{semDev:nsd?sdv/nsd:0,semOk:nsd?sok/nsd:1,n,T,Tavg:T/n,E,O,H,rate:E/H,att:E/O,cov:P.filter(p=>p.E>=p.obj*.98).length/n,
+  const byC={};P.forEach(p=>{const o=byC[p.c]||(byC[p.c]={E:0,Eq:0});o.E+=p.E;o.Eq+=p.E*p.q});
+  let Dt=0,okD=0,okQ=0,nC=0;for(const c in byC){const D=REFB[c]||0;Dt+=D;nC++;if(byC[c].E>=.9*D)okD++;if(byC[c].Eq/byC[c].E>=qTarget(c)-.005)okQ++}
+  const Eq=P.reduce((x,p)=>x+p.E*p.q,0);
+  return{D:Dt,okD:okD/Math.max(nC,1),q:E?Eq/E:0,okQ:okQ/Math.max(nC,1),semDev:nsd?sdv/nsd:0,semOk:nsd?sok/nsd:1,n,T,Tavg:T/n,E,O,H,rate:E/H,att:E/O,cov:P.filter(p=>p.E>=p.obj*.98).length/n,
     sdW:sd(R.st.slice(0,NW)),maxW:Math.max(...R.st.slice(0,NW)),sdM:sd(R.mL),
     rdPeak:Math.max(...rdw),rdAvg:rdw.reduce((x,y)=>x+y,0)/NW,
     reachMed:med(reach),reach26:reach.filter(x=>x<=26).length/Math.max(reach.length,1),curve:cv2,
     cities:cities.size,open:open.size,perOpen:prov.length/Math.max(open.size,1),prov:prov.length,
     flags:R.flags,tgt:tgtTot,rmSpread:(()=>{const v=R.rms.filter(r=>R.rmTot[r]>0||true).map(r=>R.rmTot[r]);return Math.max(...v)-Math.min(...v)})(),rmMax:Math.max(...R.rms.map(r=>R.rmTot[r]))}}
 function generate(){
-  prep();
-  const o={};SCD.forEach(sc=>{o[sc.id]=Object.assign({},sc,S.sc[sc.id])});
+  prep();prepQ();
+  const o={};SCD.forEach(sc=>{o[sc.id]=Object.assign({},sc,S.sc[sc.id],{dadj:{}})});
   RES={};REFB={};
-  RES.ref=plan(o.ref);RES.ref.P.forEach(p=>REFB[p.c]=(REFB[p.c]||0)+p.obj);
-  SCD.slice(1).forEach(sc=>RES[sc.id]=plan(o[sc.id]));
+  CN.forEach(c=>{const D=dEff(c);if(D>0&&Object.values(cs(c).eng).some(x=>x>0))REFB[c]=D});
+  const solve=sc=>{let R;for(let pass=0;pass<4;pass++){R=plan(sc);if(pass===3)break;
+      const by={};R.P.forEach(p=>{(by[p.c]=by[p.c]||[]).push(p.E)});let ch=0;
+      for(const c in REFB){const Es=by[c]||[],tot=Es.reduce((x,y)=>x+y,0),D=REFB[c],s=cs(c);
+        const mxM=s.maxMiss===''?Infinity:+s.maxMiss,mnM=s.minMiss===''?1:+s.minMiss;
+        const avgE=tot/Math.max(Es.length,1);
+        if(D-tot>avgE/2&&Es.length<mxM){sc.dadj[c]=(sc.dadj[c]||0)+Math.min(mxM-Es.length,Math.max(1,Math.round((D-tot)/avgE)));ch++}
+        else if(Es.length>Math.max(mnM,1)){const so=[...Es].sort((x,y)=>x-y);let k=0,tt=tot;while(Es.length-k>Math.max(mnM,1)&&tt-so[k]-D>=-so[k]/2){tt-=so[k];k++}
+          if(k>0){sc.dadj[c]=(sc.dadj[c]||0)-k;ch++}}}
+      if(!ch)break}
+    return R};
+  RES.ref=solve(o.ref);
+  SCD.slice(1).forEach(sc=>RES[sc.id]=solve(o[sc.id]));
   SCD.forEach(sc=>{RES[sc.id].K=kpis(RES[sc.id])});
 }
 
 /* ---------- rendu : outils ---------- */
 function heat(v,base,span=.35){if(v==null||!base)return '';const d=v/base-1,p=Math.min(55,Math.abs(d)/span*55);return 'background:color-mix(in srgb,var('+(d>=0?'--good':'--bad')+') '+p.toFixed(0)+'%,var(--surf))'}
 const tw=h=>'<div class="tw">'+h+'</div>';
+let DQ=false;
 function dimT(lab,items,pred,years,src){
   let h='<table class="hm"><thead><tr><th class="l">'+lab+'</th>'+years.map(y=>'<th>'+y+(y===2026?'*':'')+'</th>').join('')+'<th>Total</th></tr></thead><tbody>';
-  items.forEach(([id,name])=>{const cell=a=>a.hr?'<td style="'+heat(a.bs/a.hr,Gt)+'">'+t3(a.bs/a.hr)+'<br><span class="note">'+a.n+'</span></td>':'<td class="note">·</td>';
-    const row=y=>{const a={n:0,hr:0,bs:0};if(src==='mo'){MIS.concat(MOREC).forEach(r=>{if(r.y===y&&pred(r,id)){a.n+=r.n||1;a.hr+=r.hr;a.bs+=r.bs}})}else REC.forEach(r=>{if(r.y===y&&pred(r,id)){a.n+=r.n;a.hr+=r.hr;a.bs+=r.bs}});return a};
-    const ra=years.map(row),tt=ra.reduce((p,q)=>({n:p.n+q.n,hr:p.hr+q.hr,bs:p.bs+q.bs}),{n:0,hr:0,bs:0});
+  items.forEach(([id,name])=>{const cell=DQ?(a=>a.ba?'<td style="'+heat(1-a.bm/a.ba,GQ,.3)+'">'+pc(1-a.bm/a.ba,1)+'<br><span class="note">'+nf(a.ba)+' dons</span></td>':'<td class="note">·</td>'):a=>a.hr?'<td style="'+heat(a.bs/a.hr,Gt)+'">'+t3(a.bs/a.hr)+'<br><span class="note">'+a.n+'</span></td>':'<td class="note">·</td>';
+    const row=y=>{const a={n:0,hr:0,bs:0,ba:0,bm:0};if(src==='mo'){MIS.concat(MOREC).forEach(r=>{if(r.y===y&&pred(r,id)){a.n+=r.n||1;a.hr+=r.hr;a.bs+=r.bs;a.ba+=r.ba||0;a.bm+=r.bm||0}})}else REC.forEach(r=>{if(r.y===y&&pred(r,id)){a.n+=r.n;a.hr+=r.hr;a.bs+=r.bs;a.ba+=r.ba||0;a.bm+=r.bm||0}});return a};
+    const ra=years.map(row),tt=ra.reduce((p,q)=>({n:p.n+q.n,hr:p.hr+q.hr,bs:p.bs+q.bs,ba:p.ba+q.ba,bm:p.bm+q.bm}),{n:0,hr:0,bs:0,ba:0,bm:0});
     h+='<tr><td class="l">'+esc(name)+'</td>'+ra.map(cell).join('')+cell(tt).replace('<td','<td class="tot"')+'</tr>'});
   return tw(h+'</tbody></table>')}
 function lineChart(series,w=640,h=240,ymax=1){
@@ -514,9 +574,15 @@ function globalNote(){
   const W={taux:25,att:20,pres:15,trend:10,vol:10,fiab:10,div:10};
   const note=Object.keys(W).reduce((x,k)=>x+s[k]*W[k],0)/100;
   return{s,W,note,tN,tO,att:rec.bsO/rec.o,pres:rec.pres/rec.lots,canc,top5,n23,n26,yr}}
+function qBlock(){DQ=true;let h='';try{const Y=[2025,2026].filter(y=>y<PY);
+  const cn=CN.map(c=>[c,c]).filter(([c])=>REC.some(r=>!r.old&&r.cl===c&&r.ba));
+  h='<div class="panel" style="margin-top:16px"><h3>Part de donateurs de 25 ans et plus</h3><p class="note" style="margin-top:0">Dons valides dont le donateur a 25 ans ou plus à la date du don, sur les dons valides avec date de naissance connue (même règle que les indicateurs : 1 − % de moins de 25 ans). Détail par mission disponible pour 2025-2026 seulement. Vert : au-dessus de la moyenne ('+pc(GQ,1)+').</p><div class="grid g2" style="margin-top:12px">'+
+  '<div><h3>Par format</h3>'+dimT('Format',Object.entries(FTL),(r,id)=>!r.old&&r.f===id,Y)+'<h3 style="margin-top:14px">Par zone</h3>'+dimT('Zone',Object.entries(ZL),(r,id)=>!r.old&&r.z===id,Y)+'<h3 style="margin-top:14px">Par mois de démarrage</h3>'+dimT('Mois',MN.map((m,i)=>[i,m]),(r,id)=>!r.old&&r.mo===id,Y)+'</div>'+
+  '<div><h3>Par taille d\'équipe</h3>'+dimT('Recruteurs',BANDL.map((b,i)=>[i,b]),(r,id)=>!r.old&&band(r.recr)===id,Y)+'<h3 style="margin-top:14px">Par responsable</h3>'+dimT('Responsable',RMS.map(r=>[r,r]),(r,id)=>!r.old&&r.r===id,Y)+'<h3 style="margin-top:14px">Par ville (4 missions et plus)</h3>'+dimT('Ville',Object.entries(CITYN).filter(([v,n])=>n>=4).sort((a,b)=>b[1]-a[1]).map(([v])=>[v,v]),(r,id)=>!r.old&&r.v===id,Y)+'</div></div>'+
+  '<h3 style="margin-top:14px">Par client</h3>'+dimT('Client',cn,(r,id)=>!r.old&&r.cl===id,Y)+'</div>'}finally{DQ=false}return h}
 function renderSynth(){
   const g=globalNote(),gr=g.note>=70?'A':g.note>=55?'B':g.note>=40?'C':'D';
-  const ys=[2022,2023,2024,2025,2026].filter(y=>y<PY),yrs=ys.map(y=>{const a=raw(r=>r.y===y);return{y,...a,t:a.hr?a.bs/a.hr:null,p:a.pres/a.lots,att:a.o?a.bsO/a.o:null,team:a.n?a.recr/a.n:null,hm:a.n?a.hr/a.n:null}});
+  const ys=[2022,2023,2024,2025,2026].filter(y=>y<PY),yrs=ys.map(y=>{const a=raw(r=>r.y===y);return{y,...a,t:a.hr?a.bs/a.hr:null,p:a.pres/a.lots,att:a.o?a.bsO/a.o:null,q:a.ba?1-a.bm/a.ba:null,team:a.n?a.recr/a.n:null,hm:a.n?a.hr/a.n:null}});
   const comp=[['Taux réel',g.s.taux,g.W.taux],['Atteinte de l\'objectif',g.s.att,g.W.att],['Présence',g.s.pres,g.W.pres],['Tendance',g.s.trend,g.W.trend],['Volume',g.s.vol,g.W.vol],['Fiabilité',g.s.fiab,g.W.fiab],['Diversification',g.s.div,g.W.div]];
   /* simultanéité */
   const mrec=MIS.filter(r=>r.cr!=null);
@@ -538,12 +604,13 @@ function renderSynth(){
   '<div class="grid g2"><div class="panel"><div class="score"><span class="big">'+Math.round(g.note)+'</span><span style="color:var(--mut)">/ 100</span><span class="badge b-'+gr+'">'+gr+' · '+GL[gr]+'</span></div>'+
   '<div style="margin-top:14px" class="tw"><table><tbody>'+comp.map(c=>'<tr><td class="l">'+c[0]+' <span class="note">(poids '+c[2]+' %)</span></td><td><span class="bar" style="width:'+c[1]*1.2+'px"></span></td><td class="m">'+Math.round(c[1])+'</td></tr>').join('')+'</tbody></table></div></div>'+
   '<div class="panel"><h3>Ce que dit l\'historique</h3><ul class="tight">'+bl.map(x=>'<li>'+x+'</li>').join('')+'</ul></div></div>'+
-  '<div class="panel" style="margin-top:16px"><h3>Année par année</h3>'+tw('<table><thead><tr><th class="l">Année</th><th>Missions</th><th>Bulletins</th><th>Heures de rue</th><th>Taux réel</th><th>Présence</th><th>Atteinte objectif</th><th>Recruteurs / mission</th><th>Heures / mission</th></tr></thead><tbody>'+yrs.map(r=>'<tr><td class="l">'+r.y+(r.y===2026?'*':'')+'</td><td class="m">'+r.n+'</td><td class="m">'+nf(r.bs)+'</td><td class="m">'+nf(r.hr)+'</td><td class="m"><b>'+t3(r.t)+'</b></td><td class="m">'+pc(r.p,1)+'</td><td class="m">'+pc(r.att)+'</td><td class="m">'+d1(r.team)+'</td><td class="m">'+nf(r.hm)+'</td></tr>').join('')+'</tbody></table>')+'<p class="note">* 2026 en cours, jusqu\'au 09/10/2026. 2022-2024 : missions terminées uniquement.</p></div>'+
+  '<div class="panel" style="margin-top:16px"><h3>Année par année</h3>'+tw('<table><thead><tr><th class="l">Année</th><th>Missions</th><th>Bulletins</th><th>Heures de rue</th><th>Taux réel</th><th>Présence</th><th>Atteinte objectif</th><th>Part 25 ans et +</th><th>Recruteurs / mission</th><th>Heures / mission</th></tr></thead><tbody>'+yrs.map(r=>'<tr><td class="l">'+r.y+(r.y===2026?'*':'')+'</td><td class="m">'+r.n+'</td><td class="m">'+nf(r.bs)+'</td><td class="m">'+nf(r.hr)+'</td><td class="m"><b>'+t3(r.t)+'</b></td><td class="m">'+pc(r.p,1)+'</td><td class="m">'+pc(r.att)+'</td><td class="m">'+(r.q==null?'–':pc(r.q,1))+'</td><td class="m">'+d1(r.team)+'</td><td class="m">'+nf(r.hm)+'</td></tr>').join('')+'</tbody></table>')+'<p class="note">* 2026 en cours, jusqu\'au 09/10/2026. 2022-2024 : missions terminées uniquement.</p></div>'+
   '<div class="grid g2" style="margin-top:16px">'+
   '<div class="panel"><h3>Taux réel par format</h3>'+dimT('Format',Object.entries(FTL),(r,id)=>r.f===id,ys)+'<h3 style="margin-top:14px">Par zone</h3>'+dimT('Zone',Object.entries(ZL),(r,id)=>r.z===id,ys)+'</div>'+
   '<div class="panel"><h3>Par mois de démarrage</h3>'+dimT('Mois',MN.map((m,i)=>[i,m]),(r,id)=>r.mo===id,[2022,2023,2024,2025,2026],'mo')+'</div>'+
   '<div class="panel"><h3>Par taille d\'équipe (2025-26)</h3>'+dimT('Recruteurs',BANDL.map((b,i)=>[i,b]),(r,id)=>!r.old&&band(r.recr)===id,[2025,2026])+'<h3 style="margin-top:14px">Par ville (2025-26, 4 missions et plus)</h3>'+dimT('Ville',Object.entries(CITYN).filter(([v,n])=>n>=4).sort((a,b)=>b[1]-a[1]).map(([v])=>[v,v]),(r,id)=>!r.old&&r.v===id,[2025,2026])+'</div>'+
   '<div class="panel"><h3>Par responsable de mission (2025-26)</h3>'+dimT('Responsable',RMS.map(r=>[r,r]),(r,id)=>!r.old&&r.r===id,[2025,2026])+'</div></div>'+
+  qBlock()+
   '<div class="panel" style="margin-top:16px"><h3>Missions en parallèle</h3><p class="note" style="margin-top:0">Mesuré sur les missions 2025-2026 : pour chaque mission, nombre moyen de missions en cours en même temps pour le même responsable, le même client ou la même ville.</p><div class="grid g2">'+
   '<div><h4 class="h4">Par responsable</h4>'+pt(pbT)+'</div><div><h4 class="h4">Par client</h4>'+pt(cbT)+'</div><div><h4 class="h4">Par ville</h4>'+pt(vbT)+'</div>'+
   '<div><h4 class="h4">Plafonds retenus pour le planning (90e centile historique)</h4>'+tw('<table><thead><tr><th class="l">Responsable</th><th>Missions</th><th>Parallèle moyen</th><th>Plafond</th></tr></thead><tbody>'+capR.map(x=>'<tr><td class="l">'+x.r+'</td><td class="m">'+x.n+'</td><td class="m">'+d1(x.avg)+'</td><td class="m"><b>'+x.cap+'</b></td></tr>').join('')+'</tbody></table>')+'<table style="margin-top:8px"><thead><tr><th class="l">Ville</th><th>Missions</th><th>Plafond</th></tr></thead><tbody>'+capV.map(x=>'<tr><td class="l">'+esc(x.v)+'</td><td class="m">'+x.n+'</td><td class="m"><b>'+x.cap+'</b></td></tr>').join('')+'</tbody></table></div></div></div>'+
@@ -553,43 +620,58 @@ function renderSynth(){
 function renderNotes(){
   const cl=CN.map(n=>CL[n]).sort((a,b)=>b.note-a.note);
   $('#v-notes').innerHTML='<h2>Notes par client</h2><p class="lead">Chaque client est noté sur 100 : taux réel, atteinte de l\'objectif et présence (pondérés par année), tendance, volume, fiabilité. Les poids se règlent dans l\'onglet critères. Cliquer sur une ligne pour le détail.</p>'+
-  '<div class="panel">'+tw('<table><thead><tr><th class="l">Client</th><th>Note</th><th>Classe</th><th>Taux réel</th><th>Présence</th><th>Atteinte obj.</th><th>Équipe</th><th>Missions '+YB+'</th><th class="l">Confiance</th></tr></thead><tbody>'+
-  cl.map(c=>'<tr class="click" data-i="'+CN.indexOf(c.name)+'"><td class="l"><b>'+esc(c.name)+'</b></td><td class="m"><b>'+Math.round(c.note)+'</b></td><td><span class="badge b-'+c.grade+'">'+c.grade+'</span></td><td class="m" style="'+heat(c.t,Gt)+'">'+t3(c.t)+'</td><td class="m">'+pc(c.pres,1)+'</td><td class="m">'+pc(c.att)+'</td><td class="m">'+d1(c.Tavg)+'</td><td class="m">'+c.n26+'</td><td class="l">'+c.conf+' ('+c.rawA.n+' missions)</td></tr><tr hidden id="d'+CN.indexOf(c.name)+'"><td class="l" colspan="9" style="white-space:normal"><b>'+GL[c.grade]+'.</b> '+esc(reco(c))+'<ul class="tight" style="margin-top:6px">'+commentary(c).map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></td></tr>').join('')+'</tbody></table>')+'</div>'}
+  '<div class="panel">'+tw('<table><thead><tr><th class="l">Client</th><th>Note</th><th>Classe</th><th>Taux réel</th><th>Présence</th><th>Atteinte obj.</th><th>25 ans et +</th><th>Équipe</th><th>Missions '+YB+'</th><th class="l">Confiance</th></tr></thead><tbody>'+
+  cl.map(c=>'<tr class="click" data-i="'+CN.indexOf(c.name)+'"><td class="l"><b>'+esc(c.name)+'</b></td><td class="m"><b>'+Math.round(c.note)+'</b></td><td><span class="badge b-'+c.grade+'">'+c.grade+'</span></td><td class="m" style="'+heat(c.t,Gt)+'">'+t3(c.t)+'</td><td class="m">'+pc(c.pres,1)+'</td><td class="m">'+pc(c.att)+'</td><td class="m">'+(c.rawA.ba?pc(1-c.rawA.bm/c.rawA.ba,1):'–')+'</td><td class="m">'+d1(c.Tavg)+'</td><td class="m">'+c.n26+'</td><td class="l">'+c.conf+' ('+c.rawA.n+' missions)</td></tr><tr hidden id="d'+CN.indexOf(c.name)+'"><td class="l" colspan="10" style="white-space:normal"><b>'+GL[c.grade]+'.</b> '+esc(reco(c))+'<ul class="tight" style="margin-top:6px">'+commentary(c).map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></td></tr>').join('')+'</tbody></table>')+'</div>'}
 
 /* ---------- onglet critères ---------- */
 function chips(act,ci,list,on,neg){return '<div class="chips">'+list.map(m=>'<button type="button" class="chip'+(neg?' neg':'')+(on.includes(m)?' on':'')+'" data-act="'+act+'" data-ci="'+ci+'" data-m="'+(typeof m==='string'?esc(m):m)+'">'+(typeof m==='number'?MN[m-1]:esc(m))+'</button>').join('')+'</div>'}
+const refT=(c,fn)=>{const x=REF25.c[c];return 'Réf. 2025 : '+(x?fn(x):'aucune mission')};
 function renderEng(){
   const act=Object.keys(S.resp);
   const gl=(id,lab,key,min,max,step)=>'<label class="f">'+lab+' : <b id="o-'+id+'"></b><input type="range" id="'+id+'" data-g="'+key+'" min="'+min+'" max="'+max+'" step="'+step+'"></label>';
-  const cap=S.cap.map((v,i)=>'<label class="f">'+MN[i]+'<input type="number" min="0" id="cap'+i+'" data-g="cap" data-i="'+i+'" value="'+v+'"></label>').join('');
+  const cap=S.cap.map((v,i)=>'<label class="f">'+MN[i]+'<input type="number" min="0" id="cap'+i+'" data-g="cap" data-i="'+i+'" value="'+v+'"><span class="ref">2025 : '+REF25.mo[i]+'</span></label>').join('');
+  const gn=(lab,key,min,max,step,ref)=>'<label class="f">'+lab+'<input type="number" data-g="'+key+'" min="'+min+'" max="'+max+'" step="'+step+'" value="'+S[key]+'"><span class="ref">Réf. 2025 : '+ref+'</span></label>';
+  const rmT='<div class="capgrid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr))">'+act.map(r=>{const eff=S.rmCap[r]!=null?S.rmCap[r]:(CAP.r[r]||S.rmCapDef),x=REF25.r[r];return '<label class="f">'+esc(r)+'<input type="number" min="1" max="30" data-act="rmcap" data-m="'+esc(r)+'" value="'+eff+'"><span class="ref">Réf. 2025 : '+(x?'p90 '+x.p90+', max '+x.max:'aucune mission')+'</span></label>'}).join('')+'</div>';
+  const vlT='<div class="capgrid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr))">'+Object.entries(CITYN).filter(([v,n])=>n>=4).sort((a,b)=>b[1]-a[1]).map(([v])=>{const eff=S.vlCap[v]!=null?S.vlCap[v]:(CAP.v[v]||S.vlCapDef),x=REF25.v[v];return '<label class="f">'+esc(v)+'<input type="number" min="1" max="30" data-act="vlcap" data-m="'+esc(v)+'" value="'+eff+'"><span class="ref">Réf. 2025 : '+(x?'p90 '+x.p90+', max '+x.max:'aucune mission')+'</span></label>'}).join('')+'</div>';
   const yws=[2022,2023,2024,2025,2026].map(y=>'<label class="f">'+y+'<input type="number" min="0" max="10" step="0.25" id="yw'+y+'" data-g="yw.'+y+'" value="'+yw(y)+'"></label>').join('');
-  let h='<h2>Engagements et critères</h2><p class="lead">Par défaut, l\'engagement '+PY+' de chaque association reprend à l\'identique le nombre de missions de '+YB+' (hors annulées, y compris celles déjà planifiées jusqu\'en janvier '+PY+'). Modifier puis « Régénérer ».</p>'+
+  let h='<h2>Engagements et critères</h2><p class="lead">L\'engagement de chaque association se fait en <b>nombre de dons</b> sur l\'année : par défaut les objectifs de dons de '+YB+' (hors annulées). Le nombre de missions est déduit pour atteindre cet engagement, dans la limite des contraintes de missions du client. Modifier puis « Régénérer ».</p>'+
   '<div class="panel"><h3>Historique pris en compte</h3><p class="note" style="margin-top:0">Poids de chaque année dans les taux, la présence et l\'atteinte des objectifs. Plus le poids est élevé, plus l\'année compte.</p><div class="capgrid" style="grid-template-columns:repeat(5,minmax(0,1fr))">'+yws+'</div>'+
   '<div class="fgrid" style="margin-top:12px">'+gl('g-hk','Prudence statistique (heures fictives)','hk',0,5000,250)+gl('g-att','Part de l\'objectif visée par mission','att',.8,1.2,.05)+'</div></div>'+
-  '<div class="panel" style="margin-top:12px"><h3>Critères globaux</h3><div class="fgrid">'+
-  gl('g-mult','Engagement global (%)','mult',50,150,5)+gl('g-sens','Effet de la note sur l\'engagement (± %)','sens',0,30,5)+
-  gl('g-maxw','Missions d\'un client démarrant la même semaine (max)','maxW',1,4,1)+gl('g-capcl','Plafond de missions simultanées par client (% de l\'historique)','capCl',50,200,10)+
-  gl('g-caprm','Plafond de missions simultanées par responsable (% de l\'historique)','capRM',50,200,10)+gl('g-maxwk','Démarrages maximum par semaine (historique : '+HIST.wkMax+')','maxWk',4,30,1)+gl('g-dmp','Part de l\'écart historique retenue pour mois, responsables, villes, équipe (%)','dmp',0,100,10)+gl('g-capvl','Plafond de missions simultanées par ville (% de l\'historique)','capVl',50,200,10)+
-  gl('g-caprd','Plafond de recruteurs en rue en même temps (% du pic historique, '+HIST.rdPeak+')','capRD',60,150,5)+gl('g-flat','Marge du mois plafond pour le lissage','flatMarg',1,1.5,.02)+'</div>'+
+  '<div class="panel" style="margin-top:12px"><h3>Critères globaux</h3><p class="note" style="margin-top:0">Tous les plafonds sont des valeurs absolues. Sous chaque champ : la référence observée en 2025.</p><div class="fgrid">'+
+  gl('g-mult','Engagement global en dons (%)','mult',50,150,5)+gl('g-sens','Effet de la note sur l\'engagement (± %)','sens',0,30,5)+
+  gn('Missions d\'un même client démarrant la même semaine (max)','maxW',1,10,1,'max par client : '+REF25.cwMax)+
+  gn('Démarrages par semaine, toutes missions (max)','maxWk',1,60,1,'max : '+REF25.wkMax)+
+  gn('Recruteurs en rue en même temps (max)','rdMax',1,3000,5,'pic '+REF25.rdPeak+', p90 '+REF25.rdP90)+
+  gn('Missions simultanées par client, valeur par défaut (max)','clCapDef',1,20,1,'médiane des maximums par client : '+REF25.clMed)+
+  gn('Missions simultanées par responsable, valeur par défaut (max)','rmCapDef',1,20,1,'médiane des maximums par responsable : '+REF25.rmMed)+
+  gn('Missions simultanées par ville, valeur par défaut (max)','vlCapDef',1,20,1,'médiane des maximums par ville : '+REF25.vlMed)+
+  gn('Part des dons réalisée au 1er semestre, par défaut (%)','semDef',0,100,1,pc(REF25.s1,0)+' des bulletins au 1er semestre')+
+  gn('Part minimale de donateurs de 25 ans et plus (%, ensemble du planning)','qMin',0,100,1,pc(REF25.q,1))+
+  gl('g-dmp','Part de l\'écart historique retenue pour mois, responsables, villes, équipe (%)','dmp',0,100,10)+gl('g-flat','Marge du mois plafond pour le lissage','flatMarg',1,1.5,.02)+'</div>'+
   '<h3 style="margin-top:16px">Poids de la note client</h3><div class="fgrid">'+
-  gl('w-taux','Taux réel','w.taux',0,100,5)+gl('w-att','Atteinte de l\'objectif','w.att',0,100,5)+gl('w-pres','Présence','w.pres',0,100,5)+gl('w-trend','Tendance','w.trend',0,100,5)+gl('w-vol','Volume','w.vol',0,100,5)+gl('w-fiab','Fiabilité','w.fiab',0,100,5)+'</div>'+
-  '<h3 style="margin-top:16px">Capacité de démarrages par mois (missions, scénario de référence)</h3><div class="capgrid">'+cap+'</div><p class="note">Base : démarrages '+YB+' augmentés de 15 %. Mettre 0 pour fermer un mois.</p>'+
-  '<h3 style="margin-top:16px">Répartition des dons par semestre</h3><label class="f">Part de l\'objectif annuel de dons réalisée au 1er semestre, par défaut (%)<input type="number" id="semDef" data-g="semDef" min="0" max="100" value="'+S.semDef+'"></label><p class="note">Le 2e semestre prend le complément (50 % par semestre par défaut). Réglable par client ci-dessous ; le poids du critère se règle par scénario.</p>'+
+  gl('w-taux','Taux réel','w.taux',0,100,5)+gl('w-att','Atteinte de l\'objectif','w.att',0,100,5)+gl('w-pres','Présence','w.pres',0,100,5)+gl('w-trend','Tendance','w.trend',0,100,5)+gl('w-vol','Volume','w.vol',0,100,5)+gl('w-fiab','Fiabilité','w.fiab',0,100,5)+gl('w-q','Part de donateurs 25 ans et plus','w.q',0,100,5)+'</div>'+
+  '<h3 style="margin-top:16px">Démarrages maximum par mois (missions, scénario de référence)</h3><div class="capgrid">'+cap+'</div><p class="note">Valeur absolue. Défaut : démarrages '+YB+' + 15 %. Mettre 0 pour fermer un mois.</p>'+
+  '<h3 style="margin-top:16px">Missions simultanées par responsable (max)</h3>'+rmT+
+  '<h3 style="margin-top:16px">Missions simultanées par ville (max, villes avec 4 missions et plus)</h3>'+vlT+
   '<h3 style="margin-top:16px">Responsables disponibles en '+PY+'</h3><div class="chips">'+act.map(r=>'<button type="button" class="chip'+(S.resp[r]?' on':'')+'" data-act="gresp" data-m="'+esc(r)+'">'+esc(r)+'</button>').join('')+'</div></div>'+
   '<h3 style="margin:20px 0 8px">Critères par client</h3>';
   const cl=CN.map(n=>CL[n]).sort((a,b)=>b.note-a.note);
   cl.forEach(c=>{const ci=CN.indexOf(c.name),s=cs(c.name);
     const keys=[...new Set([...Object.keys(c.at),...Object.keys(s.eng)])];
     const tot=Object.values(s.eng).reduce((x,y)=>x+y,0),e26=eng26(c.name);
-    h+='<details class="cl" id="cl'+ci+'"><summary><span class="nm">'+esc(c.name)+'</span><span class="badge b-'+c.grade+'">'+Math.round(c.note)+' · '+c.grade+'</span><span class="note">'+YB+' : '+Object.values(e26).reduce((x,y)=>x+y,0)+' missions</span><span class="note" id="tot'+ci+'">'+PY+' : '+tot+' missions</span></summary><div class="body">'+
-    '<div><h3>Engagement '+PY+' par association</h3>'+tw('<table><thead><tr><th class="l">Format et zone</th><th>'+YB+'</th><th>'+PY+'</th></tr></thead><tbody>'+keys.map(k=>'<tr><td class="l">'+ftName(k)+'</td><td class="m">'+(e26[k]||0)+'</td><td><input type="number" min="0" max="60" data-act="eng" data-ci="'+ci+'" data-k="'+k+'" value="'+(s.eng[k]||0)+'"></td></tr>').join('')+'</tbody></table>')+
+    h+='<details class="cl" id="cl'+ci+'"><summary><span class="nm">'+esc(c.name)+'</span><span class="badge b-'+c.grade+'">'+Math.round(c.note)+' · '+c.grade+'</span><span class="note">'+YB+' : '+Object.values(e26).reduce((x,y)=>x+y,0)+' missions, '+nf(d0Of(c.name))+' dons</span><span class="note" id="tot'+ci+'">'+PY+' : '+nf(dEff(c.name))+' dons</span></summary><div class="body">'+
+    '<div><h3>Engagement '+PY+' en nombre de dons</h3><label class="f">Dons à réaliser sur l\'année (bulletins ; vide = '+nf(d0Of(c.name))+', repris de '+YB+')<input type="number" min="0" data-act="cdons" data-ci="'+ci+'" value="'+s.dons+'"><span class="ref">'+refT(c.name,x=>x.n+' missions, '+nf(x.obj)+' dons visés, '+nf(x.bs)+' bulletins réels')+'</span></label><h3 style="margin-top:12px">Répartition de départ des missions (proportions)</h3>'+tw('<table><thead><tr><th class="l">Format et zone</th><th>'+YB+'</th><th>Départ</th></tr></thead><tbody>'+keys.map(k=>'<tr><td class="l">'+ftName(k)+'</td><td class="m">'+(e26[k]||0)+'</td><td><input type="number" min="0" max="60" data-act="eng" data-ci="'+ci+'" data-k="'+k+'" value="'+(s.eng[k]||0)+'"></td></tr>').join('')+'</tbody></table>')+
     '<label class="f" style="margin-top:8px">Ajouter une association<select data-act="addft" data-ci="'+ci+'"><option value="">Choisir…</option>'+Object.keys(FTL).flatMap(f=>Object.keys(ZL).map(z=>f+'|'+z)).filter(k=>!keys.includes(k)).map(k=>'<option value="'+k+'">'+ftName(k)+'</option>').join('')+'</select></label>'+
-    '<label class="f" style="margin-top:8px">Part des dons au 1er semestre (%, vide = '+S.semDef+' ; 2e semestre = complément)<input type="number" min="0" max="100" data-act="csem" data-ci="'+ci+'" value="'+s.sem+'"></label>'+
+    '<label class="f" style="margin-top:8px">Part des dons au 1er semestre (%, vide = '+S.semDef+' ; 2e semestre = complément)<input type="number" min="0" max="100" data-act="csem" data-ci="'+ci+'" value="'+s.sem+'"><span class="ref">'+refT(c.name,x=>x.s1==null?'–':pc(x.s1,0)+' des bulletins au 1er semestre')+'</span></label>'+
+    '<label class="f" style="margin-top:8px">Missions minimum sur l\'année (vide = 1)<input type="number" min="1" max="60" data-act="cmin" data-ci="'+ci+'" value="'+s.minMiss+'"></label>'+
+    '<label class="f" style="margin-top:8px">Missions maximum sur l\'année (vide = sans limite)<input type="number" min="1" max="60" data-act="cmax" data-ci="'+ci+'" value="'+s.maxMiss+'"><span class="ref">'+refT(c.name,x=>x.n+' missions')+'</span></label>'+
     '<label class="f" style="margin-top:8px">Multiplicateur client (%)<input type="number" min="0" max="300" data-act="cmult" data-ci="'+ci+'" value="'+s.mult+'"></label></div>'+
     '<div><h3>Mois à éviter</h3>'+chips('ex',ci,[1,2,3,4,5,6,7,8,9,10,11,12],s.ex,true)+'<h3 style="margin-top:12px">Mois à privilégier</h3>'+chips('pref',ci,[1,2,3,4,5,6,7,8,9,10,11,12],s.pref,false)+
-    '<label class="f" style="margin-top:12px">Démarrages la même semaine (max, vide = global)<input type="number" min="1" max="6" data-act="cmaxw" data-ci="'+ci+'" value="'+s.maxW+'"></label>'+
+    '<label class="f" style="margin-top:12px">Démarrages la même semaine (max, vide = global)<input type="number" min="1" max="6" data-act="cmaxw" data-ci="'+ci+'" value="'+s.maxW+'"><span class="ref">'+refT(c.name,x=>x.wmax+' démarrage(s) max la même semaine')+'</span></label>'+
     '<label class="f" style="margin-top:8px">Bonus de priorité (points de note)<input type="number" min="-30" max="30" data-act="bonus" data-ci="'+ci+'" value="'+s.bonus+'"></label>'+
-    '<label class="f" style="margin-top:8px">Équipe maximale (vide = max historique : '+c.Tmax+')<input type="number" min="2" max="40" data-act="tmax" data-ci="'+ci+'" value="'+s.tmax+'"></label></div>'+
+    '<label class="f" style="margin-top:8px">Équipe maximale (vide = max historique : '+c.Tmax+')<input type="number" min="2" max="40" data-act="tmax" data-ci="'+ci+'" value="'+s.tmax+'"><span class="ref">'+refT(c.name,x=>x.tmax+' recruteurs max')+'</span></label>'+
+    '<label class="f" style="margin-top:8px">Missions simultanées max (vide = '+(CAP.cl[c.name]||S.clCapDef)+')<input type="number" min="1" max="30" data-act="ccap" data-ci="'+ci+'" value="'+s.capCl+'"><span class="ref">Réf. 2025 : '+(REF25.cl[c.name]?'p90 '+REF25.cl[c.name].p90+', max '+REF25.cl[c.name].max:'aucune mission')+'</span></label>'+
+    '<label class="f" style="margin-top:8px">Part minimale de donateurs 25 ans et plus (%, vide = '+(c.q25!=null?Math.round(c.q25*100):S.qMin)+')<input type="number" min="0" max="100" data-act="cqmin" data-ci="'+ci+'" value="'+s.qMin+'"><span class="ref">'+refT(c.name,x=>x.ba?pc(1-x.bm/x.ba,1):'–')+'</span></label></div>'+
     '<div><h3>Responsables à exclure</h3>'+chips('exr',ci,Object.keys(S.resp).filter(r=>S.resp[r]),s.exR,true)+
     '<label class="f" style="margin-top:12px">Responsable imposé<select data-act="impr" data-ci="'+ci+'"><option value="">Aucun</option>'+Object.keys(S.resp).filter(r=>S.resp[r]).map(r=>'<option'+(s.impR===r?' selected':'')+' value="'+esc(r)+'">'+esc(r)+'</option>').join('')+'</select></label>'+
     '<p class="note" style="margin-top:12px">Équipe type : '+d1(c.Tavg)+' recruteurs. Objectif moyen : '+nf(c.oa)+' bulletins. Taux réel : '+t3(c.t)+'. Présence : '+pc(c.pres,1)+'.</p></div></div></details>'});
@@ -601,7 +683,7 @@ function renderScen(){
   const rows=[
     ['Missions',k=>k.n,v=>nf(v),-1],['Recruteurs engagés (somme des équipes)',k=>k.T,v=>nf(v),-1],['Équipe moyenne',k=>k.Tavg,d1,0],
     ['Pic de recruteurs en rue en même temps',k=>k.rdPeak,v=>nf(v),-1],
-    ['Bulletins attendus',k=>k.E,nf,1],['Objectifs visés',k=>k.O,nf,0],['Taux réel attendu',k=>k.rate,t3,1],['Atteinte des objectifs',k=>k.att,v=>pc(v),1],['Missions qui atteignent leur objectif',k=>k.cov,v=>pc(v),1],
+    ['Dons visés (engagements des clients)',k=>k.D,nf,0],['Dons attendus',k=>k.E,nf,0],['Clients à 90 % ou plus de leur engagement en dons',k=>k.okD,v=>pc(v),1],['Objectifs de missions visés',k=>k.O,nf,0],['Taux réel attendu',k=>k.rate,t3,1],['Part de donateurs 25 ans et plus attendue',k=>k.q,v=>pc(v,1),1],['Clients au-dessus de leur minimum 25 ans et plus',k=>k.okQ,v=>pc(v),1],['Atteinte des objectifs',k=>k.att,v=>pc(v),1],['Missions qui atteignent leur objectif',k=>k.cov,v=>pc(v),1],
     ['Semaine médiane d\'atteinte de l\'objectif annuel du client',k=>k.reachMed,v=>v>=NW+1?'au-delà de S52':'S'+Math.round(v),-1],['Clients à leur objectif annuel avant fin juin',k=>k.reach26,v=>pc(v),1],
     ['Écart-type des démarrages par semaine',k=>k.sdW,d1,-1],['Maximum de démarrages en une semaine',k=>k.maxW,nf,-1],
     ['Écart à la répartition S1/S2 visée (points, clients à 2 missions et plus)',k=>k.semDev,d1,-1],['Clients à ±10 points de la répartition visée',k=>k.semOk,v=>pc(v),1],
@@ -617,7 +699,7 @@ function renderScen(){
   const cards=SCD.map(s=>{const K=RES[s.id].K;return '<div class="panel sc'+(S.sel===s.id?' sel':'')+'"><div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><b><span style="color:'+SCC[s.id]+'">●</span> '+esc(s.name)+'</b><button class="btn ghost sm" data-open="'+s.id+'">Voir le planning</button></div><p class="note" style="margin:6px 0">'+esc(s.desc)+'</p><div style="display:flex;gap:16px;align-items:end;flex-wrap:wrap"><div class="kpi"><div class="v">'+K.n+'</div><div class="l">missions</div></div><div class="kpi"><div class="v">'+K.T+'</div><div class="l">recruteurs engagés</div></div><div class="kpi"><div class="v">'+t3(K.rate)+'</div><div class="l">taux réel attendu</div></div><div>'+spark(RES[s.id].st.slice(0,NW),mxw)+'<div class="l note">démarrages par semaine</div></div></div></div>'}).join('');
   const prm='<table><thead><tr><th class="l">Paramètre</th>'+SCD.map(s=>'<th style="white-space:normal">'+esc(s.short)+'</th>').join('')+'</tr></thead><tbody>'+
    SCP.map(p=>'<tr><td class="l">'+p[1]+'</td>'+SCD.map(s=>'<td><input type="number" step="0.05" min="0" max="10" data-g="sc.'+s.id+'.'+p[0]+'" value="'+S.sc[s.id][p[0]]+'"></td>').join('')+'</tr>').join('')+'</tbody></table>';
-  $('#v-scen').innerHTML='<h2>Scénarios '+PY+'</h2><p class="lead">'+SCD.length+' versions du planning à partir du même point de départ : l\'engagement '+YB+' identique. Chaque version applique le même modèle (taux réel, présence, simultanéité par client, responsable et ville, plafond de recruteurs) avec un objectif différent. En vert : la meilleure valeur parmi les scénarios (hors référence).</p>'+
+  $('#v-scen').innerHTML='<h2>Scénarios '+PY+'</h2><p class="lead">'+SCD.length+' versions du planning à partir du même point de départ : l\'engagement en dons de '+YB+' reconduit à l\'identique ; le nombre de missions est calculé pour l\'atteindre. Chaque version applique le même modèle (taux réel, présence, simultanéité par client, responsable et ville, plafond de recruteurs) avec un objectif différent. En vert : la meilleure valeur parmi les scénarios (hors référence).</p>'+
   (PY<2027?realPY():'')+
   '<div class="grid g2">'+cards+'</div>'+
   '<div class="panel" style="margin-top:16px"><h3>Comparatif</h3>'+tw(tbl)+'<p class="note">Bulletins attendus = équipe × jours par recruteur × présence × heures de rue par jour × taux réel attendu (mois, responsable, ville, équipe et simultanéité). L\'objectif annuel d\'un client est la somme des objectifs du scénario de référence.</p></div>'+
@@ -641,7 +723,7 @@ function renderPlan(){
     '<text x="'+(x+bw/2)+'" y="206" text-anchor="middle">'+MN[i].replace('.','')+'</text>'});
   svg+='</svg>';
   const cn=[...new Set(P.map(p=>p.c))].sort((a,b)=>CL[b].note-CL[a].note);
-  const mat=tw('<table class="hm"><thead><tr><th class="l">Client</th>'+MN.map(m=>'<th>'+m.replace('.','')+'</th>').join('')+'<th>'+PY+'</th><th>'+YB+'</th><th>Dons S1 / S2</th><th>Cible S1</th></tr></thead><tbody>'+cn.map(n=>{const e1=P.filter(p=>p.c===n&&p.m<6).reduce((x,p)=>x+p.E,0),e2=P.filter(p=>p.c===n&&p.m>=6).reduce((x,p)=>x+p.E,0),et=e1+e2;const r=Array(12).fill(0);P.forEach(p=>{if(p.c===n)r[p.m]++});const t=r.reduce((x,y)=>x+y,0);return '<tr><td class="l">'+esc(n)+'</td>'+r.map(v=>'<td style="'+(v?'background:color-mix(in srgb,var(--acc) '+Math.min(70,v*18)+'%,var(--surf))':'')+'">'+(v||'')+'</td>').join('')+'<td><b>'+t+'</b></td><td class="note">'+CL[n].n26+'</td><td>'+(et?Math.round(e1/et*100)+' / '+Math.round(e2/et*100):'')+'</td><td class="note">'+Math.round(semT(n)*100)+' %</td></tr>'}).join('')+'</tbody></table>');
+  const mat=tw('<table class="hm"><thead><tr><th class="l">Client</th>'+MN.map(m=>'<th>'+m.replace('.','')+'</th>').join('')+'<th>'+PY+'</th><th>'+YB+'</th><th>Dons S1 / S2</th><th>Cible S1</th><th>Dons / engagement</th><th>25 ans et +</th></tr></thead><tbody>'+cn.map(n=>{const e1=P.filter(p=>p.c===n&&p.m<6).reduce((x,p)=>x+p.E,0),e2=P.filter(p=>p.c===n&&p.m>=6).reduce((x,p)=>x+p.E,0),et=e1+e2,Eq=P.filter(p=>p.c===n).reduce((x,p)=>x+p.E*p.q,0);const r=Array(12).fill(0);P.forEach(p=>{if(p.c===n)r[p.m]++});const t=r.reduce((x,y)=>x+y,0);return '<tr><td class="l">'+esc(n)+'</td>'+r.map(v=>'<td style="'+(v?'background:color-mix(in srgb,var(--acc) '+Math.min(70,v*18)+'%,var(--surf))':'')+'">'+(v||'')+'</td>').join('')+'<td><b>'+t+'</b></td><td class="note">'+CL[n].n26+'</td><td>'+(et?Math.round(e1/et*100)+' / '+Math.round(e2/et*100):'')+'</td><td class="note">'+Math.round(semT(n)*100)+' %</td><td>'+(et?nf(et)+' / '+nf(REFB[n]||0):'')+'</td><td>'+(et?pc(Eq/et,1)+' <span class="note">(min '+Math.round(qTarget(n)*100)+' %)</span>':'')+'</td></tr>'}).join('')+'</tbody></table>');
   const wl=R.rms.map(r=>{const q=P.filter(p=>p.r===r);return{r,n:q.length,T:q.reduce((x,p)=>x+p.T,0),pk:Math.max(0,...[...Array(NW)].map((_,w)=>q.filter(p=>p.w<=w&&w<p.w+p.dur).length)),cap:Math.round((CAP.r[r]||4)*S.capRM/100)}}).sort((a,b)=>b.n-a.n);
   const vl=Object.entries(P.reduce((o,p)=>{o[p.v]=(o[p.v]||0)+1;return o},{})).sort((a,b)=>b[1]-a[1]).slice(0,12);
   const opts=(arr,all)=>'<option value="">'+all+'</option>'+arr.map(x=>'<option value="'+esc(x)+'">'+esc(x)+'</option>').join('');
@@ -706,12 +788,18 @@ $('#v-eng').addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b
   mark();const open=$('#cl'+b.dataset.ci).open;renderEng();$('#cl'+b.dataset.ci).open=open});
 function setPath(path,v){const p=path.split('.');let o=S;for(let i=0;i<p.length-1;i++)o=o[p[i]];o[p[p.length-1]]=v}
 function onEng(e){const t=e.target;
+  if(t.dataset.act==='rmcap'||t.dataset.act==='vlcap'){(t.dataset.act==='rmcap'?S.rmCap:S.vlCap)[t.dataset.m]=Math.max(1,+t.value||1);mark();return}
   if(t.dataset.g){const v=+t.value;
     if(t.dataset.g==='cap')S.cap[+t.dataset.i]=Math.max(0,v||0);else setPath(t.dataset.g,v);
     const o=$('#o-'+t.id);if(o)o.textContent=v;mark();return}
   const a=t.dataset.act;if(!a)return;const ci=t.dataset.ci,s=cs(CN[+ci]);
-  if(a==='eng'){s.eng[t.dataset.k]=Math.max(0,+t.value||0);const x=Object.values(s.eng).reduce((p,q)=>p+q,0);$('#tot'+ci).textContent=PY+' : '+x+' missions'}
+  if(a==='eng'){s.eng[t.dataset.k]=Math.max(0,+t.value||0);}
   else if(a==='addft'){if(t.value){s.eng[t.value]=1;mark();const o=$('#cl'+ci).open;renderEng();$('#cl'+ci).open=o;return}}
+  else if(a==='cdons'){s.dons=t.value===''?'':Math.max(0,+t.value||0);$('#tot'+ci).textContent=PY+' : '+nf(dEff(CN[+ci]))+' dons'}
+  else if(a==='cmin')s.minMiss=t.value===''?'':Math.max(1,+t.value||1);
+  else if(a==='cmax')s.maxMiss=t.value===''?'':Math.max(1,+t.value||1);
+  else if(a==='ccap')s.capCl=t.value===''?'':Math.max(1,+t.value||1);
+  else if(a==='cqmin')s.qMin=t.value===''?'':clamp(+t.value,0,100);
   else if(a==='csem')s.sem=t.value===''?'':clamp(+t.value,0,100);
   else if(a==='cmult')s.mult=Math.max(0,+t.value||0);
   else if(a==='cmaxw')s.maxW=t.value===''?'':Math.max(1,+t.value);
@@ -729,6 +817,4 @@ run();
  document.querySelectorAll('#yr [data-y]').forEach(b=>{b.setAttribute('aria-selected',String(+b.dataset.y===PY));b.addEventListener('click',()=>{try{localStorage.setItem('planning-year',b.dataset.y)}catch(e){}location.reload()})})})();
 
 </script>
-
-</body>
-</html>
+</body></html>

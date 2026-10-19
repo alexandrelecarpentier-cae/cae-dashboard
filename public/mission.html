@@ -303,7 +303,7 @@
             <th>RD</th><th>Statut</th><th class="num">Contrat h/sem</th>
             <th class="num">BS réel</th><th class="num">Tx transfo</th><th class="num">Taux réel</th>
             <th class="num">Don moyen</th><th class="num">Âge médian</th><th class="num">% &lt;25</th>
-            <th class="num">H rue/H rém</th><th class="num">Taux présence</th>
+            <th class="num">H rém</th><th class="num">H rue</th><th class="num">H rue/H rém</th><th class="num">Taux présence</th>
           </tr>
         </thead>
         <tbody id="missionTableBody"></tbody>
@@ -591,6 +591,8 @@
       { v: fmtNum(row.bs_incomplets), l: 'Incomplets' },
       { v: fmtNum(row.bs_annules), l: 'Annulés' },
       { v: row.ratio_h != null ? fmtRatioPct(row.ratio_h) : '—', l: 'Ratio h rue/rém' },
+      { v: row.heures_rem != null ? fmtNum(row.heures_rem, 1) : '—', l: 'Heures rémunérées' },
+      { v: row.heures_rue != null ? fmtNum(row.heures_rue, 1) : '—', l: 'Heures de rue' },
       { v: row.age_median != null ? fmtNum(row.age_median, 1) : '—', l: 'Âge médian' },
     ];
     document.getElementById('kpiPerf').innerHTML = perf.map((k) => `
@@ -748,7 +750,7 @@
       ? rows.filter((r) => r.utilisateur_id === selectedRd)
       : rows;
     if (!displayRows.length) {
-      tbody.innerHTML = '<tr><td colspan="11" class="table-empty">Aucune donnée pour cette mission</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="13" class="table-empty">Aucune donnée pour cette mission</td></tr>';
       return;
     }
     tbody.innerHTML = displayRows.map((r) => {
@@ -768,6 +770,8 @@
         <td class="num">${fmtEuro(r.don_moyen)}</td>
         <td class="num">${r.age_median ?? '—'}</td>
         <td class="num">${fmtPct1(r.pct_moins_25)}</td>
+        <td class="num">${fmtNum(r.heures_rem, 1)}</td>
+        <td class="num">${fmtNum(r.heures_rue, 1)}</td>
         <td class="num">${fmtRatioPct(r.ratio_h)}</td>
         <td class="num">${fmtPct1(r.taux_presence)}</td>
       </tr>`;
@@ -853,6 +857,8 @@
           <div class="stat-chips">
             <div class="stat-chip"><div class="v">${fmtNum(s.bs_reel)}</div><div class="l">BS réel</div></div>
             <div class="stat-chip"><div class="v">${fmtNum(s.taux_reel, 3)}</div><div class="l">Taux réel</div></div>
+            <div class="stat-chip"><div class="v">${fmtNum(s.heures_rem, 1)}</div><div class="l">H rémunérées</div></div>
+            <div class="stat-chip"><div class="v">${fmtNum(s.heures_rue, 1)}</div><div class="l">H de rue</div></div>
             <div class="stat-chip"><div class="v">${fmtRatioPct(s.ratio_h)}</div><div class="l">H rue/H rém</div></div>
             <div class="stat-chip"><div class="v">${fmtEuro(s.don_moyen)}</div><div class="l">Don moyen</div></div>
             <div class="stat-chip"><div class="v">${fmtPct1(s.pct_moins_25)}</div><div class="l">% &lt;25</div></div>

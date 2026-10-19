@@ -142,7 +142,9 @@ mission_rows AS (
     round(da.don_moyen::numeric, 2) AS don_moyen,
     round(da.age_median::numeric, 1) AS age_median,
     round((100.0 * da.nb_moins_25 / NULLIF(da.nb_dons_avec_naissance, 0))::numeric, 1) AS pct_moins_25,
-    round((a.heures_rue::numeric / NULLIF(a.heures_rem, 0))::numeric, 2) AS ratio_h
+    round((a.heures_rue::numeric / NULLIF(a.heures_rem, 0))::numeric, 2) AS ratio_h,
+    round(a.heures_rue::numeric, 2) AS heures_rue,
+    round(a.heures_rem::numeric, 2) AS heures_rem
   FROM filtered_missions fm
   LEFT JOIN agg a ON a.mission_id = fm.id
   LEFT JOIN dons_agg da ON da.mission_id = fm.id
@@ -190,13 +192,49 @@ total_row AS (
     round(td.don_moyen::numeric, 2) AS don_moyen,
     round(td.age_median::numeric, 1) AS age_median,
     round((100.0 * td.nb_moins_25 / NULLIF(td.nb_dons_avec_naissance, 0))::numeric, 1) AS pct_moins_25,
-    round((ta.heures_rue::numeric / NULLIF(ta.heures_rem, 0))::numeric, 2) AS ratio_h
+    round((ta.heures_rue::numeric / NULLIF(ta.heures_rem, 0))::numeric, 2) AS ratio_h,
+    round(ta.heures_rue::numeric, 2) AS heures_rue,
+    round(ta.heures_rem::numeric, 2) AS heures_rem
   FROM total_agg ta, total_dons td, total_objectif tobj
 )
 SELECT * FROM mission_rows
 UNION ALL
 SELECT * FROM total_row
 ORDER BY sort_order, date_debut DESC NULLS LAST;`;
+}
+
+// Heures par salarié présent dans chaque mission (demande explicite,
+// 10/2026) : une ligne par mission et par salarié ayant au moins une heure
+// rémunérée sur la période (présent = heures rémunérées <> 0, comme partout).
+// Mêmes règles d'heures que "Suivi des missions" : heures de rue à 0 si le
+// recruteur est noté absent, journées aux heures non déclarées ignorées le
+// jour même.
+function buildSalariesQuery(rmId, clientId, dateRange, missionId) {
+  const dateFilter = dateRangeClause('l.date', dateRange);
+  return `WITH filtered_missions AS (
+  ${missionScopeCTE(rmId, clientId, dateRange, missionId)}
+),
+lots_mission AS (
+  SELECT l.id, l.mission_id, l.utilisateur_id, l.date,
+    case when l.presence_recruteur is distinct from false then l.nombre_horaires_rue else 0 end AS heures_rue,
+    CASE WHEN coalesce(l.nombre_horaires_remuneration, 0) <> 0 THEN l.nombre_horaires_remuneration ELSE 0 END AS heures_rem
+  FROM lots l
+  WHERE l.mission_id IN (SELECT id FROM filtered_missions)
+    AND (coalesce(l.heures_remuneration_completes, true) or l.date < CURRENT_DATE)
+    ${dateFilter}
+)
+SELECT fm.id AS mission_id, fm.code_mission, lm.utilisateur_id,
+  coalesce(uip.prenom || ' ' || uip.nom, u.email) AS rd,
+  count(DISTINCT lm.id) FILTER (WHERE lm.heures_rem <> 0) AS jours_presence,
+  round(sum(lm.heures_rem)::numeric, 2) AS heures_rem,
+  round(sum(lm.heures_rue)::numeric, 2) AS heures_rue
+FROM lots_mission lm
+JOIN filtered_missions fm ON fm.id = lm.mission_id
+LEFT JOIN utilisateurs u ON u.id = lm.utilisateur_id
+LEFT JOIN utilisateur_informations_personnelles uip ON uip.utilisateur_id = lm.utilisateur_id
+GROUP BY fm.id, fm.code_mission, fm.date_debut, lm.utilisateur_id, uip.prenom, uip.nom, u.email
+HAVING sum(lm.heures_rem) <> 0
+ORDER BY fm.date_debut DESC NULLS LAST, fm.code_mission, sum(lm.heures_rem) DESC;`;
 }
 
 function buildAgePieQuery(rmId, clientId, dateRange, missionId) {
@@ -465,12 +503,14 @@ function buildRmCollecteQueries(rmId, clientId, dateRange, missionId) {
     suspectsList: buildBulletinsSuspectsListQuery(rmId, clientId, dateRange, missionId),
     suiviJour: buildSuiviJourQuery(rmId, clientId, dateRange, missionId),
     fpe: buildFpeQuery(rmId, clientId, dateRange, missionId),
+    salaries: buildSalariesQuery(rmId, clientId, dateRange, missionId),
   };
 }
 
 export {
   buildRmCollecteQueries,
   buildMissionsDataQuery,
+  buildSalariesQuery,
   buildAgePieQuery,
   buildGenderPieQuery,
   buildRmListQuery,
