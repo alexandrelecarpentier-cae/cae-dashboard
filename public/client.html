@@ -349,7 +349,7 @@
           <tr>
             <th>Code mission client</th><th>Code mission CAE</th><th>Statut</th><th>Début</th><th>Fin</th>
             <th>Ville</th><th>Type</th><th>Format</th>
-            <th>H rue</th><th>Bulletins</th><th>Don moyen</th><th>Âge médian</th><th>Taux réel</th>
+            <th>H rue</th><th>Bulletins</th><th>Don moyen</th><th>Âge moyen</th><th>Taux réel</th>
           </tr>
         </thead>
         <tbody id="tbl-missions"></tbody>
@@ -867,7 +867,7 @@
       { v: k.don_moyen != null ? fmtNum(k.don_moyen, 2) + '€' : '—', l: 'Don moyen' },
       // Arrondi au plus proche (0 décimale) — demande explicite, un âge
       // moyen à la décimale près n'apporte rien de plus lisible ici.
-      { v: k.age_median != null ? fmtNum(k.age_median, 1) : '—', l: 'Âge médian' },
+      { v: k.age_moyen != null ? fmtNum(k.age_moyen, 1) : '—', l: 'Âge moyen' },
       { v: k.heures_rue != null ? fmtNum(k.heures_rue, 0) : '—', l: 'Heures rue' },
       // Taux réel en dernière position — demande explicite.
       { v: k.taux_reel != null ? fmtNum(k.taux_reel, 3) : '—', l: 'Taux réel' },
@@ -936,7 +936,7 @@
         <td>${fmtNum(r.heures_rue, 0)}</td>
         <td>${fmtNum(r.nb_dons, 0)}</td>
         <td>${r.don_moyen != null ? fmtNum(r.don_moyen, 2) + '€' : '—'}</td>
-        <td>${r.age_median != null ? fmtNum(r.age_median, 1) : '—'}</td>
+        <td>${r.age_moyen != null ? fmtNum(r.age_moyen, 1) : '—'}</td>
         <td>${r.taux_reel != null ? fmtNum(r.taux_reel, 3) : '—'}</td>
       </tr>`;
     }).join('');
@@ -977,7 +977,7 @@
       { label: 'H rue', get: (r) => r.heures_rue != null ? Number(r.heures_rue).toFixed(1) : '' },
       { label: 'Bulletins', get: (r) => r.nb_dons != null ? r.nb_dons : '' },
       { label: 'Don moyen', get: (r) => r.don_moyen != null ? Number(r.don_moyen).toFixed(2) : '' },
-      { label: 'Âge médian', get: (r) => r.age_median != null ? Number(r.age_median).toFixed(1) : '' },
+      { label: 'Âge moyen', get: (r) => r.age_moyen != null ? Number(r.age_moyen).toFixed(1) : '' },
       { label: 'Taux réel', get: (r) => r.taux_reel != null ? Number(r.taux_reel).toFixed(3) : '' },
     ], 'suivi-missions.csv');
   });

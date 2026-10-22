@@ -24,7 +24,8 @@ Une ligne par indicateur : **ce qu'il mesure et comment il est calculé, en mots
 | **Taux réel** | Nombre de dons valides divisé par le nombre d'heures de rue (exemple : 0,250 = 1 don toutes les 4 heures). Affiché avec 3 décimales. Pour un groupe (équipe, mission…), on additionne d'abord tous les dons et toutes les heures, puis on divise — on ne fait pas la moyenne des taux individuels. | `/client`, `/mission`, `/rd`, `/re-collecte`, `/rm-collecte`, `/salarie`, `/rh`, `/direction`, `/direction-suivi`, `/emplacement`, `/site-prive`, `/assistant-site-prive`, `/challenge`, `/rm` (recalculé depuis la carte 514) |
 | **Taux de transformation** | Part des dons valides parmi tous les dons signés : dons valides ÷ dons au sens large × 100. Affiché sans décimale. | `/rd`, `/re-collecte`, `/mission`, `/rm-collecte`, `/rm` |
 | **Don moyen** | Montant moyen des dons valides, en euros, avec 2 décimales. | tous sauf `/challenge`, `/mobilisation` |
-| **Âge médian** | L'âge « du milieu » des donateurs : la moitié des donateurs est plus jeune, l'autre moitié plus âgée. Calculé sur les dons valides dont la date de naissance est connue. Affiché avec 1 décimale. | `/client`, `/challenge` (par mission, à partir de 3 dons), `/rd`, `/re-collecte`, `/mission`, `/rm-collecte`, `/salarie` (global et par mission), `/direction`, `/direction-suivi` |
+| **Âge médian** | L'âge « du milieu » des donateurs : la moitié des donateurs est plus jeune, l'autre moitié plus âgée. Calculé sur les dons valides dont la date de naissance est connue. Affiché avec 1 décimale. | `/challenge` (par mission, à partir de 3 dons), `/rd`, `/re-collecte`, `/mission`, `/rm-collecte`, `/salarie` (global et par mission), `/direction`, `/direction-suivi` |
+| **Âge moyen** | Âge moyen des donateurs (somme des âges ÷ nombre de donateurs), calculé sur les dons valides dont la date de naissance est connue. Affiché avec 1 décimale. Utilisé à la place de l'âge médian, uniquement sur `/client`. | `/client` |
 | **% donateurs −25 ans** | Part des donateurs qui avaient moins de 25 ans au moment du don, parmi les dons valides dont la date de naissance est connue. Affiché avec 1 décimale. | `/rd`, `/re-collecte`, `/mission`, `/rm-collecte`, `/salarie`, `/direction` |
 | **Score qualité** | Don moyen × (100 % − part des −25 ans). Plus le don moyen est élevé et plus les donateurs sont âgés de 25 ans ou plus, plus le score monte. Barème : de 0 à 3 = très faible · 3 à 5,5 = faible · 5,5 à 6,5 = moyen · 6,5 à 8 = bon · plus de 8 = très bon. 2 décimales sur `/rm-collecte` et `/salarie`, 1 ailleurs. | `/rd`, `/re-collecte`, `/mission`, `/rm-collecte`, `/salarie` |
 | **Ratio h** (heures de rue / rémunérées) | Heures de rue ÷ heures rémunérées, en %. Plus il est proche de 100 %, plus les heures payées ont été passées sur le terrain. Affiché avec 1 décimale. | `/rd`, `/re-collecte`, `/mission`, `/rm-collecte`, `/salarie`, `/direction`, `/direction-suivi` |
@@ -63,7 +64,7 @@ Une ligne par indicateur : **ce qu'il mesure et comment il est calculé, en mots
 
 ## Formats d'affichage
 
-Taux réel : 3 décimales · taux de transformation : sans décimale · ratio h, taux de présence, % −25 ans, taux de complétion : en %, 1 décimale · don moyen : en €, 2 décimales · âge médian : 1 décimale · comptages : nombres entiers.
+Taux réel : 3 décimales · taux de transformation : sans décimale · ratio h, taux de présence, % −25 ans, taux de complétion : en %, 1 décimale · don moyen : en €, 2 décimales · âge médian et âge moyen : 1 décimale · comptages : nombres entiers.
 
 ## Réserves connues
 
