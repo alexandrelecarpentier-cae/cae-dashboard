@@ -107,6 +107,13 @@
     position:relative; overflow:hidden; box-shadow:0 1px 2px rgba(15,15,17,.03);}
   .card::before{content:""; position:absolute; top:0; left:0; width:3px; height:100%; background:var(--red);}
   .card-inner{padding-left:6px;}
+  .mission-info-title{font-size:13px; font-weight:800; margin-bottom:10px;}
+  .mission-info-title .sub{font-weight:600; color:var(--muted); font-size:11.5px; margin-left:6px;}
+  .mission-info-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:10px;}
+  @media (min-width:600px){ .mission-info-grid{grid-template-columns:repeat(3,1fr);} }
+  @media (min-width:900px){ .mission-info-grid{grid-template-columns:repeat(4,1fr);} }
+  .mission-info-item .lbl{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px; font-weight:700;}
+  .mission-info-item .val{font-size:14px; font-weight:700;}
   .chart-box{position:relative; height:240px;}
   .chart-empty{display:flex; align-items:center; justify-content:center; height:240px; color:var(--muted); font-size:13px;}
   .pie-grid{display:grid; grid-template-columns:1fr; gap:10px;}
@@ -244,6 +251,11 @@
 <div id="state">Chargement des données depuis Metabase…</div>
 
 <main id="content" class="hidden">
+  <div class="card" id="missionInfoCard"><div class="card-inner">
+    <div class="mission-info-title" id="missionInfoTitle"></div>
+    <div class="mission-info-grid" id="missionInfoGrid"></div>
+  </div></div>
+
   <div class="section-label"><span class="diamond"></span>Suivi par semaine</div>
   <div class="section-sub">Basé sur la date de collecte du bulletin (date du lot).</div>
   <div class="card"><div class="card-inner">
@@ -560,6 +572,7 @@
       buildQuickTags();
       quickTagsEl.dataset.built = '1';
     }
+    renderMissionInfo(info);
     buildRoster(data.roster || []);
 
     lastTable = data.table || [];
@@ -571,6 +584,35 @@
     renderBulletinsChart(data.bulletins || []);
     renderMissionTable(lastTable);
     renderDayFeed(data.dayStats || [], data.dayComments || [], data.daySuspects || []);
+  }
+
+  const MISSION_STATUT_LABELS = { en_cours: 'En cours', terminee: 'Terminée', en_attente: 'En attente' };
+  const MISSION_FORMAT_LABELS = {
+    street: 'Rue', hybride: 'Hybride',
+    site_prive: 'Site privé', sites_privees: 'Site privé', sitesprives: 'Site privé', CDI: 'CDI',
+  };
+  const MISSION_TYPE_LABELS = {
+    paris: 'Paris', province: 'Province', domtom: 'DOM-TOM', lyon: 'Lyon',
+    itinerante: 'Itinérante', itinérante: 'Itinérante', speciale: 'Spéciale', spéciale: 'Spéciale', CDI: 'CDI',
+  };
+  // Cadre d'identité de la mission, en haut de la page (même présentation que /client).
+  function renderMissionInfo(info) {
+    const e = (v) => String(v == null || v === '' ? '—' : v).replace(/</g, '&lt;');
+    const fields = [
+      { l: 'Association', v: e(info.client_nom) },
+      { l: 'Statut', v: e(MISSION_STATUT_LABELS[info.statut_mission] || info.statut_mission) },
+      { l: 'Date de début', v: e(fmtDate(info.date_debut)) },
+      { l: 'Date de fin', v: e(fmtDate(info.date_fin)) },
+      { l: 'Type', v: e(MISSION_TYPE_LABELS[info.type_mission] || info.type_mission) },
+      { l: 'Format', v: e(MISSION_FORMAT_LABELS[info.format] || info.format) },
+      { l: 'Ville', v: e(info.ville_principale) },
+      { l: 'Responsable de mission', v: e(info.rm) },
+      { l: 'Responsable d\'équipe', v: e(info.re) },
+    ];
+    document.getElementById('missionInfoTitle').innerHTML =
+      `Mission <span class="sub">${[info.code_mission_client, info.code_mission].filter(Boolean).map((x) => String(x).replace(/</g, '&lt;')).join(' / ')}</span>`;
+    document.getElementById('missionInfoGrid').innerHTML = fields.map((f) => `
+      <div class="mission-info-item"><div class="lbl">${f.l}</div><div class="val">${f.v}</div></div>`).join('');
   }
 
   function applyGlobalFilter() {

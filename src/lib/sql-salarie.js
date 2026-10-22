@@ -13,6 +13,15 @@ import { excludeClientsClause } from './excluded-clients.js';
 
 const STATUTS_VALIDES = "('nouveau','en_attente','transmis')";
 
+// Taux d'absence (demande explicite 22/10/2026) : ces motifs d'absence (congés
+// légaux, maladie, accident, maternité/paternité, formation, activité partielle,
+// absence autorisée...) ne comptent PAS comme des absences : leurs journées
+// sont écartées du calcul (ni au numérateur, ni au dénominateur). Restent donc
+// comptées : journées sans heure payée sans motif, retard (000), absence non
+// rémunérée logo (1), non autorisée (630), mise à pied, préavis...
+const CODES_ABSENCE_IGNORES = "('261','240','230','220','210','200','141','140','110','105','260','620','130','120','100','360','361','300','608','609','610','410','400','631','632','634')";
+
+
 function buildIdentiteQuery(id_utilisateur) {
   return `select u.id as utilisateur_id, u.email, u.utilisateur_type,
   uip.prenom, uip.nom, uip.date_de_naissance, uip.civilite
@@ -75,10 +84,12 @@ order by m.date_debut desc nulls last;`;
 function buildPerformanceParMissionQuery(id_utilisateur) {
   return `with u as (select '${id_utilisateur}'::uuid as id),
 lots_u as (
-  select l.id, l.mission_id, case when l.presence_recruteur is distinct from false then l.nombre_horaires_rue else 0 end as nombre_horaires_rue, l.nombre_horaires_remuneration, l.heures_remuneration_completes
+  select l.id, l.mission_id, case when l.presence_recruteur is distinct from false then l.nombre_horaires_rue else 0 end as nombre_horaires_rue, l.nombre_horaires_remuneration, l.heures_remuneration_completes, (coalesce(l.nombre_horaires_remuneration, 0) = 0 and coalesce(ta.code in ${CODES_ABSENCE_IGNORES}, false)) as absence_ignoree
   from lots l
   join u on l.utilisateur_id = u.id
   join missions m on m.id = l.mission_id
+  left join absences ab on ab.id = l.absence_id
+  left join types_absences ta on ta.id = ab.type_absence_id
   where l.date <= CURRENT_DATE
     -- heures non complétées : ignorées le jour même (encore saisissables), prises en compte dès le lendemain (valeur saisie, 0 si jamais complétées)
     and (coalesce(l.heures_remuneration_completes, true) or l.date < CURRENT_DATE)
@@ -93,7 +104,9 @@ heures as (
     sum(nombre_horaires_rue) as heures_rue,
     sum(nombre_horaires_remuneration) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0 ) as heures_remuneration,
     count(*) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) as jours_presence,
-    count(*) as nb_lots
+    count(*) as nb_lots,
+    count(*) filter (where not absence_ignoree) as jours_retenus,
+    count(*) filter (where not absence_ignoree and coalesce(nombre_horaires_remuneration, 0) = 0) as jours_absence
   from lots_u group by 1
 ),
 dons_u as (
@@ -125,6 +138,7 @@ select h.mission_id,
   coalesce(h.heures_rue,0) as heures_rue,
   coalesce(h.heures_remuneration,0) as heures_remuneration,
   h.nb_lots,
+  case when h.jours_retenus > 0 then h.jours_absence::float / h.jours_retenus else null end as taux_absence,
   case when coalesce(h.heures_rue,0) > 0 then coalesce(d.bs_reel,0)::float / h.heures_rue else null end as taux_reel,
   case when coalesce(h.heures_remuneration,0) > 0 then coalesce(h.heures_rue,0)::float / h.heures_remuneration else null end as ratio_h,
   d.don_moyen,
@@ -152,10 +166,12 @@ ms as (
   select l.mission_id from lots l join u on l.utilisateur_id = u.id
 ),
 lots_u as (
-  select l.id, case when l.presence_recruteur is distinct from false then l.nombre_horaires_rue else 0 end as nombre_horaires_rue, l.nombre_horaires_remuneration, l.heures_remuneration_completes
+  select l.id, case when l.presence_recruteur is distinct from false then l.nombre_horaires_rue else 0 end as nombre_horaires_rue, l.nombre_horaires_remuneration, l.heures_remuneration_completes, (coalesce(l.nombre_horaires_remuneration, 0) = 0 and coalesce(ta.code in ${CODES_ABSENCE_IGNORES}, false)) as absence_ignoree
   from lots l
   join u on l.utilisateur_id = u.id
   join missions m on m.id = l.mission_id
+  left join absences ab on ab.id = l.absence_id
+  left join types_absences ta on ta.id = ab.type_absence_id
   where l.date <= CURRENT_DATE
     -- heures non complétées : ignorées le jour même (encore saisissables), prises en compte dès le lendemain (valeur saisie, 0 si jamais complétées)
     and (coalesce(l.heures_remuneration_completes, true) or l.date < CURRENT_DATE)
@@ -168,7 +184,9 @@ heures as (
   select
     sum(nombre_horaires_rue) as heures_rue_total,
     sum(nombre_horaires_remuneration) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0 ) as heures_remuneration_total,
-    count(*) as nb_lots_total
+    count(*) as nb_lots_total,
+    count(*) filter (where not absence_ignoree) as jours_retenus_total,
+    count(*) filter (where not absence_ignoree and coalesce(nombre_horaires_remuneration, 0) = 0) as jours_absence_total
   from lots_u
 ),
 dons_u as (
@@ -187,6 +205,7 @@ select
   (select max(m.date_debut) from missions m join ms on ms.mission_id = m.id where 1=1 ${excludeClientsClause('m')}) as derniere_mission_le,
   (select count(distinct m.id) from missions m join ms on ms.mission_id = m.id where 1=1 ${excludeClientsClause('m')}) as nb_missions,
   h.heures_rue_total, h.heures_remuneration_total, h.nb_lots_total,
+  case when h.jours_retenus_total > 0 then h.jours_absence_total::float / h.jours_retenus_total else null end as taux_absence_total,
   case when coalesce(h.heures_remuneration_total,0) > 0 then coalesce(h.heures_rue_total,0)::float / h.heures_remuneration_total else null end as ratio_h_total,
   d.bs_reel as bs_reel_total,
   d.age_median as age_median_total,

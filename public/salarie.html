@@ -332,6 +332,7 @@
         <div class="kpi"><div class="val">${resume.heures_rue_total != null ? fmtNum(resume.heures_rue_total, 1) : '—'}</div><div class="lbl" data-tip="Total des heures passées sur le terrain. Les journées où la personne était notée absente comptent 0, et les journées à venir ne sont pas comptées.">Heures de rue totales</div></div>
         <div class="kpi"><div class="val">${resume.heures_remuneration_total != null ? fmtNum(resume.heures_remuneration_total, 1) : '—'}</div><div class="lbl" data-tip="Total des heures payées, sur les journées où la personne était présente.">Heures rémunérées totales</div></div>
         <div class="kpi"><div class="val">${fmtPct(resume.ratio_h_total)}</div><div class="lbl" data-tip="Heures passées sur le terrain ÷ heures payées. Plus le chiffre est proche de 100 %, plus les heures payées ont été passées sur le terrain.">Ratio h rue/rém</div></div>
+        <div class="kpi"><div class="val">${resume.taux_absence_total != null ? fmtPct(resume.taux_absence_total) : '—'}</div><div class="lbl" data-tip="Part des journées prévues où la personne n'a eu aucune heure payée. Les journées d'absence légale ou autorisée (congés payés, maladie, accident, maternité/paternité, formation, repos compensateur, absence autorisée…) ne comptent pas : elles sont écartées du calcul.">Taux d'absence</div></div>
       </div>
 
       <div class="section-label"><span class="diamond"></span>Historique des missions</div>
@@ -343,6 +344,7 @@
               <th>Début</th><th>Fin</th>
               <th data-tip="Nombre de dons valides (nouveaux, en attente ou transmis) récoltés par la personne sur cette mission." class="num">BS réel</th><th data-tip="Nombre de dons ÷ heures de rue. Exemple : 0,250 = 1 don toutes les 4 heures." class="num">Taux réel</th>
               <th data-tip="Heures passées sur le terrain ÷ heures payées. Plus le chiffre est proche de 100 %, plus les heures payées ont été passées sur le terrain." class="num">Ratio h</th>
+              <th data-tip="Part des journées prévues où la personne n'a eu aucune heure payée. Les journées d'absence légale ou autorisée (congés payés, maladie, accident, maternité/paternité, formation, repos compensateur, absence autorisée…) ne comptent pas : elles sont écartées du calcul." class="num">Taux d'absence</th>
               <th data-tip="Montant moyen des dons valides de la personne sur cette mission." class="num">Don moyen</th><th data-tip="L'âge « du milieu » des donateurs sur cette mission : la moitié a moins que cet âge, l'autre moitié plus. Les dons dont la date de naissance est inconnue ne sont pas comptés." class="num">Âge médian</th><th data-tip="Part des dons valides faits par des hommes (« monsieur ») et par des femmes (« madame ») sur cette mission. Les civilités non renseignées (Autre/NC) comptent dans le total mais ne sont pas affichées." class="num">H / F</th><th data-tip="Part des donateurs qui avaient moins de 25 ans le jour de leur don, parmi les dons dont la date de naissance est connue." class="num">−25 ans</th>
               <th data-tip="Don moyen × (100 % − part des donateurs de moins de 25 ans). Plus le score est élevé, mieux c'est. Barème : 0 à 3 très faible · 3 à 5,5 faible · 5,5 à 6,5 moyen · 6,5 à 8 bon · plus de 8 très bon.">Score qualité</th>
             </tr>
@@ -387,7 +389,7 @@
 
     const listEl = document.getElementById('missionList');
     if (!missions.length) {
-      listEl.innerHTML = '<tr><td colspan="16" class="empty">Aucune mission enregistrée</td></tr>';
+      listEl.innerHTML = '<tr><td colspan="17" class="empty">Aucune mission enregistrée</td></tr>';
       return;
     }
     const formatLabel = (f) => ({ street: 'Street', sitesprives: 'Site privé', hybride: 'Hybride' }[f] || f || '—');
@@ -406,6 +408,7 @@
         <td class="num">${fmtNum(m.bs_reel)}</td>
         <td class="num">${m.taux_reel != null ? fmtNum(m.taux_reel, 3) : '—'}</td>
         <td class="num">${fmtPct(m.ratio_h)}</td>
+        <td class="num">${m.taux_absence != null ? fmtPct(m.taux_absence) : '—'}</td>
         <td class="num">${m.don_moyen != null ? fmtMoney(m.don_moyen) : '—'}</td>
         <td class="num">${m.age_median != null ? fmtNum(m.age_median, 1) + ' ans' : '—'}</td>
         <td class="num">${genreTxt(m.nb_hommes, m.nb_femmes, m.nb_autre_genre)}</td>

@@ -159,7 +159,7 @@ fpe_f as (
   from avenants av
   join types_avenants ta on ta.id = av.type_avenant_id
   join contrats_f cf on cf.id = av.contrat_id
-  where ta.categorie = 'fin_period_essai'
+  where ta.categorie = 'fin_period_essai' and av.oneflow_status = 'publie'
 )
 select
   count(distinct cf.id) as nb_contrats,
@@ -197,7 +197,7 @@ fpe_f as (
   from avenants av
   join types_avenants ta on ta.id = av.type_avenant_id
   join contrats_f cf on cf.id = av.contrat_id
-  where ta.categorie = 'fin_period_essai'
+  where ta.categorie = 'fin_period_essai' and av.oneflow_status = 'publie'
 )
 select ${recrutementsBucketSql(granularity)} as periode,
   count(distinct cf.id) as nb_contrats,
@@ -326,7 +326,7 @@ fpe_recent as (
   from contrat_recent cr
   join avenants av on av.contrat_id = cr.contrat_id
   join types_avenants ta on ta.id = av.type_avenant_id
-  where ta.categorie = 'fin_period_essai'
+  where ta.categorie = 'fin_period_essai' and av.oneflow_status = 'publie'
 ),
 recruteur_rows as (
   select

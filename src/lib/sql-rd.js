@@ -20,9 +20,16 @@ function dateFilterClause(col, dateRange) {
 
 function buildRdInfoQuery(id_mission) {
   return `select m.code_mission, m.code_mission_client, m.statut_mission, m.date_debut, m.date_fin,
+  m.type_mission, m.format, m.ville_principale,
+  coalesce(uip_rm.prenom || ' ' || uip_rm.nom, u_rm.email) as rm,
+  coalesce(uip_re.prenom || ' ' || uip_re.nom, u_re.email) as re,
   c.nom as client_nom, c.couleur
 from missions m
 left join clients c on c.id = m.client_id
+left join utilisateurs u_rm on u_rm.id = m.responsable_mission_id
+left join utilisateur_informations_personnelles uip_rm on uip_rm.utilisateur_id = m.responsable_mission_id
+left join utilisateurs u_re on u_re.id = m.responsable_equipe_id
+left join utilisateur_informations_personnelles uip_re on uip_re.utilisateur_id = m.responsable_equipe_id
 where m.id = '${id_mission}'
 limit 1;`;
 }
@@ -91,7 +98,7 @@ fpe_rd AS (
   SELECT DISTINCT cr.utilisateur_id FROM contrat_rd cr
   JOIN avenants av ON av.contrat_id = cr.contrat_id
   JOIN types_avenants ta ON ta.id = av.type_avenant_id
-  WHERE ta.categorie = 'fin_period_essai'
+  WHERE ta.categorie = 'fin_period_essai' AND av.oneflow_status = 'publie'
 ),
 rd_rows AS (
   SELECT

@@ -485,7 +485,7 @@ fpe_f AS (
   FROM avenants av
   JOIN types_avenants ta ON ta.id = av.type_avenant_id
   JOIN contrats_f cf ON cf.id = av.contrat_id
-  WHERE ta.categorie = 'fin_period_essai'
+  WHERE ta.categorie = 'fin_period_essai' AND av.oneflow_status = 'publie'
 )
 SELECT
   count(DISTINCT cf.id) AS nb_contrats,

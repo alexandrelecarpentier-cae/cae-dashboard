@@ -105,6 +105,8 @@
     text-transform:uppercase; letter-spacing:.05em; border-bottom:1px solid var(--line); padding:8px 8px;
     position:sticky; top:0; background:#fff;}
   thead th.num, tbody td.num{text-align:right;}
+  .rdre{font-weight:800;}
+  .rdre .re{color:var(--red);}
   tbody td{padding:8px 8px; border-bottom:1px solid var(--line); font-family:ui-monospace,SFMono-Regular,Consolas,monospace;}
   tbody tr:hover{background:var(--surface-2);}
   .table-scroll{max-height:420px; overflow-y:auto;}
@@ -287,13 +289,13 @@
   </div></div>
 
   <div class="section-label"><span class="diamond"></span>Emplacements
-    <span class="note">300 dernières activités dans la période — date, site, mission</span>
+    <span class="note">300 dernières activités dans la période — Effectif = recruteurs présents ce jour-là (ex. "3+1" = 3 RD + 1 responsable d'équipe)</span>
   </div>
   <div class="card"><div class="card-inner">
     <div class="table-scroll">
       <table>
         <thead>
-          <tr><th>Date</th><th>Emplacement</th><th>Mission</th><th class="num">BS réel</th><th class="num">Taux réel</th></tr>
+          <tr><th>Date</th><th>Emplacement</th><th>Mission</th><th class="num">Effectif</th><th class="num">BS réel</th><th class="num">Taux réel</th></tr>
         </thead>
         <tbody id="tbl-emplacements"></tbody>
       </table>
@@ -322,6 +324,13 @@
   function categorieLabel(c) { return CATEGORIE_LABELS[c] || (c || '—').toUpperCase(); }
 
   function esc(s) { return String(s == null ? '' : s).replace(/</g, '&lt;'); }
+  // "3+1" = 3 RD + 1 RE — le "+1" n'apparaît que s'il y a au moins un RE ce jour-là.
+  function fmtEffectif(nbRd, nbRe) {
+    const rd = Number(nbRd) || 0;
+    const re = Number(nbRe) || 0;
+    if (!rd && !re) return '—';
+    return re > 0 ? `${rd}<span class="re">+${re}</span>` : `${rd}`;
+  }
   function fmtNum(n, digits = 0) {
     if (n === null || n === undefined) return '—';
     return Number(n).toLocaleString('fr-FR', { maximumFractionDigits: digits, minimumFractionDigits: digits });
@@ -737,10 +746,11 @@
         <td>${esc(fmtDateShort(r.date))}</td>
         <td>${esc(site)}</td>
         <td>${esc(mission)}</td>
+        <td class="num rdre">${fmtEffectif(r.nb_rd, r.nb_re)}</td>
         <td class="num">${fmtNum(r.bs_reel)}</td>
         <td class="num">${r.taux_reel != null ? fmtNum(r.taux_reel, 3) : '—'}</td>
       </tr>`;
-    }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Aucune donnée</td></tr>';
+    }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);">Aucune donnée</td></tr>';
   }
 
   function renderMissionTable(rows) {
