@@ -1,13 +1,14 @@
 // ---------------------------------------------------------------
 // /api/rh-suivi et /api/rh-export — onglets du "Dashboard RH" Metabase (id 39)
 //   rh-suivi  : Acompte et saisie, Commande Swile, Check RH paie, Expiration identité
-//   rh-export : Export de paie, Export DPAE
+//   rh-export : Export de paie, Export DPAE (valeurs au format Silae : silae-format.js)
 // Chaque onglet = une ou plusieurs cartes du dashboard, appelées avec les
 // filtres du dashboard (cf. runDashcardQuery). Pas de SQL du projet ici : la
 // logique reste celle des cartes Metabase (source de vérité unique).
 // ---------------------------------------------------------------
 import { runDashcardQuery, fetchDashboardParamValues, requireConfig, jsonResponse } from './metabase.js';
 import { EXCLUDED_CLIENT_NAMES } from './excluded-clients.js';
+import { formatSilae, newSilaeContext, silaeNote } from './silae-format.js';
 
 // Filtres du dashboard 39 : id Metabase + type + forme de la valeur attendue.
 const FILTERS = {
@@ -111,14 +112,20 @@ async function handleRhCards(url, env, group) {
       calls.push(runDashcardQuery(env, c.dashcard, c.card, parameters));
     }
     const results = await Promise.all(calls);
-    const tables = tab.cards.map((c, i) => ({
-      title: c.title,
-      filters: c.filters,
+    // /rh-export : valeurs converties au format Silae (cf. silae-format.js), après tous les filtres.
+    const silae = group === 'export' ? newSilaeContext() : null;
+    const tables = tab.cards.map((c, i) => {
       // postFilters = filtres que la carte Metabase ignore : appliqués ici sur le texte des lignes.
-      rows: applyPostFilters(dropExcludedClients(results[i]), url, c.postFilters),
-      applied: [...c.filters, ...(c.postFilters || [])],
-    }));
-    return jsonResponse({ tab: tabKey, note: tab.note || null, tables, generated_at: new Date().toISOString() });
+      const rows = applyPostFilters(dropExcludedClients(results[i]), url, c.postFilters);
+      return {
+        title: c.title,
+        filters: c.filters,
+        rows: silae ? formatSilae(tabKey, c.title, rows, silae) : rows,
+        applied: [...c.filters, ...(c.postFilters || [])],
+      };
+    });
+    const note = [tab.note, silae && silaeNote(silae)].filter(Boolean).join(' ') || null;
+    return jsonResponse({ tab: tabKey, note, tables, generated_at: new Date().toISOString() });
   } catch (e) {
     return jsonResponse({ error: 'metabase_error', message: String(e.message || e) }, 502);
   }

@@ -100,6 +100,16 @@
   .bar-fill{position:absolute; top:0; left:0; height:100%; background:var(--red);}
   .bar-fill.over{background:#0F0F11;}
 
+  .tabs{display:flex; gap:6px; padding:12px 16px 0; max-width:1200px; margin:0 auto;}
+  .tab{font-family:inherit; font-size:12px; font-weight:700; padding:8px 14px; cursor:pointer;
+    border:1px solid var(--line); border-radius:var(--sharp); background:#fff; color:var(--muted);}
+  .tab.active{border-color:var(--red); background:var(--red); color:#fff;}
+  .btn-export{font-family:inherit; font-size:12px; font-weight:700; padding:7px 14px; cursor:pointer;
+    border:1px solid var(--red); border-radius:var(--sharp); background:#fff; color:var(--red);}
+  .btn-export:hover{background:var(--red); color:#fff;}
+  .btn-export:disabled{opacity:.5; cursor:default;}
+  .sal-bar{display:flex; align-items:center; gap:12px; margin-bottom:10px;}
+  .sal-bar .count{font-size:12px; color:var(--muted);}
   .na-grid{display:grid; grid-template-columns:repeat(1,1fr); gap:8px;}
   @media (min-width:640px){ .na-grid{grid-template-columns:repeat(2,1fr);} }
   @media (min-width:960px){ .na-grid{grid-template-columns:repeat(3,1fr);} }
@@ -199,6 +209,11 @@
   </div>
 </header>
 
+<div class="tabs" role="tablist">
+  <button class="tab active" id="tabBtnIndic" type="button" role="tab">Indicateurs</button>
+  <button class="tab" id="tabBtnSal" type="button" role="tab">Salariés sous contrat</button>
+</div>
+
 <div id="state">Chargement des données depuis Metabase…</div>
 
 <main id="content" class="hidden">
@@ -235,6 +250,28 @@
     <span class="note">KPI du fichier source sans donnée exploitable dans cette base</span>
   </div>
   <div class="na-grid" id="naGrid"></div>
+</main>
+
+<main id="contentSal" class="hidden">
+  <div class="section-label"><span class="diamond"></span>Salariés sous contrat
+    <span class="note">Contrat en cours ou à venir (fin non dépassée), hors statut FRGEN — une ligne par salarié (contrat le plus récent)</span>
+  </div>
+  <div class="card"><div class="card-inner">
+    <div class="sal-bar">
+      <button class="btn-export" id="btnExportSal" type="button" disabled>Exporter en CSV</button>
+      <span class="count" id="salCount"></span>
+    </div>
+    <div class="table-scroll" style="max-height:640px;">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Matricule</th><th>Prénom</th><th>NOM</th><th>Email</th><th>Début de contrat</th><th>Fin de contrat</th><th>Statut</th></tr>
+          </thead>
+          <tbody id="tbl-sal"><tr><td colspan="7" style="text-align:center;color:var(--muted);">Chargement…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div></div>
 </main>
 
 <script>
@@ -402,7 +439,7 @@
 
   function render(data) {
     stateEl.classList.add('hidden');
-    contentEl.classList.remove('hidden');
+    contentEl.classList.toggle('hidden', currentTab !== 'indic');
 
     if (!listsBuilt) {
       const clientList = data.clientList || [];
@@ -478,6 +515,82 @@
       </tr>`;
     }).join('');
   }
+
+  // ---------------------------------------------------------------
+  // ONGLETS + liste "Salariés sous contrat" (+ export CSV)
+  // ---------------------------------------------------------------
+  let currentTab = 'indic';
+  let salRows = [];
+  let salLoaded = false;
+  const filtersEl = document.querySelector('.filters');
+
+  function fmtDateFr(d) {
+    return d ? String(d).slice(0, 10).split('-').reverse().join('/') : '';
+  }
+
+  function setTab(tab) {
+    currentTab = tab;
+    document.getElementById('tabBtnIndic').classList.toggle('active', tab === 'indic');
+    document.getElementById('tabBtnSal').classList.toggle('active', tab === 'sal');
+    // Les filtres (association, statut mission, période) ne concernent que les indicateurs.
+    filtersEl.classList.toggle('hidden', tab !== 'indic');
+    contentEl.classList.toggle('hidden', tab !== 'indic' || !liveMode);
+    if (tab !== 'indic') stateEl.classList.add('hidden');
+    document.getElementById('contentSal').classList.toggle('hidden', tab !== 'sal');
+    if (tab === 'sal') loadSalaries();
+  }
+  document.getElementById('tabBtnIndic').addEventListener('click', () => setTab('indic'));
+  document.getElementById('tabBtnSal').addEventListener('click', () => setTab('sal'));
+
+  async function loadSalaries() {
+    if (salLoaded) return;
+    try {
+      const res = await fetch('/api/direction-salaries', { cache: 'no-store' });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.message || data.error || 'Erreur inconnue');
+      salRows = (data.salaries || []).slice().sort((a, b) =>
+        String(a.nom || '').localeCompare(String(b.nom || ''), 'fr') || String(a.prenom || '').localeCompare(String(b.prenom || ''), 'fr'));
+      salLoaded = true;
+      renderSalaries();
+    } catch (err) {
+      document.getElementById('tbl-sal').innerHTML =
+        `<tr><td colspan="7" style="text-align:center;color:var(--red);">Chargement impossible : ${esc(err.message)}</td></tr>`;
+    }
+  }
+
+  function renderSalaries() {
+    document.getElementById('salCount').textContent = `${salRows.length} salarié${salRows.length > 1 ? 's' : ''}`;
+    document.getElementById('btnExportSal').disabled = !salRows.length;
+    document.getElementById('tbl-sal').innerHTML = salRows.map((r) => `
+      <tr>
+        <td>${esc(r.matricule || '—')}</td>
+        <td>${esc(r.prenom || '')}</td>
+        <td>${esc(r.nom || '')}</td>
+        <td>${esc(r.email || '')}</td>
+        <td>${esc(fmtDateFr(r.contrat_debut) || '—')}</td>
+        <td>${esc(fmtDateFr(r.contrat_fin) || '—')}</td>
+        <td>${esc(r.statut || '')}</td>
+      </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--muted);">Aucun salarié sous contrat</td></tr>';
+  }
+
+  // Export CSV côté navigateur (séparateur ";" + BOM UTF-8 pour une ouverture
+  // directe dans Excel en français) à partir des lignes déjà chargées.
+  document.getElementById('btnExportSal').addEventListener('click', () => {
+    const cell = (v) => {
+      let t = String(v == null ? '' : v);
+      if (/^[=+\-@]/.test(t)) t = "'" + t; // neutralise les formules Excel
+      return '"' + t.replace(/"/g, '""') + '"';
+    };
+    const head = ['Matricule', 'Prénom', 'NOM', 'Email', 'Début de contrat', 'Fin de contrat', 'Statut'];
+    const lines = [head.map(cell).join(';')].concat(salRows.map((r) =>
+      [r.matricule, r.prenom, r.nom, r.email, fmtDateFr(r.contrat_debut), fmtDateFr(r.contrat_fin), r.statut].map(cell).join(';')));
+    const blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `salaries-sous-contrat-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
 
   // ---------------------------------------------------------------
   // AUTO-REFRESH toutes les 5 min

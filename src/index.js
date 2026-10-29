@@ -46,7 +46,7 @@ import {
   buildClientListQuery as buildRhClientListQuery,
   buildMissionListQuery as buildRhMissionListQuery,
 } from './lib/sql-rh.js';
-import { buildDirectionQueries, buildClientListQuery as buildDirectionClientListQuery } from './lib/sql-direction.js';
+import { buildDirectionQueries, buildClientListQuery as buildDirectionClientListQuery, buildSalariesContratActifQuery } from './lib/sql-direction.js';
 import { isExcludedClient, buildMissionClientQuery, EXCLUDED_CLIENT_NAMES } from './lib/excluded-clients.js';
 import { DIRECTION_SUIVI_SECTIONS, GRAINS as DIRECTION_SUIVI_GRAINS } from './lib/sql-direction-suivi.js';
 import { handleRhSuivi, handleRhExport, handleRhValues } from './lib/rh-cards.js';
@@ -91,6 +91,7 @@ export default {
       if (url.pathname === '/api/assistant-site-prive') return await handleAssistantSitePrive(url, env);
       if (url.pathname === '/api/rh') return await handleRh(url, env);
       if (url.pathname === '/api/direction') return await handleDirection(url, env);
+      if (url.pathname === '/api/direction-salaries') return await handleDirectionSalaries(env);
       if (url.pathname === '/api/direction-suivi') return await handleDirectionSuivi(url, env, ctx);
       if (url.pathname === '/api/re-mobilisation') return await handleReMobilisation(url, env);
       if (url.pathname === '/api/rd-mobilisation') return await handleRdMobilisation(url, env);
@@ -1035,6 +1036,19 @@ async function handleDirection(url, env) {
       objectifMissions,
       clientList,
     });
+  } catch (e) {
+    return jsonResponse({ error: String(e.message || e) }, 502);
+  }
+}
+
+// /api/direction-salaries — onglet "Salariés sous contrat" de /direction :
+// liste des salariés avec un contrat actif (en cours ou à venir), hors FRGEN.
+async function handleDirectionSalaries(env) {
+  const configError = requireConfig(env);
+  if (configError) return jsonResponse({ error: configError }, 500);
+  try {
+    const salaries = await runQuery(env, buildSalariesContratActifQuery());
+    return jsonResponse({ salaries });
   } catch (e) {
     return jsonResponse({ error: String(e.message || e) }, 502);
   }

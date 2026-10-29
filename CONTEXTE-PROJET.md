@@ -33,7 +33,7 @@ Un Worker Cloudflare unique qui sert ~17 dashboards internes (RH, suivi de missi
 | `assistant-site-prive.html`   | `/api/assistant-site-prive`                    | `sql-site-prive.js` (réutilisé) |
 | `rh.html`                     | `/api/rh`                                      | `sql-rh.js` |
 | `rh-suivi.html`               | `/api/rh-suivi`, `/api/rh-values`              | — (cartes du dashboard Metabase 39, `rh-cards.js`) |
-| `rh-export.html`              | `/api/rh-export`, `/api/rh-values`             | — (cartes du dashboard Metabase 39, `rh-cards.js`) |
+| `rh-export.html`              | `/api/rh-export`, `/api/rh-values`             | — (cartes du dashboard Metabase 39, `rh-cards.js` ; valeurs au format Silae : `silae-format.js`, `silae-codes.js`, doc `EXPORT-SILAE.md`) |
 | `direction.html`              | `/api/direction`                               | `sql-direction.js` |
 | `re-mobilisation.html`        | `/api/re-mobilisation`                         | `sql-mobilisation.js` |
 | `rd-mobilisation.html`        | `/api/rd-mobilisation`                         | `sql-mobilisation.js` |
@@ -83,7 +83,7 @@ Puis, pour que le changement soit visible en ligne : `npx wrangler deploy`.
 
 - `sql-mission.js` existe encore mais a été vidé de `buildMissionPerformanceQueries`/`buildRecruteurPerformanceQueries` (dashboards Metabase 15 retirés en 9/2026) : il ne sert plus qu'à des requêtes utilitaires mission par id/code, encore utilisées par `mission.html`.
 - `/rm`'s "% < 25 ans" vient d'une carte Metabase externe (514) et n'a pas pu être vérifié comme suivant la même convention de dénominateur que le reste du projet (cf. audit 9/2026) — à garder en tête si un écart apparaît un jour sur ce chiffre précis.
-- `/rh-suivi` et `/rh-export` reprennent les cartes du « Dashboard RH » Metabase (id 39) via `runDashcardQuery` (`metabase.js`) et non du SQL du projet : Production uniquement (`?staging=1` sans effet), filtre des clients exclus par nom seulement quand la carte expose « Clients → Nom ». `/rh-export` contient des données personnelles sensibles (sécurité sociale, IBAN) et le Worker n'a aucune authentification.
+- `/rh-suivi` et `/rh-export` reprennent les cartes du « Dashboard RH » Metabase (id 39) via `runDashcardQuery` (`metabase.js`) et non du SQL du projet : Production uniquement (`?staging=1` sans effet), filtre des clients exclus par nom seulement quand la carte expose « Clients → Nom ». `/rh-export` convertit les valeurs au format Silae (`src/lib/silae-format.js` ; codes Silae à renseigner dans `src/lib/silae-codes.js` ; après modification relancer `node scripts/generer-doc-silae.mjs` pour régénérer `EXPORT-SILAE.md`). `/rh-export` contient des données personnelles sensibles (sécurité sociale, IBAN) et le Worker n'a aucune authentification.
 - Les 2 clients exclus (tests internes ; « ONG de test » est autorisé depuis le 12/10/2026) sont filtrés différemment selon le type de dashboard : clause SQL (`excludeClientsClause`) sur les vues cross-missions, validation d'id en amont sur les fiches à id unique. Si un nouveau dashboard est créé, penser à appliquer le bon mécanisme.
 
 ## 7. Comment formuler une demande d'évolution

@@ -10,7 +10,7 @@
 // Filtres optionnels, tous combinables (comme /rh) : association
 // (id_client), statut de mission (statut_mission), période (date_from/
 // date_to, sur lots.date). Hors clients exclus (excluded-clients.js).
-import { excludeClientsClause } from './excluded-clients.js';
+import { excludeClientsClause, excludedClientsSqlList } from './excluded-clients.js';
 
 const STATUTS_VALIDES = "('nouveau','en_attente','transmis')";
 
@@ -269,6 +269,34 @@ where c.nom is not null
 order by c.nom;`;
 }
 
+
+// Salariés avec un contrat actif (onglet "Salariés sous contrat", demande
+// explicite 29/10/2026) : contrat en cours OU à venir, c'est-à-dire sans date
+// de fin ou dont la date de fin n'est pas passée. Statut FRGEN exclu. Une
+// ligne par salarié : s'il a plusieurs contrats actifs, on garde le plus
+// récent (date de début la plus tardive). Indépendant des filtres de la
+// page (association, période...). Clients de test/démo exclus, mais les
+// missions de type mobilisation sont conservées (ce sont de vrais salariés).
+function buildSalariesContratActifQuery() {
+  return `select distinct on (c.utilisateur_id)
+  rh.matricule,
+  uip.prenom,
+  upper(uip.nom) as nom,
+  u.email,
+  c.date_debut as contrat_debut,
+  c.date_fin as contrat_fin,
+  c.statut
+from contrats c
+join missions m on m.id = c.mission_id
+join utilisateurs u on u.id = c.utilisateur_id
+left join utilisateur_informations_personnelles uip on uip.utilisateur_id = c.utilisateur_id
+left join utilisateur_informations_rh rh on rh.utilisateur_id = c.utilisateur_id
+where (c.date_fin is null or c.date_fin >= current_date)
+  and coalesce(c.statut, '') <> 'FRGEN'
+  and m.client_id not in (${excludedClientsSqlList()})
+order by c.utilisateur_id, c.date_debut desc nulls last;`;
+}
+
 function buildDirectionQueries(p) {
   return {
     globalStats: buildGlobalStatsQuery(p),
@@ -278,4 +306,4 @@ function buildDirectionQueries(p) {
   };
 }
 
-export { buildDirectionQueries, buildClientListQuery };
+export { buildDirectionQueries, buildClientListQuery, buildSalariesContratActifQuery };
