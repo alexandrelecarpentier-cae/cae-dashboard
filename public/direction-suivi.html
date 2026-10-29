@@ -59,6 +59,13 @@
     font-size:12.5px; font-weight:700; cursor:pointer; text-transform:uppercase; letter-spacing:.03em;}
   .tab.active{background:var(--red); border-color:var(--red); color:#fff;}
 
+  .btn-export{font-family:inherit; font-size:12px; font-weight:700; padding:7px 14px; cursor:pointer;
+    border:1px solid var(--red); border-radius:var(--sharp); background:#fff; color:var(--red);}
+  .btn-export:hover{background:var(--red); color:#fff;}
+  .btn-export:disabled{opacity:.5; cursor:default;}
+  .sal-bar{display:flex; align-items:center; gap:12px; margin-bottom:10px;}
+  .sal-bar .count{font-size:12px; color:var(--muted);}
+
   .error-banner{margin-top:10px; padding:10px 12px; border:1px solid var(--line); border-left:3px solid var(--red);
     background:#FFF6F7; font-size:12px; color:#7A1225; display:none; line-height:1.5;}
   .error-banner.show{display:block;}
@@ -182,6 +189,12 @@
   </div>
   <div id="refreshBar"><div id="refreshFill"></div></div>
 
+  <div class="tabs">
+    <button class="tab active" id="tabBtnSuivi" type="button" data-tab="suivi">Suivi</button>
+    <button class="tab" id="tabBtnTransmission" type="button" data-tab="transmission">Transmission</button>
+    <button class="tab" id="tabBtnSal" type="button" data-tab="salaries">Salariés sous contrat</button>
+  </div>
+
   <div class="filters">
     <div class="filter-row">
       <div class="filter-field">
@@ -221,11 +234,6 @@
     </div>
   </div>
 
-  <div class="tabs">
-    <button class="tab active" id="tabBtnSuivi" type="button" data-tab="suivi">Suivi</button>
-    <button class="tab" id="tabBtnTransmission" type="button" data-tab="transmission">Transmission</button>
-  </div>
-
   <div class="error-banner" id="errorBanner"><b>Chargement incomplet.</b> <span id="errorDetail"></span></div>
 </header>
 
@@ -258,6 +266,28 @@
     <div class="section-label"><span class="diamond"></span>Facturation CozApp <span class="note">dons transmis (hors ancien système) sur la période</span></div>
     <div id="sec-facturation" data-section="facturation"></div>
   </div>
+
+  <div id="tab-salaries" class="hidden">
+    <div class="section-label"><span class="diamond"></span>Salariés sous contrat
+      <span class="note">Contrat en cours ou à venir (fin non dépassée), hors statut FRGEN — une ligne par salarié (contrat le plus récent)</span>
+    </div>
+    <div class="card"><div class="card-inner">
+      <div class="sal-bar">
+        <button class="btn-export" id="btnExportSal" type="button" disabled>Exporter en CSV</button>
+        <span class="count" id="salCount"></span>
+      </div>
+      <div class="table-scroll" style="max-height:640px;">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Matricule</th><th>Prénom</th><th>NOM</th><th>Email</th><th>Début de contrat</th><th>Fin de contrat</th><th>Statut</th></tr>
+            </thead>
+            <tbody id="tbl-sal"><tr><td colspan="7" style="text-align:center;color:var(--muted);">Chargement…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div></div>
+  </div>
 </main>
 
 <div class="perf-modal" id="perfModal">
@@ -287,6 +317,9 @@ var E = {
   diamond: document.getElementById('liveDiamond'),
   tabSuivi: document.getElementById('tabBtnSuivi'),
   tabTrans: document.getElementById('tabBtnTransmission'),
+  tabSal: document.getElementById('tabBtnSal'),
+  paneSal: document.getElementById('tab-salaries'),
+  filtersBox: document.querySelector('.filters'),
   paneSuivi: document.getElementById('tab-suivi'),
   paneTrans: document.getElementById('tab-transmission'),
   errBanner: document.getElementById('errorBanner'),
@@ -386,7 +419,7 @@ function readUrl(){
     S.from = RE_D.test(f || '') ? f : ''; S.to = RE_D.test(t || '') ? t : '';
     if (S.from && S.to && S.from > S.to) S.to = S.from;
   }
-  if (tab === 'transmission') S.tab = 'transmission';
+  if (tab === 'transmission' || tab === 'salaries') S.tab = tab;
 }
 
 /* ───────── API (mémo + cache serveur) ───────── */
@@ -803,11 +836,68 @@ function switchTab(tab){
   E.tabTrans.classList.toggle('active', tab === 'transmission');
   E.paneSuivi.classList.toggle('hidden', tab !== 'suivi');
   E.paneTrans.classList.toggle('hidden', tab !== 'transmission');
+  E.tabSal.classList.toggle('active', tab === 'salaries');
+  E.paneSal.classList.toggle('hidden', tab !== 'salaries');
+  // Les filtres (regroupement, période) ne concernent que Suivi et Transmission.
+  E.filtersBox.classList.toggle('hidden', tab === 'salaries');
+  if (tab === 'salaries') loadSalaries();
   syncUrl();
   requestAnimationFrame(checkVisible);
 }
 E.tabSuivi.addEventListener('click', function(){ switchTab('suivi'); });
 E.tabTrans.addEventListener('click', function(){ switchTab('transmission'); });
+E.tabSal.addEventListener('click', function(){ switchTab('salaries'); });
+
+/* ───────── Onglet "Salariés sous contrat" (+ export CSV) ───────── */
+var salRows = [], salLoaded = false;
+function fdateFr(d){ return d ? String(d).slice(0, 10).split('-').reverse().join('/') : ''; }
+function escSal(v){ return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+function loadSalaries(){
+  if (salLoaded) return;
+  fetch('/api/direction-salaries', {cache:'no-store'}).then(function(res){
+    return res.json().then(function(data){
+      if (!res.ok || data.error) throw new Error(data.message || data.error || 'Erreur inconnue');
+      return data;
+    });
+  }).then(function(data){
+    salRows = (data.salaries || []).slice().sort(function(a, b){
+      return String(a.nom || '').localeCompare(String(b.nom || ''), 'fr') || String(a.prenom || '').localeCompare(String(b.prenom || ''), 'fr');
+    });
+    salLoaded = true;
+    renderSalaries();
+  }).catch(function(err){
+    document.getElementById('tbl-sal').innerHTML =
+      '<tr><td colspan="7" style="text-align:center;color:var(--red);">Chargement impossible : ' + escSal(err.message) + '</td></tr>';
+  });
+}
+function renderSalaries(){
+  document.getElementById('salCount').textContent = salRows.length + ' salarié' + (salRows.length > 1 ? 's' : '');
+  document.getElementById('btnExportSal').disabled = !salRows.length;
+  document.getElementById('tbl-sal').innerHTML = salRows.map(function(r){
+    return '<tr><td>' + escSal(r.matricule || '—') + '</td><td>' + escSal(r.prenom) + '</td><td>' + escSal(r.nom) +
+      '</td><td>' + escSal(r.email) + '</td><td>' + escSal(fdateFr(r.contrat_debut) || '—') +
+      '</td><td>' + escSal(fdateFr(r.contrat_fin) || '—') + '</td><td>' + escSal(r.statut) + '</td></tr>';
+  }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--muted);">Aucun salarié sous contrat</td></tr>';
+}
+// Export CSV côté navigateur (séparateur ";" + BOM UTF-8 pour une ouverture
+// directe dans Excel en français) à partir des lignes déjà chargées.
+document.getElementById('btnExportSal').addEventListener('click', function(){
+  function cell(v){
+    var t = String(v == null ? '' : v);
+    if (/^[=+\-@]/.test(t)) t = "'" + t; // neutralise les formules Excel
+    return '"' + t.replace(/"/g, '""') + '"';
+  }
+  var head = ['Matricule', 'Prénom', 'NOM', 'Email', 'Début de contrat', 'Fin de contrat', 'Statut'];
+  var lines = [head.map(cell).join(';')].concat(salRows.map(function(r){
+    return [r.matricule, r.prenom, r.nom, r.email, fdateFr(r.contrat_debut), fdateFr(r.contrat_fin), r.statut].map(cell).join(';');
+  }));
+  var blob = new Blob(['\uFEFF' + lines.join('\r\n')], {type:'text/csv;charset=utf-8'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'salaries-sous-contrat-' + new Date().toISOString().slice(0, 10) + '.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+});
 
 /* ───────── Actualisation automatique (période en cours uniquement) ───────── */
 var REFRESH_S = 300, remaining = REFRESH_S;
