@@ -100,7 +100,7 @@
   .bar-fill{position:absolute; top:0; left:0; height:100%; background:var(--red);}
   .bar-fill.over{background:#0F0F11;}
 
-  .tabs{display:flex; gap:6px; padding:12px 16px 0; max-width:1200px; margin:0 auto;}
+  .tabs{display:flex; gap:6px; margin:12px 0 4px;}
   .tab{font-family:inherit; font-size:12px; font-weight:700; padding:8px 14px; cursor:pointer;
     border:1px solid var(--line); border-radius:var(--sharp); background:#fff; color:var(--muted);}
   .tab.active{border-color:var(--red); background:var(--red); color:#fff;}
@@ -169,6 +169,11 @@
   </div>
   <div id="refreshBar"><div id="refreshFill"></div></div>
 
+  <div class="tabs" role="tablist">
+    <button class="tab active" id="tabBtnIndic" type="button" role="tab">Indicateurs</button>
+    <button class="tab" id="tabBtnSal" type="button" role="tab">Salariés sous contrat</button>
+  </div>
+  
   <div class="filters">
     <div class="filter-row">
       <div class="filter-field">
@@ -208,11 +213,6 @@
     <b>Connexion impossible.</b> <span id="errorDetail"></span> La page réessaiera automatiquement.
   </div>
 </header>
-
-<div class="tabs" role="tablist">
-  <button class="tab active" id="tabBtnIndic" type="button" role="tab">Indicateurs</button>
-  <button class="tab" id="tabBtnSal" type="button" role="tab">Salariés sous contrat</button>
-</div>
 
 <div id="state">Chargement des données depuis Metabase…</div>
 
