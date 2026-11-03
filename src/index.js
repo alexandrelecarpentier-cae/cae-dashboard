@@ -39,6 +39,7 @@ import {
   buildEmplacementListQuery as buildSitePriveEmplacementListQuery,
   buildVilleListQuery as buildSitePriveVilleListQuery,
   buildDepartementListQuery as buildSitePriveDepartementListQuery,
+  buildCalendrierQuery as buildSitePriveCalendrierQuery,
 } from './lib/sql-site-prive.js';
 import {
   buildRhQueries,
@@ -88,6 +89,7 @@ export default {
       if (url.pathname === '/api/salarie') return await handleSalarie(url, env);
       if (url.pathname === '/api/emplacement') return await handleEmplacement(url, env);
       if (url.pathname === '/api/site-prive') return await handleSitePrive(url, env);
+      if (url.pathname === '/api/site-prive-calendrier') return await handleSitePriveCalendrier(url, env);
       if (url.pathname === '/api/assistant-site-prive') return await handleAssistantSitePrive(url, env);
       if (url.pathname === '/api/rh') return await handleRh(url, env);
       if (url.pathname === '/api/direction') return await handleDirection(url, env);
@@ -793,6 +795,48 @@ async function handleSitePrive(url, env) {
       villeList,
       departementList,
     });
+  } catch (e) {
+    return jsonResponse({ error: String(e.message || e) }, 502);
+  }
+}
+
+// ---------------------------------------------------------------
+// /api/site-prive-calendrier — onglet "Calendrier" de /site-prive :
+// emplacements disponibles par jour pour UNE mission (champ
+// jours_disponibles de emplacements_missions). Mission obligatoire.
+// ---------------------------------------------------------------
+async function handleSitePriveCalendrier(url, env) {
+  const configError = requireConfig(env);
+  if (configError) return jsonResponse({ error: configError }, 500);
+
+  const id_mission = url.searchParams.get('id_mission') || '';
+  if (!id_mission) return jsonResponse({ error: 'id_mission requis' }, 400);
+  if (!RE_UUID.test(id_mission)) return jsonResponse({ error: 'id_mission invalide' }, 400);
+
+  const id_emplacement = url.searchParams.get('id_emplacement') || '';
+  if (id_emplacement && !RE_UUID.test(id_emplacement)) return jsonResponse({ error: 'id_emplacement invalide' }, 400);
+
+  const villeRaw = url.searchParams.get('ville') || '';
+  let ville = null;
+  if (villeRaw) {
+    const r = sanitizeFreeText(villeRaw);
+    if (r.error) return jsonResponse({ error: 'ville invalide' }, 400);
+    ville = r.value;
+  }
+
+  const departement = url.searchParams.get('departement') || '';
+  if (departement && !/^[0-9]{2,3}$/.test(departement)) {
+    return jsonResponse({ error: 'departement invalide' }, 400);
+  }
+
+  try {
+    const jours = await runQuery(env, buildSitePriveCalendrierQuery({
+      id_mission,
+      id_emplacement: id_emplacement || null,
+      ville: ville || null,
+      departement: departement || null,
+    }));
+    return jsonResponse({ jours });
   } catch (e) {
     return jsonResponse({ error: String(e.message || e) }, 502);
   }

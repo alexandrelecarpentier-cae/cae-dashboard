@@ -115,6 +115,39 @@
   #state.error{color:var(--red);}
   .hidden{display:none;}
   .empty{padding:24px 16px; text-align:center; color:var(--muted); font-size:13px;}
+
+  /* Onglets Pilotage / Calendrier */
+  .tabs{display:flex; gap:6px; margin:0 0 12px;}
+  .tab{background:var(--surface-2); color:var(--muted); border:1px solid var(--line); border-radius:var(--sharp);
+    padding:0 14px; height:34px; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    cursor:pointer; font-family:inherit;}
+  .tab.active{background:var(--red); border-color:var(--red); color:#fff;}
+  body.tab-calendrier .periode-field{display:none;}
+
+  /* Calendrier */
+  .cal-head{display:flex; align-items:center; gap:10px; margin:14px 0 10px;}
+  .cal-title{font-size:15px; font-weight:800; text-transform:uppercase; letter-spacing:.02em; min-width:150px; text-align:center;}
+  .cal-nav{background:#fff; border:1px solid var(--line); border-radius:var(--sharp); width:34px; height:34px;
+    font-size:16px; font-weight:700; cursor:pointer; color:var(--text); font-family:inherit;}
+  .cal-nav:disabled{opacity:.35; cursor:default;}
+  .cal-summary{margin-left:auto; font-size:11.5px; color:var(--muted);}
+  .cal-grid{display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:4px;}
+  .cal-dow{font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); font-weight:700; text-align:center; padding:4px 0;}
+  .cal-cell{min-height:64px; border:1px solid var(--line); border-radius:var(--sharp); background:#fff; padding:4px 5px;
+    font-size:11px; overflow:hidden; text-align:left; font-family:inherit; color:var(--text); display:flex; flex-direction:column; gap:2px;}
+  .cal-cell.out{background:transparent; border-color:transparent;}
+  .cal-cell .dn{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-weight:700; font-size:11px; color:var(--muted);}
+  .cal-cell.has{background:var(--surface-2); border-left:3px solid var(--red); cursor:pointer;}
+  .cal-cell.has .dn{color:var(--text);}
+  .cal-cell.today{outline:1px solid var(--text);}
+  .cal-cell.sel{background:#FFF6F7; border-color:var(--red);}
+  .cal-cell .cnt{font-weight:800; color:var(--red); font-size:12px;}
+  .cal-cell .nm{display:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:10.5px; line-height:1.25;}
+  @media (min-width:720px){ .cal-cell{min-height:92px;} .cal-cell .nm{display:block;} .cal-cell .cnt{display:none;} }
+  .cal-list{list-style:none; margin:0; padding:0;}
+  .cal-list li{padding:8px 4px; border-bottom:1px solid var(--line); font-size:13px; display:flex; gap:8px; flex-wrap:wrap; align-items:baseline;}
+  .cal-list li:last-child{border-bottom:none;}
+  .cal-list .sub{color:var(--muted); font-size:11.5px;}
 </style>
 </head>
 <body>
@@ -161,6 +194,11 @@
   </div>
   <div id="refreshBar"><div id="refreshFill"></div></div>
 
+  <div class="tabs" id="tabs">
+    <button class="tab active" type="button" data-tab="pilotage">Pilotage</button>
+    <button class="tab" type="button" data-tab="calendrier">Calendrier</button>
+  </div>
+
   <div class="filters">
     <div class="filter-row">
       <div class="filter-field">
@@ -197,7 +235,7 @@
           <div class="search-suggestions" id="emplacementSuggestions"></div>
         </div>
       </div>
-      <div class="filter-field" style="width:auto;">
+      <div class="filter-field periode-field" style="width:auto;">
         <div class="filter-label">Période</div>
         <div class="quick-tags" id="quickTags">
           <span class="quick-tag active" data-key="total" data-from="" data-to="">Total</span>
@@ -205,11 +243,11 @@
           <span class="quick-tag" data-key="yesterday">Hier</span>
         </div>
       </div>
-      <div class="filter-field" style="width:150px;">
+      <div class="filter-field periode-field" style="width:150px;">
         <div class="filter-label">Du</div>
         <input class="control" type="date" id="dateFrom">
       </div>
-      <div class="filter-field" style="width:150px;">
+      <div class="filter-field periode-field" style="width:150px;">
         <div class="filter-label">Au</div>
         <input class="control" type="date" id="dateTo">
       </div>
@@ -301,6 +339,28 @@
       </table>
     </div>
   </div></div>
+</main>
+
+<main id="calendrierContent" class="hidden">
+  <div class="section-label"><span class="diamond"></span>Calendrier de la mission
+    <span class="note">Jours renseignés dans « jours disponibles » de chaque emplacement de la mission — ce ne sont pas les jours effectivement travaillés</span>
+  </div>
+  <div id="calMessage" class="empty">Sélectionnez une mission dans le filtre « Mission » pour afficher son calendrier.</div>
+  <div id="calBody" class="hidden">
+    <div class="cal-head">
+      <button class="cal-nav" id="calPrev" type="button" aria-label="Mois précédent">‹</button>
+      <div class="cal-title" id="calTitle"></div>
+      <button class="cal-nav" id="calNext" type="button" aria-label="Mois suivant">›</button>
+      <div class="cal-summary" id="calSummary"></div>
+    </div>
+    <div class="card"><div class="card-inner">
+      <div class="cal-grid" id="calGrid"></div>
+    </div></div>
+    <div class="section-label"><span class="diamond"></span><span id="calDayTitle">Emplacements du jour</span></div>
+    <div class="card"><div class="card-inner">
+      <ul class="cal-list" id="calDayList"></ul>
+    </div></div>
+  </div>
 </main>
 
 <script>
@@ -604,6 +664,7 @@
   }
 
   async function refreshData() {
+    if (currentTab === 'calendrier') { await refreshCalendar(); return; }
     try {
       const res = await fetch('/api/site-prive?' + buildQuery(), { cache: 'no-store' });
       const data = await res.json();
@@ -807,6 +868,145 @@
     document.getElementById('refreshFill').style.width = (100 - (remaining / REFRESH_MS) * 100) + '%';
   }
   setInterval(tickCountdown, 1000);
+
+  // ---------------------------------------------------------------
+  // Onglet Calendrier : emplacements disponibles par jour pour la
+  // mission sélectionnée dans le filtre "Mission" (jours_disponibles de
+  // emplacements_missions). Les filtres Ville / Département / Site privé
+  // s'appliquent aussi ; la période Du/Au n'a pas de sens ici (masquée).
+  // ---------------------------------------------------------------
+  let currentTab = 'pilotage';
+  let calRows = [], calByDay = {}, calMonths = [];
+  let calMonth = '', calSelectedDay = '', calLoadedMissionId = '';
+  const calMessageEl = document.getElementById('calMessage');
+  const calBodyEl = document.getElementById('calBody');
+  const calendrierEl = document.getElementById('calendrierContent');
+  const MOIS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+
+  function ymd(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function fmtDayLong(iso) {
+    const [y, m, d] = iso.split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    return dt.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  }
+
+  function setTab(tab) {
+    currentTab = tab;
+    document.body.classList.toggle('tab-calendrier', tab === 'calendrier');
+    document.querySelectorAll('#tabs .tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === tab));
+    if (tab === 'calendrier') {
+      contentEl.classList.add('hidden');
+      calendrierEl.classList.remove('hidden');
+      refreshCalendar();
+    } else {
+      calendrierEl.classList.add('hidden');
+      if (stateEl.classList.contains('hidden')) contentEl.classList.remove('hidden');
+      refreshData();
+    }
+  }
+  document.querySelectorAll('#tabs .tab').forEach((t) => t.addEventListener('click', () => setTab(t.dataset.tab)));
+
+  async function refreshCalendar() {
+    if (!selectedMissionId) {
+      calRows = []; calLoadedMissionId = '';
+      calBodyEl.classList.add('hidden');
+      calMessageEl.textContent = 'Sélectionnez une mission dans le filtre « Mission » pour afficher son calendrier.';
+      calMessageEl.classList.remove('hidden');
+      return;
+    }
+    try {
+      const p = new URLSearchParams({ id_mission: selectedMissionId });
+      if (selectedEmplacementId) p.set('id_emplacement', selectedEmplacementId);
+      if (selectedVille) p.set('ville', selectedVille);
+      if (selectedDepartement) p.set('departement', selectedDepartement);
+      const res = await fetch('/api/site-prive-calendrier?' + p.toString(), { cache: 'no-store' });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.message || data.error || 'Erreur inconnue');
+      calRows = data.jours || [];
+      calByDay = {};
+      calRows.forEach((r) => { const k = String(r.jour).slice(0, 10); (calByDay[k] = calByDay[k] || []).push(r); });
+      const days = Object.keys(calByDay).sort();
+      calMonths = Array.from(new Set(days.map((d) => d.slice(0, 7))));
+      if (selectedMissionId !== calLoadedMissionId || !calMonths.includes(calMonth)) {
+        const today = ymd(new Date());
+        const next = days.find((d) => d >= today) || days[0];
+        calMonth = next ? next.slice(0, 7) : '';
+        calSelectedDay = '';
+      }
+      calLoadedMissionId = selectedMissionId;
+      liveMode = true;
+      document.getElementById('errorBanner').classList.remove('show');
+      renderCalendar();
+    } catch (err) {
+      liveMode = false;
+      document.getElementById('errorDetail').textContent = err.message;
+      document.getElementById('errorBanner').classList.add('show');
+      console.warn('Fetch /api/site-prive-calendrier failed:', err);
+    }
+    renderSyncLabel();
+  }
+
+  function renderCalendar() {
+    if (!calRows.length) {
+      calBodyEl.classList.add('hidden');
+      calMessageEl.textContent = 'Aucun jour disponible renseigné pour les emplacements de cette mission.';
+      calMessageEl.classList.remove('hidden');
+      return;
+    }
+    calMessageEl.classList.add('hidden');
+    calBodyEl.classList.remove('hidden');
+
+    const [y, m] = calMonth.split('-').map(Number);
+    document.getElementById('calTitle').textContent = MOIS_FR[m - 1] + ' ' + y;
+    const idx = calMonths.indexOf(calMonth);
+    document.getElementById('calPrev').disabled = idx <= 0;
+    document.getElementById('calNext').disabled = idx < 0 || idx >= calMonths.length - 1;
+    const nbSites = new Set(calRows.map((r) => r.emplacement_id)).size;
+    document.getElementById('calSummary').textContent =
+      nbSites + ' emplacement' + (nbSites > 1 ? 's' : '') + ' · ' + Object.keys(calByDay).length + ' jour' + (Object.keys(calByDay).length > 1 ? 's' : '');
+
+    if (!calSelectedDay || calSelectedDay.slice(0, 7) !== calMonth) {
+      calSelectedDay = Object.keys(calByDay).filter((d) => d.slice(0, 7) === calMonth).sort()[0] || '';
+    }
+
+    const first = new Date(y, m - 1, 1);
+    const offset = (first.getDay() + 6) % 7; // lundi = 0
+    const nbDays = new Date(y, m, 0).getDate();
+    const today = ymd(new Date());
+    let html = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((d) => `<div class="cal-dow">${d}</div>`).join('');
+    for (let i = 0; i < offset; i++) html += '<div class="cal-cell out"></div>';
+    for (let d = 1; d <= nbDays; d++) {
+      const key = `${calMonth}-${String(d).padStart(2, '0')}`;
+      const rows = calByDay[key] || [];
+      const cls = ['cal-cell'];
+      if (rows.length) cls.push('has');
+      if (key === today) cls.push('today');
+      if (key === calSelectedDay) cls.push('sel');
+      const names = rows.slice(0, 3).map((r) => `<span class="nm">${esc(r.emplacement_nom)}</span>`).join('') +
+        (rows.length > 3 ? `<span class="nm">+${rows.length - 3}</span>` : '');
+      html += rows.length
+        ? `<button type="button" class="${cls.join(' ')}" data-day="${key}"><span class="dn">${d}</span><span class="cnt">${rows.length}</span>${names}</button>`
+        : `<div class="${cls.join(' ')}"><span class="dn">${d}</span></div>`;
+    }
+    const grid = document.getElementById('calGrid');
+    grid.innerHTML = html;
+    grid.querySelectorAll('button.cal-cell').forEach((b) => b.addEventListener('click', () => { calSelectedDay = b.dataset.day; renderCalendar(); }));
+
+    const list = calByDay[calSelectedDay] || [];
+    document.getElementById('calDayTitle').textContent = calSelectedDay
+      ? fmtDayLong(calSelectedDay) + ' — ' + list.length + ' emplacement' + (list.length > 1 ? 's' : '')
+      : 'Emplacements du jour';
+    document.getElementById('calDayList').innerHTML = list.map((r) =>
+      `<li><b>${esc(r.emplacement_nom)}</b><span class="sub">${esc([r.ville, categorieLabel(r.categorie)].filter(Boolean).join(' · '))}</span></li>`
+    ).join('') || '<li class="sub">Aucun emplacement ce mois-ci.</li>';
+  }
+
+  document.getElementById('calPrev').addEventListener('click', () => {
+    const i = calMonths.indexOf(calMonth); if (i > 0) { calMonth = calMonths[i - 1]; calSelectedDay = ''; renderCalendar(); }
+  });
+  document.getElementById('calNext').addEventListener('click', () => {
+    const i = calMonths.indexOf(calMonth); if (i >= 0 && i < calMonths.length - 1) { calMonth = calMonths[i + 1]; calSelectedDay = ''; renderCalendar(); }
+  });
 
   // INIT
   ensureChartJs().then((ok) => {

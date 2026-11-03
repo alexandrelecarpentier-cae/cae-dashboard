@@ -460,6 +460,34 @@ where e.code_postal is not null and e.code_postal <> '' ${excludeClientsClause('
 order by 1;`;
 }
 
+// Calendrier d'une mission (onglet "Calendrier") : un emplacement est
+// affiché sur chaque jour listé dans emplacements_missions.jours_disponibles
+// (tableau de textes au format JJ/MM/AAAA, saisis à la main côté back-office).
+// Indépendant des lots : ce sont les jours où l'emplacement est DISPONIBLE
+// pour la mission, pas les jours effectivement travaillés. Mission
+// obligatoire ; ville / département / site privé optionnels (mêmes filtres
+// que le reste de la page). Les valeurs mal formées sont ignorées.
+function buildCalendrierQuery(p) {
+  const clauses = [
+    `em.mission_id = '${p.id_mission}'`,
+    `e.type_emplacement = 'prive'`,
+    `m.format in (${ALLOWED_FORMATS_SQL})`,
+    `j.txt ~ '^[0-9]{2}/[0-9]{2}/[0-9]{4}$'`,
+  ];
+  if (p.id_emplacement) clauses.push(`e.id = '${p.id_emplacement}'`);
+  if (p.ville) clauses.push(`e.ville = '${p.ville}'`);
+  if (p.departement) clauses.push(`${departementSqlExpr('e.code_postal')} = '${p.departement}'`);
+  return `select to_date(j.txt, 'DD/MM/YYYY') as jour,
+  e.id as emplacement_id, e.nom as emplacement_nom, e.ville, e.categorie
+from emplacements_missions em
+join missions m on m.id = em.mission_id
+join emplacements e on e.id = em.emplacement_id
+cross join lateral unnest(em.jours_disponibles) as j(txt)
+where ${clauses.join(' and ')}
+  ${excludeClientsClause('m')}
+order by jour, e.nom;`;
+}
+
 function buildSitePriveQueries(p) {
   return {
     globalStats: buildGlobalStatsQuery(p),
@@ -481,4 +509,5 @@ export {
   buildEmplacementListQuery,
   buildVilleListQuery,
   buildDepartementListQuery,
+  buildCalendrierQuery,
 };
