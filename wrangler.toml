@@ -6,3 +6,9 @@ compatibility_date = "2026-07-11"
 directory = "./public"
 binding = "ASSETS"
 run_worker_first = true
+
+# Secrets requis (jamais dans le dépôt : `npx wrangler secret put <NOM>`).
+# PLANNING_PASSWORD protège /planning-cae (cf. src/lib/planning-auth.js).
+# Wrangler refuse le déploiement si un secret listé ici n'existe pas encore.
+[secrets]
+required = ["PLANNING_PASSWORD"]
