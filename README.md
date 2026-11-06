@@ -61,6 +61,7 @@ le dépôt mais n'est plus utilisé par le build — il peut être supprimé.
 
 - `METABASE_URL` — ex. `https://prod.metabase.cae.captive.dev`
 - `METABASE_API_KEY` — clé API Metabase
+- `PLANNING_PASSWORD` — mot de passe d'accès à `/planning-cae` (sans lui, la page répond 503)
 - `SCW_ACCESS_KEY` / `SCW_SECRET_KEY` — accès lecture seule au bucket S3 des
   logos clients (optionnel : sans ça, `/api/logo` répond une erreur claire au
   lieu de logos cassés silencieusement)

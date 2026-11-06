@@ -50,6 +50,7 @@ import {
 import { buildDirectionQueries, buildClientListQuery as buildDirectionClientListQuery, buildSalariesContratActifQuery } from './lib/sql-direction.js';
 import { isExcludedClient, buildMissionClientQuery, EXCLUDED_CLIENT_NAMES } from './lib/excluded-clients.js';
 import { DIRECTION_SUIVI_SECTIONS, GRAINS as DIRECTION_SUIVI_GRAINS } from './lib/sql-direction-suivi.js';
+import { isPlanningPath, guardPlanning } from './lib/planning-auth.js';
 import { handleRhSuivi, handleRhExport, handleRhValues } from './lib/rh-cards.js';
 
 // Mode staging/prod (demande explicite, 9/2026) : un cookie posé côté
@@ -104,6 +105,14 @@ export default {
       if (url.pathname === '/api/logo') return await handleLogo(url, env);
     } catch (err) {
       return jsonResponse({ error: 'worker_exception', message: String((err && err.stack) || err) }, 500);
+    }
+    if (isPlanningPath(url.pathname)) {
+      const blocked = await guardPlanning(request, env);
+      if (blocked) return blocked;
+      const res = await env.ASSETS.fetch(request);
+      const h = new Headers(res.headers);
+      h.set('Cache-Control', 'private, no-store');
+      return new Response(res.body, { status: res.status, statusText: res.statusText, headers: h });
     }
     return env.ASSETS.fetch(request);
   },
