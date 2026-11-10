@@ -98,7 +98,7 @@ fpe_rd AS (
   SELECT DISTINCT cr.utilisateur_id FROM contrat_rd cr
   JOIN avenants av ON av.contrat_id = cr.contrat_id
   JOIN types_avenants ta ON ta.id = av.type_avenant_id
-  WHERE ta.categorie = 'fin_period_essai' AND av.oneflow_status = 'publie'
+  WHERE ta.categorie = 'fin_period_essai' AND av.oneflow_status IN ('signe', 'publie')
 ),
 rd_rows AS (
   SELECT
