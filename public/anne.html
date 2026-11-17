@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Anne — Dashboard CAE</title>
+<style>
+  :root{--bg:#fff;--surface:#fff;--surface-2:#F5F5F6;--line:#E4E4E8;--red:#E2173B;--text:#0F0F11;--muted:#75757C;--sharp:2px;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;}
+  header{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);padding:calc(env(safe-area-inset-top) + 12px) 16px 10px;border-bottom:1px solid var(--line);}
+  h1{margin:0 0 8px;font-size:21px;font-weight:800;letter-spacing:-.01em;text-transform:uppercase;}
+  h1 em{color:var(--red);font-style:normal;}
+  .sync{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;color:var(--muted);}
+  .panel{padding:12px 16px;border-bottom:1px solid var(--line);background:var(--surface-2);}
+  .panel summary{cursor:pointer;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.04em;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin-top:10px;}
+  .fld{display:flex;flex-direction:column;gap:4px;min-width:0;}
+  .fld label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;}
+  .fld input,.fld select{font:inherit;font-size:13px;padding:7px 8px;border:1px solid var(--line);border-radius:var(--sharp);background:#fff;min-width:0;width:100%;}
+  .row2{display:flex;gap:6px;}
+  .chips{display:flex;flex-wrap:wrap;gap:4px;}
+  .chip{background:#fff;border:1px solid var(--red);color:var(--red);font-size:11.5px;padding:2px 6px;border-radius:var(--sharp);cursor:pointer;}
+  .chip:after{content:" ×";}
+  .actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+  button{font:inherit;font-size:13px;font-weight:700;padding:8px 14px;border:1px solid var(--text);background:#fff;border-radius:var(--sharp);cursor:pointer;}
+  button.primary{background:var(--red);border-color:var(--red);color:#fff;}
+  .tabs{display:flex;gap:0;overflow-x:auto;border-bottom:1px solid var(--line);padding:0 8px;background:#fff;}
+  .tab{padding:11px 12px;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent;}
+  .tab.on{color:var(--text);border-bottom-color:var(--red);}
+  main{padding:14px 16px 60px;}
+  .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:16px;}
+  .tile{border:1px solid var(--line);padding:10px 12px;}
+  .tile .v{font-size:22px;font-weight:800;}
+  .tile .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-top:2px;}
+  .tbl-wrap{overflow:auto;border:1px solid var(--line);margin-bottom:18px;max-height:70vh;}
+  table{border-collapse:collapse;width:100%;font-size:12.5px;}
+  th,td{padding:6px 9px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap;}
+  th{position:sticky;top:0;background:var(--surface-2);font-size:11px;text-transform:uppercase;letter-spacing:.03em;cursor:help;}
+  th:first-child,td:first-child,th.l,td.l{text-align:left;}
+  tr.tot td{font-weight:800;background:#FFF5F6;}
+  h2{font-size:14px;text-transform:uppercase;letter-spacing:.04em;margin:18px 0 8px;}
+  .empty,.err{padding:24px 16px;text-align:center;color:var(--muted);font-size:13px;}
+  .err{color:var(--red);}
+  .note{font-size:12px;color:var(--muted);margin:6px 0 14px;line-height:1.5;}
+  .nd{color:var(--muted);font-style:italic;}
+  details.defs{margin-top:24px;font-size:12.5px;line-height:1.55;}
+  details.defs summary{cursor:pointer;font-weight:700;}
+</style>
+</head>
+<body>
+<script>
+(function(){
+  var isStaging = new URLSearchParams(window.location.search).get('staging') === '1';
+  if (!isStaging) return;
+  var origFetch = window.fetch;
+  window.fetch = function(input, init){
+    try {
+      var isApiCall = (typeof input === 'string' && input.indexOf('/api/') !== -1) || (input && input.url && input.url.indexOf('/api/') !== -1);
+      if (isApiCall) {
+        var url = typeof input === 'string' ? input : input.url;
+        url += (url.indexOf('?') === -1 ? '?' : '&') + 'staging=1';
+        input = typeof input === 'string' ? url : new Request(url, input);
+      }
+    } catch (e) {}
+    return origFetch.call(this, input, init);
+  };
+  document.addEventListener('DOMContentLoaded', function(){
+    var b = document.createElement('div');
+    b.textContent = '◆ STAGING';
+    b.style.cssText = 'position:fixed;bottom:14px;right:14px;z-index:9999;font-family:ui-monospace,Consolas,monospace;font-size:11px;font-weight:700;background:#E2173B;color:#fff;padding:5px 9px;border-radius:2px;';
+    document.body.appendChild(b);
+  });
+})();
+</script>
+
+<header>
+  <h1>Anne <em>◆</em> Indicateurs</h1>
+  <div class="sync" id="sync">Chargement…</div>
+</header>
+
+<details class="panel" open id="filtersPanel">
+  <summary>Filtres et regroupements</summary>
+  <div class="grid" id="listFilters"></div>
+  <div class="grid" id="dateFilters"></div>
+  <div class="grid" id="numFilters"></div>
+  <div class="grid">
+    <div class="fld"><label>Regrouper par (1)</label><select id="grp1"></select></div>
+    <div class="fld"><label>Regrouper par (2)</label><select id="grp2"></select></div>
+  </div>
+  <div class="actions">
+    <button class="primary" id="apply">Appliquer</button>
+    <button id="reset">Réinitialiser</button>
+    <button id="csv">Exporter CSV</button>
+  </div>
+</details>
+
+<div class="tabs" id="tabs"></div>
+<main id="main"><div class="empty">Chargement…</div></main>
+
+<script>
+var LIST_DIMS = [['asso','Association'],['mission','Mission'],['ville','Ville'],['lv_ms','LV / MS'],['rm','RM'],['statut_rd','Statut RD (RD, RDC, RDE, RE)'],['format','Format mission'],['type_mission','Type mission'],['re','RE'],['cat_ville','Catégorie ville (street)']];
+var DATE_DIMS = [['jour_depart','Jour de départ'],['jour_fin','Jour de fin']];
+var NUM_DIMS = [['annee','Année'],['mois','Mois'],['semaine','Semaine de l’année'],['idx_jour','Index des jours'],['idx_semaine','Index des semaines'],['idx_jour_mission','Index jour de mission'],['idx_semaine_mission','Index semaine de mission'],['heure','Index des heures (heure du don)']];
+var GROUP_DIMS = LIST_DIMS.concat(NUM_DIMS).concat([['annee_mois','Année-mois'],['jour_depart','Jour de départ'],['jour_fin','Jour de fin']]);
+var DIM_LABEL = {}; GROUP_DIMS.forEach(function(d){DIM_LABEL[d[0]]=d[1];});
+
+var state = { lists:{} };
+var facets = {};
+var tab = 'synth';
+var cache = {};
+var lastExport = [];
+
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function num(v){ return v==null||v===''?null:Number(v); }
+function fmt(v,d){ if(v==null||!isFinite(v)) return '<span class="nd">—</span>'; return Number(v).toLocaleString('fr-FR',{minimumFractionDigits:d||0,maximumFractionDigits:d||0}); }
+function pct(v,d){ return v==null||!isFinite(v)?fmt(null):fmt(v*100,d==null?1:d)+' %'; }
+function div(a,b){ a=num(a); b=num(b); return (b==null||b===0||a==null)?null:a/b; }
+function txt(v){ return v==null?fmt(null):esc(v); }
+
+function buildFilters(){
+  var h='';
+  LIST_DIMS.forEach(function(d){
+    h+='<div class="fld"><label>'+esc(d[1])+'</label><input list="dl_'+d[0]+'" data-list="'+d[0]+'" placeholder="Ajouter…"><datalist id="dl_'+d[0]+'"></datalist><div class="chips" id="ch_'+d[0]+'"></div></div>';
+  });
+  document.getElementById('listFilters').innerHTML=h;
+  document.getElementById('dateFilters').innerHTML=DATE_DIMS.map(function(d){
+    return '<div class="fld"><label>'+esc(d[1])+'</label><div class="row2"><input type="date" data-df="'+d[0]+'_from"><input type="date" data-df="'+d[0]+'_to"></div></div>';
+  }).join('');
+  document.getElementById('numFilters').innerHTML=NUM_DIMS.map(function(d){
+    return '<div class="fld"><label>'+esc(d[1])+'</label><div class="row2"><input type="number" placeholder="min" data-nf="'+d[0]+'_min"><input type="number" placeholder="max" data-nf="'+d[0]+'_max"></div></div>';
+  }).join('');
+  var opts='<option value="">— aucun —</option>'+GROUP_DIMS.map(function(d){return '<option value="'+d[0]+'">'+esc(d[1])+'</option>';}).join('');
+  document.getElementById('grp1').innerHTML=opts; document.getElementById('grp2').innerHTML=opts;
+  document.querySelectorAll('[data-list]').forEach(function(inp){
+    inp.addEventListener('change',function(){
+      var k=inp.getAttribute('data-list'), v=inp.value.trim(); if(!v) return;
+      state.lists[k]=state.lists[k]||[]; if(state.lists[k].indexOf(v)<0) state.lists[k].push(v);
+      inp.value=''; drawChips(k);
+    });
+  });
+}
+function drawChips(k){
+  var el=document.getElementById('ch_'+k); el.innerHTML='';
+  (state.lists[k]||[]).forEach(function(v,i){
+    var c=document.createElement('span'); c.className='chip'; c.textContent=v;
+    c.onclick=function(){ state.lists[k].splice(i,1); drawChips(k); };
+    el.appendChild(c);
+  });
+}
+function fillDatalists(){
+  Object.keys(facets).forEach(function(k){
+    var dl=document.getElementById('dl_'+k); if(!dl) return;
+    dl.innerHTML=facets[k].map(function(v){return '<option value="'+esc(v)+'">';}).join('');
+  });
+}
+function qs(){
+  var p=new URLSearchParams();
+  Object.keys(state.lists).forEach(function(k){ if(state.lists[k].length) p.set(k,state.lists[k].join('|')); });
+  document.querySelectorAll('[data-df]').forEach(function(i){ if(i.value) p.set(i.getAttribute('data-df'),i.value); });
+  document.querySelectorAll('[data-nf]').forEach(function(i){ if(i.value!=='') p.set(i.getAttribute('data-nf'),i.value); });
+  var g=groupLabels();
+  if(g.length) p.set('group',g.join('|'));
+  return p.toString();
+}
+
+function getSection(section){
+  var key=section+'?'+qs();
+  if(cache[key]) return Promise.resolve(cache[key]);
+  return fetch('/api/anne?section='+section+(qs()?'&'+qs():'')).then(function(r){return r.json();}).then(function(j){
+    if(j.error) throw new Error(j.error);
+    cache[key]=j; return j;
+  });
+}
+function groupLabels(){
+  var a=document.getElementById('grp1').value, b=document.getElementById('grp2').value;
+  var out=[]; if(a) out.push(a); if(b && b!==a) out.push(b); return out;
+}
+function keyOf(r){ return (r.g1==null?'':r.g1)+'|'+(r.g2==null?'':r.g2)+'|'+r.gt; }
+
+function table(title,cols,rows,opts){
+  opts=opts||{};
+  var gl=opts.noGroup?[]:groupLabels();
+  var head='', body='';
+  var gcols=gl.map(function(g){return DIM_LABEL[g]||g;});
+  head+=gcols.map(function(c){return '<th class="l">'+esc(c)+'</th>';}).join('');
+  if(opts.labelCol) head+='<th class="l">'+esc(opts.labelCol)+'</th>';
+  else if(!gl.length && !opts.noGroup) head+='<th class="l">Périmètre</th>';
+  cols.forEach(function(c){ head+='<th title="'+esc(c.tip||'')+'">'+esc(c.h)+'</th>'; });
+  var exp=[[].concat(opts.labelCol?[opts.labelCol]:gcols, cols.map(function(c){return c.h;}))];
+  rows.forEach(function(r){
+    var tot=r.gt===1;
+    var line='<tr class="'+(tot?'tot':'')+'">';
+    var ex=[];
+    if(opts.labelCol){ var lv=opts.labelFn?opts.labelFn(r):r[opts.labelKey]; line+='<td class="l">'+esc(lv)+'</td>'; ex.push(lv); }
+    else if(!gl.length && !opts.noGroup){ line+='<td class="l">Total</td>'; ex.push('Total'); }
+    else gl.forEach(function(g,i){ var v=i===0?r.g1:r.g2; var t=tot?'Total':(v==null?'—':v); line+='<td class="l">'+esc(t)+'</td>'; ex.push(t); });
+    cols.forEach(function(c){ var v=c.f(r); line+='<td>'+c.fmt(v)+'</td>'; ex.push(v==null?'':v); });
+    body+=line+'</tr>'; exp.push(ex);
+  });
+  lastExport.push({title:title,rows:exp});
+  return (title?'<h2>'+esc(title)+'</h2>':'')+'<div class="tbl-wrap"><table><thead><tr>'+head+'</tr></thead><tbody>'+body+'</tbody></table></div>';
+}
+function tiles(list){ return '<div class="tiles">'+list.map(function(t){return '<div class="tile"><div class="v">'+t[1]+'</div><div class="l">'+esc(t[0])+'</div></div>';}).join('')+'</div>'; }
+function totalRow(rows){ for(var i=0;i<rows.length;i++) if(rows[i].gt===1) return rows[i]; return rows[0]||{}; }
+function c(h,f,fm,tip){ return {h:h,f:f,fmt:fm,tip:tip}; }
+function I(v){return fmt(v,0);} function D1(v){return fmt(v,1);} function D2(v){return fmt(v,2);} function D3(v){return fmt(v,3);}
+function P0(v){return pct(v,0);} function P1(v){return pct(v,1);}
+function z(rows){ return rows.map(function(r){ r.gt=0; return r; }); }
+
+var K = {
+  taux_reel: function(r){return div(r.bs_reel,r.heures_rue);},
+  transfo: function(r){return div(r.bs_reel,r.bs_rue);},
+  don_moyen: function(r){return div(r.montant_valide,r.bs_reel);},
+  age_moyen: function(r){return div(r.somme_age,r.nb_age);},
+  pct25: function(r){return div(r.nb_moins_25,r.nb_age);},
+  score: function(r){ var d=div(r.montant_valide,r.bs_reel), p=div(r.nb_moins_25,r.nb_age); return (d==null||p==null)?null:d*(1-p); },
+  ratio_h: function(r){return div(r.heures_rue,r.heures_rem);},
+  presence: function(r){ var v=div(r.jours_presents,r.jours_retenus); return v==null?null:Math.min(1,v); },
+  absence_code: function(r){return div(r.jours_absence_code,r.jours_retenus);},
+  pct_absence: function(r){ var v=div(r.jours_presents,r.nb_lots); return v==null?null:1-v; },
+  absenteisme: function(r){ var a=num(r.jours_absence_hors_am), p=num(r.jours_presents); if(a==null||p==null) return null; var d=a+p; return d? a/d : null; },
+  presence_rd: function(r){return div(r.rd_presents,r.rd_attendus);},
+  completion: function(r){return div(r.lots_emplacement,r.nb_lots);},
+  bs_jour: function(r){return div(r.bs_reel,r.nb_jours_activite);}
+};
+function nz(k){ return function(r){return num(r[k]);}; }
+
+function renderSynth(core){
+  var t=totalRow(core.rows);
+  var out=tiles([['BS réel',fmt(t.bs_reel)],['Heures de rue',fmt(t.heures_rue,0)],['Taux réel',D3(K.taux_reel(t))],['Transformation',P0(K.transfo(t))],['Don moyen',D2(K.don_moyen(t))+' €'],['Score qualité',D2(K.score(t))],['Missions',fmt(t.nb_missions)],['Lots',fmt(t.nb_lots)]]);
+  out+=table('Indicateurs clés',[
+    c('Missions',nz('nb_missions'),I,'Missions différentes ayant au moins une journée de travail'),
+    c('Lots',nz('nb_lots'),I,'Journées de travail'),
+    c('Jours d’activité',nz('nb_jours_activite'),I,'Dates différentes avec du travail'),
+    c('BS réel',nz('bs_reel'),I,'Dons valides (nouveau, en attente, transmis)'),
+    c('BS rue',nz('bs_rue'),I,'Valides + incomplets + annulés'),
+    c('Heures rue',nz('heures_rue'),I,'Heures de rue (0 si recruteur absent)'),
+    c('Taux réel',K.taux_reel,D3,'BS réel ÷ heures de rue'),
+    c('Transfo',K.transfo,P0,'BS réel ÷ BS rue'),
+    c('Montant validé (€)',nz('montant_valide'),I,'Somme des montants des dons valides'),
+    c('Don moyen',K.don_moyen,D2,'€'),
+    c('Score qualité',K.score,D2,'Don moyen × (1 − part des −25 ans)'),
+    c('BS / jour',K.bs_jour,D1,'BS réel ÷ jours d’activité')
+  ],core.rows);
+  return out;
+}
+function hfmt(v){ if(v==null) return fmt(null); var h=Math.floor(v), m=Math.round((v-h)*60); if(m===60){h++;m=0;} return (h<10?'0':'')+h+'h'+(m<10?'0':'')+m; }
+function renderHeures(core,hor){
+  var hm={}; (hor.rows||[]).forEach(function(r){hm[keyOf(r)]=r;});
+  var hf=function(k){return function(r){var x=hm[keyOf(r)]; return x?num(x[k]):null;};};
+  return table('Heures, présence et équipe',[
+    c('Heures rém.',nz('heures_rem'),I,'Heures rémunérées sur journées présentes'),
+    c('Heures rue',nz('heures_rue'),I,''),
+    c('Ratio h',K.ratio_h,P1,'Heures de rue ÷ heures rémunérées'),
+    c('Taux de présence',K.presence,P1,'Journées présentes ÷ journées prévues (100 % max)'),
+    c('% absence',K.pct_absence,P1,'100 % − présence (journées sans heure rémunérée)'),
+    c('Taux d’absence',K.absence_code,P1,'Absences avec code renseigné ÷ journées prévues (codes ignorés écartés)'),
+    c('Absentéisme',K.absenteisme,P1,'Absences hors maladie ÷ (présences + absences hors maladie)'),
+    c('Présence RD',K.presence_rd,P1,'RD présents ÷ RD attendus'),
+    c('Recruteurs',nz('nb_recruteurs'),I,'RE compris'),
+    c('RD',nz('nb_rd'),I,'Hors RE'),
+    c('RE',nz('nb_re'),I,''),
+    c('Complétion empl.',K.completion,P1,'Lots avec emplacement renseigné'),
+    c('1er BS (moy.)',hf('h_premier'),hfmt,'Heure moyenne du premier don valide du jour (Paris)'),
+    c('Dernier BS (moy.)',hf('h_dernier'),hfmt,'Heure moyenne du dernier don valide du jour (Paris)')
+  ],core.rows);
+}
+function renderDonateurs(core){
+  var gs=function(r){return num(r.g_h)+num(r.g_f)+num(r.g_autre);};
+  return table('Donateurs (dons valides)',[
+    c('Âge médian',nz('age_median'),D1,''),
+    c('Âge moyen',K.age_moyen,D1,'Somme des âges ÷ nb de donateurs avec date de naissance'),
+    c('% −25 ans',K.pct25,P1,'Part des donateurs de moins de 25 ans au jour du don'),
+    c('18-20',nz('t_18_20'),I,''), c('21-25',nz('t_21_25'),I,''), c('26-35',nz('t_26_35'),I,''),
+    c('36-50',nz('t_36_50'),I,''), c('51+',nz('t_51p'),I,''),
+    c('Autre / inconnu',nz('t_autre'),I,'Âge inconnu ou < 18 ans'),
+    c('% Hommes',function(r){return div(r.g_h,gs(r));},P1,''),
+    c('% Femmes',function(r){return div(r.g_f,gs(r));},P1,''),
+    c('% Autre/NC',function(r){return div(r.g_autre,gs(r));},P1,'')
+  ],core.rows);
+}
+function renderDons(d){
+  var gl=groupLabels();
+  var out=table('Volume de dons par statut',[
+    c('Nouveau',nz('n_nouveau'),I,''), c('En attente',nz('n_en_attente'),I,''), c('Transmis',nz('n_transmis'),I,''),
+    c('Incomplet',nz('n_incomplet'),I,''), c('Annulé',nz('n_annule'),I,''),
+    c('CozApp',nz('n_cozapp'),I,'Dons saisis dans CozApp'),
+    c('Ancien BO',nz('n_bo'),I,'Dons de l’ancien back-office'),
+    c('Dépôts',nz('n_deposes'),I,'Dons avec une date de transmission'),
+    c('Facturables',nz('n_facturables'),I,'Transmis hors ancien BO'),
+    c('Montant validé (€)',nz('montant_valide'),I,'')
+  ],d.statuts);
+  out+=table('Facturation par type de don',[c('Nb dons transmis',nz('nb'),I,'')],z(d.facturation||[]),{labelCol:'Groupe · type de don',labelFn:function(r){
+    var pre=[r.g1,r.g2].slice(0,gl.length).map(function(x){return x==null?'—':x;}).join(' · ');
+    return (pre?pre+' — ':'')+r.type_de_don;
+  }});
+  return out;
+}
+function renderSuspects(s){
+  var out=table('Dons suspects',[
+    c('Dons contrôlés',nz('nb_controles'),I,'Dons valides + annulés'),
+    c('Dons suspects',nz('nb_suspects'),I,'Dès qu’un des 14 contrôles se déclenche ; « donateur multiple » seulement au-delà de 5 dons'),
+    c('% suspects',function(r){return div(r.nb_suspects,r.nb_controles);},P1,'')
+  ],s.groupes);
+  out+=table('Répartition par motif',[c('Nb dons',nz('nb'),I,'')],z(s.motifs||[]),{labelCol:'Motif',labelKey:'motif'});
+  return out;
+}
+function renderRh(r0){
+  return '<div class="note">Les dimensions de temps (année, mois, semaine, index) portent ici sur la date de début des contrats. <span class="nd">Candidatures (TeamTailor) : non disponible dans la base.</span></div>'+
+  table('RH et contrats',[
+    c('Contrats',nz('nb_contrats'),I,'Recrutements : contrats commençant sur la période'),
+    c('Salariés',nz('nb_salaries'),I,''),
+    c('Missions',nz('nb_missions'),I,''),
+    c('FPE',nz('nb_fpe'),I,'Contrats avec avenant de fin de période d’essai publié'),
+    c('Taux de FPE',function(r){return div(r.nb_fpe,r.nb_contrats);},P1,''),
+    c('FPE employeur',function(r){return div(r.nb_fpe_employeur,r.nb_contrats);},P1,''),
+    c('FPE salarié',function(r){return div(r.nb_fpe_salarie,r.nb_contrats);},P1,''),
+    c('RD',nz('g_rd'),I,'Salariés (grade du contrat)'), c('RDC',nz('g_rdc'),I,''), c('RDE',nz('g_rde'),I,''), c('RE',nz('g_re'),I,''),
+    c('Anciens (≥3 missions)',nz('nb_anciens'),I,''), c('Nouveaux',nz('nb_nouveaux'),I,'')
+  ],r0.rows);
+}
+function renderMissions(m){
+  var t=function(k,h){return c(h,function(r){return r[k];},txt);};
+  return '<div class="note">500 missions maximum (les plus récentes). Une ligne = une mission : le regroupement ne s’applique pas ici.</div>'+table('Missions',[
+    t('mission','Mission'),t('asso','Asso'),t('ville','Ville'),t('format_mission','Format'),t('type_mission','Type'),t('cat_ville','Cat.'),t('lv_ms','LV/MS'),t('rm','RM'),t('re','RE'),t('jour_depart','Départ'),t('jour_fin','Fin'),
+    c('Lots',nz('nb_lots'),I,''), c('Recruteurs',nz('nb_recruteurs'),I,''), c('Heures rue',nz('heures_rue'),I,''),
+    c('BS réel',nz('bs_reel'),I,''), c('BS rue',nz('bs_rue'),I,''),
+    c('Taux réel',K.taux_reel,D3,'BS réel ÷ heures de rue'),
+    c('Objectif',nz('objectif'),I,'Objectif théorique de bulletins'),
+    c('BS cumulés',nz('bs_cumul'),I,'Tous les dons valides depuis le début de la mission'),
+    c('% atteint',function(r){return div(r.bs_cumul,r.objectif);},P0,'BS cumulés ÷ objectif'),
+    c('Jours échus / total',function(r){return r.jours_echus==null?null:r.jours_echus+' / '+r.jours_total;},txt,'Jours de mission écoulés'),
+    c('Délai complétion (j)',nz('delai_completion'),I,'Jours entre le début de la mission et l’arrivée du dernier recruteur')
+  ],z(m.rows),{noGroup:true});
+}
+function renderSalaries(s){
+  var t=function(k,h){return c(h,function(r){return r[k];},txt);};
+  return '<div class="note">500 salariés maximum, triés par BS réel. Une ligne = un salarié sur une mission (au moins un jour présent).</div>'+table('Salariés',[
+    t('salarie','Salarié'),t('mission','Mission'),t('asso','Asso'),t('statut_rd','Statut'),
+    c('Jours présents',nz('jours_presence'),I,''), c('Heures rém.',nz('heures_rem'),D1,''), c('Heures rue',nz('heures_rue'),D1,''),
+    c('Ratio h',K.ratio_h,P1,''), c('BS réel',nz('bs_reel'),I,''), c('BS rue',nz('bs_rue'),I,''),
+    c('Taux réel',K.taux_reel,D3,''), c('Transfo',K.transfo,P0,''), c('Don moyen',K.don_moyen,D2,'')
+  ],z(s.rows),{noGroup:true});
+}
+function renderEmpl(e){
+  var base=[c('Jours',nz('nb_jours'),I,''),c('Heures rue',nz('heures_rue'),I,''),c('BS réel',nz('bs_reel'),I,''),c('Taux réel',K.taux_reel,D3,'Dons ÷ heures cumulés')];
+  var dow=['','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'], mo=['','Janv.','Févr.','Mars','Avr.','Mai','Juin','Juil.','Août','Sept.','Oct.','Nov.','Déc.'];
+  var out='<div class="note">Les filtres s’appliquent comme ailleurs ; le regroupement ne s’applique pas à cet onglet. Les sites sans heures de rue sont écartés (200 sites max.).</div>';
+  out+=table('Classement des sites (par taux réel)',[c('Ville',function(r){return r.ville_site;},txt),c('Catégorie',function(r){return r.categorie;},txt),c('Jours',nz('nb_jours'),I,''),c('Missions',nz('nb_missions'),I,''),c('Heures rue',nz('heures_rue'),I,''),c('BS réel',nz('bs_reel'),I,''),c('Taux réel',K.taux_reel,D3,'')],z(e.sites||[]),{labelCol:'Site',labelKey:'nom'});
+  out+=table('Par jour de semaine',base,z(e.jours_semaine||[]),{labelCol:'Jour',labelFn:function(r){return dow[r.dow];}});
+  out+=table('Par mois',base,z(e.mois||[]),{labelCol:'Mois',labelFn:function(r){return mo[r.mois];}});
+  out+=table('Par catégorie d’emplacement',base,z(e.categories||[]),{labelCol:'Catégorie',labelKey:'categorie'});
+  return out;
+}
+function renderMob(m){
+  var r=(m.rows&&m.rows[0])||{};
+  var d=num(r.visites)-num(r.non_conforme);
+  return '<div class="note">Mobilisation (porte-à-porte) : seules les dimensions de mission s’appliquent (asso, mission, ville, dates de départ/fin, LV/MS, RM, format, type, RE, catégorie). Les dimensions de temps et le regroupement sont sans effet ici.</div>'+
+  tiles([['Missions',fmt(r.nb_missions)],['Visites',fmt(r.visites)],['Portes ouvertes',fmt(r.porte_ouverte)],['Taux de rencontre',pct(d>0?num(r.porte_ouverte)/d:null,1)],['Taux de traitement',pct(div(r.visites,r.theorique),1)],['Passages / logement',fmt(div(r.passages,r.visites),2)],['Logements théoriques',fmt(r.theorique)],['Logements trouvés',fmt(r.trouves)],['Non conformes',fmt(r.non_conforme)],['Repasses',fmt(r.repasse)],['Absents',fmt(r.absent)]]);
+}
+
+var TABS=[['synth','Synthèse'],['heures','Heures & présence'],['donateurs','Donateurs'],['dons','Dons & facturation'],['suspects','Dons suspects'],['rh','RH'],['missions','Missions'],['salaries','Salariés'],['empl','Emplacements'],['mob','Mobilisation']];
+function drawTabs(){
+  var el=document.getElementById('tabs'); el.innerHTML='';
+  TABS.forEach(function(t){ var d=document.createElement('div'); d.className='tab'+(t[0]===tab?' on':''); d.textContent=t[1]; d.onclick=function(){tab=t[0]; drawTabs(); load();}; el.appendChild(d); });
+}
+function load(){
+  var main=document.getElementById('main'); main.innerHTML='<div class="empty">Chargement…</div>'; lastExport=[];
+  var p;
+  if(tab==='synth') p=getSection('core').then(renderSynth);
+  else if(tab==='heures') p=getSection('core').then(function(core){ return getSection('horaires').then(function(h){return renderHeures(core,h);}); });
+  else if(tab==='donateurs') p=getSection('core').then(renderDonateurs);
+  else if(tab==='dons') p=getSection('dons').then(renderDons);
+  else if(tab==='suspects') p=getSection('suspects').then(renderSuspects);
+  else if(tab==='rh') p=getSection('rh').then(renderRh);
+  else if(tab==='missions') p=getSection('missions').then(renderMissions);
+  else if(tab==='salaries') p=getSection('salaries').then(renderSalaries);
+  else if(tab==='empl') p=getSection('emplacements').then(renderEmpl);
+  else p=getSection('mobilisation').then(renderMob);
+  var myTab=tab;
+  p.then(function(html){ if(myTab!==tab) return; main.innerHTML=html+defs(); stamp(); }).catch(function(e){ if(myTab!==tab) return; main.innerHTML='<div class="err">Erreur : '+esc(e.message||e)+'</div>'; });
+}
+function stamp(){ document.getElementById('sync').innerHTML='Mis à jour à <b>'+new Date().toLocaleTimeString('fr-FR')+'</b> · filtres : '+esc(decodeURIComponent(qs())||'aucun'); }
+function defs(){
+  return '<details class="defs"><summary>Définitions et limites</summary><ul>'+
+  '<li><b>Don valide</b> = nouveau, en attente ou transmis ; <b>BS rue</b> = valides + incomplets + annulés. Lots futurs ignorés ; heures non déclarées ignorées le jour même ; clients de test et missions de mobilisation exclus (sauf onglet Mobilisation).</li>'+
+  '<li><b>LV / MS</b> : mission lundi-vendredi ou mardi-samedi d’après ses jours de travail. <b>Catégorie ville (street)</b> : grille Cat. 1 à 4 des questions Metabase « DASHBOARDS ANNE » ; « Hors grille » = ville street absente de la grille, « Hors street » = autre format.</li>'+
+  '<li><b>Statut RD</b> : grade du contrat du salarié sur la mission (RDE+ compté en RDE ; RE/RER/RERF/REF comptés en RE).</li>'+
+  '<li><b>Index</b> : jours depuis le 1er janvier 2025 ; semaines depuis le lundi 30/12/2024 ; jour / semaine de mission depuis le jour de départ ; index des heures = heure Paris du don (n’affecte que les indicateurs basés sur les dons).</li>'+
+  '<li>Les taux sont calculés sur des totaux (on additionne puis on divise), jamais en moyenne de taux. Détail des formules : NOTE-INDICATEURS.md.</li>'+
+  '<li>Non disponible : candidatures TeamTailor (absentes de la base) ; classements « top » du challenge (remplacés par l’onglet Salariés).</li></ul></details>';
+}
+function csvExport(){
+  if(!lastExport.length) return;
+  var out=[];
+  lastExport.forEach(function(t){ out.push('"'+t.title.replace(/"/g,'""')+'"'); t.rows.forEach(function(r){ out.push(r.map(function(v){return '"'+String(v==null?'':v).replace(/"/g,'""')+'"';}).join(';')); }); out.push(''); });
+  var blob=new Blob(['﻿'+out.join('\n')],{type:'text/csv;charset=utf-8'});
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='anne-'+tab+'.csv'; a.click();
+}
+
+document.addEventListener('DOMContentLoaded',function(){
+  buildFilters(); drawTabs();
+  document.getElementById('apply').onclick=function(){ load(); };
+  document.getElementById('reset').onclick=function(){
+    state.lists={}; LIST_DIMS.forEach(function(d){drawChips(d[0]);});
+    document.querySelectorAll('[data-df],[data-nf]').forEach(function(i){i.value='';});
+    document.getElementById('grp1').value=''; document.getElementById('grp2').value=''; load();
+  };
+  document.getElementById('csv').onclick=csvExport;
+  fetch('/api/anne?section=facets').then(function(r){return r.json();}).then(function(j){
+    (j.rows||[]).forEach(function(r){ (facets[r.k]=facets[r.k]||[]).push(r.v); });
+    fillDatalists();
+  }).catch(function(){});
+  load();
+});
+</script>
+</body>
+</html>

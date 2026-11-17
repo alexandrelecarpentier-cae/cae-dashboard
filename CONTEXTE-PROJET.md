@@ -38,6 +38,7 @@ Un Worker Cloudflare unique qui sert ~17 dashboards internes (RH, suivi de missi
 | `re-mobilisation.html`        | `/api/re-mobilisation`                         | `sql-mobilisation.js` |
 | `rd-mobilisation.html`        | `/api/rd-mobilisation`                         | `sql-mobilisation.js` |
 | `challenge.html`              | `/api/challenge`                               | `sql-challenge.js` |
+| `anne.html`                   | `/api/anne?section=...`                        | `sql-anne.js` (base commune + GROUPING SETS, 10 sections) |
 | `rm.html`                     | `/api/rm-missions`                             | — (carte Metabase 514 en dur, pas de SQL du projet) |
 | `index.html`                  | — (page d'accueil)                             | — |
 | `all.html`                    | — (index des dashboards, liens d'exemple)      | — |

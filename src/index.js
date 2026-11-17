@@ -50,6 +50,7 @@ import {
 import { buildDirectionQueries, buildClientListQuery as buildDirectionClientListQuery, buildSalariesContratActifQuery } from './lib/sql-direction.js';
 import { isExcludedClient, buildMissionClientQuery, EXCLUDED_CLIENT_NAMES } from './lib/excluded-clients.js';
 import { DIRECTION_SUIVI_SECTIONS, GRAINS as DIRECTION_SUIVI_GRAINS } from './lib/sql-direction-suivi.js';
+import { buildAnneQueries, parseAnneParams, ANNE_SECTIONS } from './lib/sql-anne.js';
 import { isPlanningPath, guardPlanning } from './lib/planning-auth.js';
 import { handleRhSuivi, handleRhExport, handleRhValues } from './lib/rh-cards.js';
 
@@ -93,6 +94,7 @@ export default {
       if (url.pathname === '/api/site-prive-calendrier') return await handleSitePriveCalendrier(url, env);
       if (url.pathname === '/api/assistant-site-prive') return await handleAssistantSitePrive(url, env);
       if (url.pathname === '/api/rh') return await handleRh(url, env);
+      if (url.pathname === '/api/anne') return await handleAnne(url, env);
       if (url.pathname === '/api/direction') return await handleDirection(url, env);
       if (url.pathname === '/api/direction-salaries') return await handleDirectionSalaries(env);
       if (url.pathname === '/api/direction-suivi') return await handleDirectionSuivi(url, env, ctx);
@@ -1034,6 +1036,31 @@ async function handleRh(url, env) {
       candidaturesParSemaine,
       candidaturesParMois,
     });
+  } catch (e) {
+    return jsonResponse({ error: String(e.message || e) }, 502);
+  }
+}
+
+// /api/anne — dashboard "Anne" (anne.html) : tous les indicateurs de
+// NOTE-INDICATEURS.md, filtrables/regroupables sur les mêmes dimensions.
+// Un onglet = une section (?section=...). Requêtes exécutées l'une après
+// l'autre (saturation du pool Metabase).
+// ---------------------------------------------------------------
+async function handleAnne(url, env) {
+  const configError = requireConfig(env);
+  if (configError) return jsonResponse({ error: configError }, 500);
+
+  const section = url.searchParams.get('section') || 'core';
+  if (!ANNE_SECTIONS.includes(section)) return jsonResponse({ error: 'section invalide' }, 400);
+
+  const p = parseAnneParams(url);
+  if (p.error) return jsonResponse({ error: p.error }, 400);
+
+  const queries = buildAnneQueries(section, p);
+  try {
+    const out = {};
+    for (const [name, sql] of Object.entries(queries)) out[name] = await runQuery(env, sql);
+    return jsonResponse({ section, group: p.group, ...out });
   } catch (e) {
     return jsonResponse({ error: String(e.message || e) }, 502);
   }

@@ -84,7 +84,7 @@ order by m.date_debut desc nulls last;`;
 function buildPerformanceParMissionQuery(id_utilisateur) {
   return `with u as (select '${id_utilisateur}'::uuid as id),
 lots_u as (
-  select l.id, l.mission_id, case when l.presence_recruteur is distinct from false then l.nombre_horaires_rue else 0 end as nombre_horaires_rue, l.nombre_horaires_remuneration, l.heures_remuneration_completes, (coalesce(l.nombre_horaires_remuneration, 0) = 0 and coalesce(ta.code in ${CODES_ABSENCE_IGNORES}, false)) as absence_ignoree
+  select l.id, l.mission_id, case when l.presence_recruteur is distinct from false then l.nombre_horaires_rue else 0 end as nombre_horaires_rue, l.nombre_horaires_remuneration, l.heures_remuneration_completes, (coalesce(l.nombre_horaires_remuneration, 0) = 0 and coalesce(ta.code in ${CODES_ABSENCE_IGNORES}, false)) as absence_ignoree, (ta.code is not null) as a_code_absence
   from lots l
   join u on l.utilisateur_id = u.id
   join missions m on m.id = l.mission_id
@@ -106,7 +106,7 @@ heures as (
     count(*) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0) as jours_presence,
     count(*) as nb_lots,
     count(*) filter (where not absence_ignoree) as jours_retenus,
-    count(*) filter (where not absence_ignoree and coalesce(nombre_horaires_remuneration, 0) = 0) as jours_absence
+    count(*) filter (where not absence_ignoree and a_code_absence and coalesce(nombre_horaires_remuneration, 0) = 0) as jours_absence
   from lots_u group by 1
 ),
 dons_u as (
@@ -166,7 +166,7 @@ ms as (
   select l.mission_id from lots l join u on l.utilisateur_id = u.id
 ),
 lots_u as (
-  select l.id, case when l.presence_recruteur is distinct from false then l.nombre_horaires_rue else 0 end as nombre_horaires_rue, l.nombre_horaires_remuneration, l.heures_remuneration_completes, (coalesce(l.nombre_horaires_remuneration, 0) = 0 and coalesce(ta.code in ${CODES_ABSENCE_IGNORES}, false)) as absence_ignoree
+  select l.id, case when l.presence_recruteur is distinct from false then l.nombre_horaires_rue else 0 end as nombre_horaires_rue, l.nombre_horaires_remuneration, l.heures_remuneration_completes, (coalesce(l.nombre_horaires_remuneration, 0) = 0 and coalesce(ta.code in ${CODES_ABSENCE_IGNORES}, false)) as absence_ignoree, (ta.code is not null) as a_code_absence
   from lots l
   join u on l.utilisateur_id = u.id
   join missions m on m.id = l.mission_id
@@ -186,7 +186,7 @@ heures as (
     sum(nombre_horaires_remuneration) filter (where coalesce(nombre_horaires_remuneration, 0) <> 0 ) as heures_remuneration_total,
     count(*) as nb_lots_total,
     count(*) filter (where not absence_ignoree) as jours_retenus_total,
-    count(*) filter (where not absence_ignoree and coalesce(nombre_horaires_remuneration, 0) = 0) as jours_absence_total
+    count(*) filter (where not absence_ignoree and a_code_absence and coalesce(nombre_horaires_remuneration, 0) = 0) as jours_absence_total
   from lots_u
 ),
 dons_u as (
@@ -281,4 +281,4 @@ function buildSalarieQueries(id_utilisateur) {
   };
 }
 
-export { buildSalarieQueries };
+export { buildSalarieQueries, CODES_ABSENCE_IGNORES };
