@@ -127,11 +127,11 @@ const timeDims = (d, s) => `extract(year FROM ${d})::int AS annee,
 // Villes connues (code = 3 dernières lettres du code mission) et catégorie de
 // ville street : même grille que les questions Metabase "DASHBOARDS ANNE".
 const VILLES = [
-  ['PAR', 'PARIS', 'Cat. 1'], ['LYO', 'LYON', 'Cat. 1'], ['BOR', 'BORDEAUX', 'Cat. 1'], ['TOU', 'TOULOUSE', 'Cat. 1'],
+  ['PAR', 'PARIS', 'Hors street'], ['LYO', 'LYON', 'Cat. 1'], ['BOR', 'BORDEAUX', 'Cat. 1'], ['TOU', 'TOULOUSE', 'Cat. 1'],
   ['NAN', 'NANTES', 'Cat. 1'], ['LIL', 'LILLE', 'Cat. 1'], ['STR', 'STRASBOURG', 'Cat. 1'], ['MAR', 'MARSEILLE', 'Cat. 1'],
   ['GRE', 'GRENOBLE', 'Cat. 2'], ['NIC', 'NICE', 'Cat. 2'], ['REN', 'RENNES', 'Cat. 2'], ['MON', 'MONTPELLIER', 'Cat. 2'],
   ['DIJ', 'DIJON', 'Cat. 3'], ['ANG', 'ANGERS', 'Cat. 3'], ['MET', 'METZ', 'Cat. 3'], ['ROU', 'ROUEN', 'Cat. 3'],
-  ['CLE', 'CLERMONT-FERRAND', 'Cat. 4'], ['ANN', 'ANNECY', 'Cat. 4'], ['CAE', 'CAEN', 'Cat. 4'], ['TRS', 'TOURS', 'Cat. 4'],
+  ['CLE', 'CLERMONT-FERRAND', 'Cat. 4'], ['RUN', 'LA RÉUNION', 'Hors grille'], ['TLS', 'TOULOUSE', 'Cat. 1'], ['PAU', 'PAU', 'Hors grille'], ['BAY', 'BAYONNE', 'Hors grille'], ['LIM', 'LIMOGES', 'Hors grille'], ['ANN', 'ANNECY', 'Cat. 4'], ['CAE', 'CAEN', 'Cat. 4'], ['TRS', 'TOURS', 'Cat. 4'],
 ];
 
 // Missions du périmètre (filtres de niveau mission appliqués).
@@ -143,7 +143,7 @@ function misCtes(p, { mobilisation = false } = {}) {
 mis_raw AS (
   SELECT m.id AS mission_id, m.code_mission AS mission, m.client_id, c.nom AS asso,
     m.date_debut AS jour_depart, m.date_fin AS jour_fin,
-    coalesce(nullif(upper(trim(m.ville_principale)), ''), vm.nom, upper(right(m.code_mission, 3))) AS ville,
+    coalesce(vm.nom, nullif(upper(trim(m.ville_principale)), ''), 'NON RENSEIGNÉE') AS ville,
     CASE WHEN array_to_string(m.jours, ',') ILIKE '%lundi%' AND array_to_string(m.jours, ',') NOT ILIKE '%samedi%' THEN 'LV'
       WHEN array_to_string(m.jours, ',') ILIKE '%samedi%' AND array_to_string(m.jours, ',') NOT ILIKE '%lundi%' THEN 'MS'
       WHEN coalesce(array_to_string(m.jours, ','), '') = '' THEN 'Non renseigné' ELSE 'Autre' END AS lv_ms,
@@ -157,7 +157,7 @@ mis_raw AS (
     m.objectif_bulletin_theorique AS objectif
   FROM missions m
   JOIN clients c ON c.id = m.client_id
-  LEFT JOIN vm ON vm.code = upper(right(m.code_mission, 3))
+  LEFT JOIN vm ON vm.code = upper(right(regexp_replace(m.code_mission, '(SP|HYB)$', ''), 3))
   LEFT JOIN utilisateurs u_rm ON u_rm.id = m.responsable_mission_id
   LEFT JOIN utilisateur_informations_personnelles uip_rm ON uip_rm.utilisateur_id = m.responsable_mission_id
   LEFT JOIN utilisateurs u_re ON u_re.id = m.responsable_equipe_id
