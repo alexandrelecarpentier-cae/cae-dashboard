@@ -80,3 +80,5 @@ Taux réel : 3 décimales · taux de transformation : sans décimale · ratio h,
 - `/client` ignore la journée en cours, d'où un petit écart de taux réel avec les autres dashboards en cours de journée.
 - Les calculs d'âge, de genre et de dons suspects de `/rd` et `/rm-collecte` ne tiennent pas encore compte de la règle « heures non déclarées ignorées le jour même » (effet limité à la journée en cours).
 - Objectifs par jour : simple approximation, la base ne contient pas d'objectif journalier.
+
+_La page `/indicateurs` est générée depuis ce fichier : après toute modification, relancer `python3 scripts/build-indicateurs.py` puis commit._
