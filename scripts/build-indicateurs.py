@@ -34,7 +34,26 @@ data = {
     'anne': inline(section('Dashboard /anne')),
 }
 
+# formules + exemples
+det = json.load(open(root / 'scripts' / 'indicateurs-details.json', encoding='utf-8'))
+names = [i['n'] for i in data['indicateurs']]
+missing = [n for n in names if n not in det]
+extra = [n for n in det if n not in names]
+if missing or extra: print('ATTENTION détails manquants:', missing, 'inconnus:', extra)
+for i in data['indicateurs']:
+    d = det.get(i['n'])
+    if d: i['f'] = html.escape(d['f'], quote=False); i['e'] = html.escape(d['e'], quote=False)
+
+# infobulles de /anne
+tips, seen = [], set()
+for l in open(root / 'public' / 'anne.html', encoding='utf-8'):
+    m = re.match(r"\s*c\('([^']+)',.*,'([^']+)'\),?\s*$", l)
+    if m and (m.group(1), m.group(2)) not in seen:
+        seen.add((m.group(1), m.group(2)))
+        tips.append({'l': html.escape(m.group(1), quote=False), 't': html.escape(m.group(2), quote=False)})
+data['tips'] = tips
+
 page = open(root / 'scripts' / 'indicateurs.template.html', encoding='utf-8').read()
 out = page.replace('/*__DATA__*/null', json.dumps(data, ensure_ascii=False))
 (root / 'public' / 'indicateurs.html').write_text(out, encoding='utf-8')
-print(len(rows), 'indicateurs')
+print(len(rows), 'indicateurs,', len(tips), 'infobulles')

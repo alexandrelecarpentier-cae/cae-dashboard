@@ -82,3 +82,5 @@ Taux réel : 3 décimales · taux de transformation : sans décimale · ratio h,
 - Objectifs par jour : simple approximation, la base ne contient pas d'objectif journalier.
 
 _La page `/indicateurs` est générée depuis ce fichier : après toute modification, relancer `python3 scripts/build-indicateurs.py` puis commit._
+
+Formules précises et exemples chiffrés de /indicateurs : `scripts/indicateurs-details.json` (clé = nom de l'indicateur ci-dessus). Les infobulles sont lues automatiquement dans `public/anne.html`. Régénérer avec `python3 scripts/build-indicateurs.py`.

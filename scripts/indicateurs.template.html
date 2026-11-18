@@ -24,6 +24,9 @@
   ul{padding-left:18px;margin:0;} li{margin-bottom:8px;font-size:13.5px;}
   .box{background:var(--surface-2);padding:12px 14px;font-size:13.5px;}
   .empty{text-align:center;color:var(--muted);padding:30px;font-size:13px;}
+  .fx{background:var(--surface-2);padding:6px 9px;margin:0 0 6px;font-size:13px;}
+  .fx b{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--red);margin-right:6px;}
+  table.tt{border-collapse:collapse;width:100%;font-size:13px;} table.tt td{border-bottom:1px solid var(--line);padding:5px 8px;vertical-align:top;} table.tt td:first-child{font-weight:700;white-space:nowrap;}
   mark{background:#FFE3E8;}
   nav.toc{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;margin-top:8px;}
   nav.toc a{color:var(--red);text-decoration:none;font-weight:700;}
@@ -34,7 +37,7 @@
   <h1>Indicateurs <em>◆</em> définitions</h1>
   <input type="search" id="q" placeholder="Rechercher un indicateur, un mot, un dashboard (ex. taux réel, /rd)…" autofocus>
   <div class="count" id="count"></div>
-  <nav class="toc"><a href="#regles">Règles communes</a><a href="#indic">Indicateurs</a><a href="#formats">Formats d’affichage</a><a href="#reserves">Réserves connues</a><a href="#anne">Dashboard /anne</a></nav>
+  <nav class="toc"><a href="#regles">Règles communes</a><a href="#indic">Indicateurs</a><a href="#formats">Formats d’affichage</a><a href="#reserves">Réserves connues</a><a href="#anne">Dashboard /anne</a><a href="#tips">Infobulles</a></nav>
 </header>
 <main>
   <h2 id="regles">Règles communes</h2><ul id="regles-l"></ul>
@@ -42,6 +45,7 @@
   <h2 id="formats">Formats d’affichage</h2><div class="box" id="formats-t"></div>
   <h2 id="reserves">Réserves connues</h2><ul id="reserves-l"></ul>
   <h2 id="anne">Dashboard /anne</h2><div class="box" id="anne-t"></div>
+  <h2 id="tips">Textes des infobulles (/anne)</h2><div id="tips-t"></div>
 </main>
 <script>
 (function(){
@@ -60,7 +64,7 @@ var norm = function(s){ return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]
 function render(q){
   var terms = norm(q).split(/\s+/).filter(Boolean);
   var shown = DATA.indicateurs.filter(function(i){
-    var hay = norm(i.n+' '+strip(i.d)+' '+strip(i.p));
+    var hay = norm(i.n+' '+strip(i.d)+' '+strip(i.p)+' '+(i.f||'')+' '+(i.e||''));
     return terms.every(function(t){ return hay.indexOf(t) >= 0; });
   });
   document.getElementById('count').textContent = shown.length + ' indicateur' + (shown.length>1?'s':'') + ' sur ' + DATA.indicateurs.length;
@@ -73,6 +77,13 @@ document.getElementById('reserves-l').innerHTML = DATA.reserves.map(function(r){
 document.getElementById('formats-t').innerHTML = DATA.formats;
 document.getElementById('anne-t').innerHTML = DATA.anne;
 document.getElementById('q').addEventListener('input', function(e){ render(e.target.value); });
+function renderTips(q){
+  var terms = norm(q).split(/\s+/).filter(Boolean);
+  var t = DATA.tips.filter(function(x){ var h = norm(x.l+' '+x.t); return terms.every(function(w){return h.indexOf(w)>=0;}); });
+  document.getElementById('tips-t').innerHTML = '<table class="tt">'+t.map(function(x){return '<tr><td>'+x.l+'</td><td>'+x.t+'</td></tr>';}).join('')+'</table>';
+}
+document.getElementById('q').addEventListener('input', function(e){ renderTips(e.target.value); });
+renderTips('');
 render('');
 </script>
 </body>
