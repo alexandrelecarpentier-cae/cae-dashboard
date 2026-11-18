@@ -109,9 +109,9 @@
 
 <script>
 var LIST_DIMS = [['asso','Association'],['mission','Mission'],['ville','Ville'],['lv_ms','LV / MS'],['rm','RM'],['statut_rd','Statut RD (RD, RDC, RDE, RE)'],['format','Format mission'],['type_mission','Type mission'],['re','RE'],['cat_ville','Catégorie ville (street)']];
-var DATE_DIMS = [['jour_depart','Jour de départ'],['jour_fin','Jour de fin']];
-var NUM_DIMS = [['annee','Année'],['mois','Mois'],['semaine','Semaine de l’année'],['idx_jour','Index des jours'],['idx_semaine','Index des semaines'],['idx_jour_mission','Index jour de mission'],['idx_semaine_mission','Index semaine de mission'],['heure','Index des heures (heure du don)']];
-var GROUP_DIMS = LIST_DIMS.concat(NUM_DIMS).concat([['annee_mois','Année-mois'],['jour_depart','Jour de départ'],['jour_fin','Jour de fin']]);
+var DATE_DIMS = [['jour','Jour du lot']];
+var NUM_DIMS = [['annee','Année'],['mois','Mois'],['semaine','Semaine de l’année'],['idx_jour','Index des jours (jour du mois)'],['idx_semaine','Index des semaines'],['idx_jour_mission','Index jour de mission'],['idx_semaine_mission','Index semaine de mission'],['heure','Index des heures (heure du don)']];
+var GROUP_DIMS = LIST_DIMS.concat(NUM_DIMS).concat([['annee_mois','Année-mois'],['jour','Jour du lot']]);
 var DIM_LABEL = {}; GROUP_DIMS.forEach(function(d){DIM_LABEL[d[0]]=d[1];});
 
 var state = { lists:{} };
@@ -145,7 +145,7 @@ function buildFilters(){
     inp.addEventListener('change',function(){
       var k=inp.getAttribute('data-list'), v=inp.value.trim(); if(!v) return;
       state.lists[k]=state.lists[k]||[]; if(state.lists[k].indexOf(v)<0) state.lists[k].push(v);
-      inp.value=''; drawChips(k);
+      inp.value=''; drawChips(k); refreshFacets();
     });
   });
 }
@@ -153,9 +153,21 @@ function drawChips(k){
   var el=document.getElementById('ch_'+k); el.innerHTML='';
   (state.lists[k]||[]).forEach(function(v,i){
     var c=document.createElement('span'); c.className='chip'; c.textContent=v;
-    c.onclick=function(){ state.lists[k].splice(i,1); drawChips(k); };
+    c.onclick=function(){ state.lists[k].splice(i,1); drawChips(k); refreshFacets(); };
     el.appendChild(c);
   });
+}
+var facTimer=null, facSeq=0;
+function refreshFacets(){
+  clearTimeout(facTimer);
+  facTimer=setTimeout(function(){
+    var my=++facSeq, p=new URLSearchParams(qs()); p.delete('group'); p.set('section','facets');
+    fetch('/api/anne?'+p.toString()).then(function(r){return r.json();}).then(function(j){
+      if(my!==facSeq||j.error) return;
+      facets={}; (j.rows||[]).forEach(function(r){ (facets[r.k]=facets[r.k]||[]).push(r.v); });
+      fillDatalists();
+    }).catch(function(){});
+  },250);
 }
 function fillDatalists(){
   Object.keys(facets).forEach(function(k){
@@ -482,7 +494,7 @@ function renderEmpl(e){
 function renderMob(m){
   var r=(m.rows&&m.rows[0])||{};
   var d=num(r.visites)-num(r.non_conforme);
-  return '<div class="note">Mobilisation (porte-à-porte) : seules les dimensions de mission s’appliquent (asso, mission, ville, dates de départ/fin, LV/MS, RM, format, type, RE, catégorie). Les dimensions de temps et le regroupement sont sans effet ici.</div>'+
+  return '<div class="note">Mobilisation (porte-à-porte) : seules les dimensions de mission s’appliquent (asso, mission, ville, LV/MS, RM, format, type, RE, catégorie). Les dimensions de temps et le regroupement sont sans effet ici.</div>'+
   tiles([['Missions',fmt(r.nb_missions)],['Visites',fmt(r.visites)],['Portes ouvertes',fmt(r.porte_ouverte)],['Taux de rencontre',pct(d>0?num(r.porte_ouverte)/d:null,1)],['Taux de traitement',pct(div(r.visites,r.theorique),1)],['Passages / logement',fmt(div(r.passages,r.visites),2)],['Logements théoriques',fmt(r.theorique)],['Logements trouvés',fmt(r.trouves)],['Non conformes',fmt(r.non_conforme)],['Repasses',fmt(r.repasse)],['Absents',fmt(r.absent)]]);
 }
 
@@ -513,8 +525,8 @@ function defs(){
   return '<details class="defs"><summary>Définitions et limites</summary><ul>'+
   '<li><b>Don valide</b> = nouveau, en attente ou transmis ; <b>BS rue</b> = valides + incomplets + annulés. Lots futurs ignorés ; heures non déclarées ignorées le jour même ; clients de test et missions de mobilisation exclus (sauf onglet Mobilisation).</li>'+
   '<li><b>LV / MS</b> : mission lundi-vendredi ou mardi-samedi d’après ses jours de travail. <b>Catégorie ville (street)</b> : grille Cat. 1 à 4 des questions Metabase « DASHBOARDS ANNE » ; « Hors grille » = ville street absente de la grille, « Hors street » = autre format.</li>'+
-  '<li><b>Statut RD</b> : grade du contrat du salarié sur la mission (RDE+ compté en RDE ; RE/RER/RERF/REF comptés en RE).</li>'+
-  '<li><b>Index</b> : jours depuis le 1er janvier 2025 ; semaines depuis le lundi 30/12/2024 ; jour / semaine de mission depuis le jour de départ ; index des heures = heure Paris du don (n’affecte que les indicateurs basés sur les dons).</li>'+
+  '<li><b>Jour du lot</b> : date de la journée de travail (un lot = un recruteur sur une journée). Les listes de filtres se restreignent automatiquement selon les autres filtres de mission choisis.</li><li><b>Statut RD</b> : grade du contrat du salarié sur la mission (RDE+ compté en RDE ; RE/RER/RERF/REF comptés en RE).</li>'+
+  '<li><b>Index</b> : index des jours = jour du mois (1 à 31) ; index des semaines = semaines depuis le lundi 30/12/2024 ; jour / semaine de mission depuis le jour de départ ; index des heures = heure Paris du don : seuls les indicateurs basés sur les dons sont répartis par heure (heures, présence et équipes restent dans la ligne Total).</li>'+
   '<li>Les taux sont calculés sur des totaux (on additionne puis on divise), jamais en moyenne de taux. Détail des formules : NOTE-INDICATEURS.md.</li>'+
   '<li>Non disponible : candidatures TeamTailor (absentes de la base) ; classements « top » du challenge (remplacés par l’onglet Salariés).</li></ul></details>';
 }
@@ -534,13 +546,11 @@ document.addEventListener('DOMContentLoaded',function(){
   document.getElementById('reset').onclick=function(){
     state.lists={}; LIST_DIMS.forEach(function(d){drawChips(d[0]);});
     document.querySelectorAll('[data-df],[data-nf]').forEach(function(i){i.value='';});
-    document.getElementById('grp1').value=''; document.getElementById('grp2').value=''; load();
+    document.getElementById('grp1').value=''; document.getElementById('grp2').value=''; refreshFacets(); load();
   };
   document.getElementById('csv').onclick=csvExport;
-  fetch('/api/anne?section=facets').then(function(r){return r.json();}).then(function(j){
-    (j.rows||[]).forEach(function(r){ (facets[r.k]=facets[r.k]||[]).push(r.v); });
-    fillDatalists();
-  }).catch(function(){});
+  document.querySelectorAll('[data-df]').forEach(function(i){ i.addEventListener('change',refreshFacets); });
+  refreshFacets();
   load();
 });
 </script>

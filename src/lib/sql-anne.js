@@ -30,8 +30,7 @@ export const DIMS = {
   asso:        { label: 'Association',                kind: 'list',  level: 'mission', col: 'asso' },
   mission:     { label: 'Mission',                    kind: 'list',  level: 'mission', col: 'mission' },
   ville:       { label: 'Ville',                      kind: 'list',  level: 'mission', col: 'ville' },
-  jour_depart: { label: 'Jour de départ',             kind: 'date',  level: 'mission', col: 'jour_depart' },
-  jour_fin:    { label: 'Jour de fin',                kind: 'date',  level: 'mission', col: 'jour_fin' },
+  jour:        { label: 'Jour du lot',                kind: 'date',  level: 'lot',     col: 'jour' },
   lv_ms:       { label: 'LV / MS',                    kind: 'list',  level: 'mission', col: 'lv_ms' },
   rm:          { label: 'RM',                         kind: 'list',  level: 'mission', col: 'rm' },
   statut_rd:   { label: 'Statut RD',                  kind: 'list',  level: 'lot',     col: 'statut_rd' },
@@ -42,7 +41,7 @@ export const DIMS = {
   annee:       { label: 'Année',                      kind: 'num',   level: 'lot',     col: 'annee' },
   mois:        { label: 'Mois',                       kind: 'num',   level: 'lot',     col: 'mois' },
   semaine:     { label: 'Semaine de l’année',    kind: 'num',   level: 'lot',     col: 'semaine' },
-  idx_jour:    { label: 'Index des jours',            kind: 'num',   level: 'lot',     col: 'idx_jour' },
+  idx_jour:    { label: 'Index des jours (jour du mois)',            kind: 'num',   level: 'lot',     col: 'idx_jour' },
   idx_semaine: { label: 'Index des semaines',         kind: 'num',   level: 'lot',     col: 'idx_semaine' },
   idx_jour_mission:    { label: 'Index par jour de mission',    kind: 'num', level: 'lot', col: 'idx_jour_mission' },
   idx_semaine_mission: { label: 'Index par semaine de mission', kind: 'num', level: 'lot', col: 'idx_semaine_mission' },
@@ -113,14 +112,14 @@ const statutRd = (g) => `CASE WHEN ${g} = 'RD' THEN 'RD' WHEN ${g} = 'RDC' THEN 
       WHEN ${g} IN ('RE','RER','RERF','REF') THEN 'RE' WHEN ${g} IS NULL THEN 'Inconnu' ELSE 'Autre' END`;
 
 // d = expression date ; s = date de début de mission.
-// Index des jours / semaines : compteurs continus depuis le 1er janvier 2025
-// (jour 1) et le lundi 30 décembre 2024 (semaine 1). Index "de mission" :
+// Index des jours = jour du mois (1 à 31). Index des semaines : compteur continu
+// depuis le lundi 30 décembre 2024 (semaine 1). Index "de mission" :
 // jour 1 / semaine 1 = début de la mission.
 const timeDims = (d, s) => `extract(year FROM ${d})::int AS annee,
       extract(month FROM ${d})::int AS mois,
       extract(week FROM ${d})::int AS semaine,
       to_char(${d}, 'YYYY-MM') AS annee_mois,
-      (${d} - date '2025-01-01' + 1)::int AS idx_jour,
+      extract(day FROM ${d})::int AS idx_jour,
       (floor((${d} - date '2024-12-30') / 7.0) + 1)::int AS idx_semaine,
       (${d} - ${s} + 1)::int AS idx_jour_mission,
       (floor((${d} - ${s}) / 7.0) + 1)::int AS idx_semaine_mission`;
@@ -396,7 +395,7 @@ function buildRhQuery(p) {
   return `WITH ${misCtes(p)},
 cx AS (
   SELECT * FROM (
-    SELECT c.id AS contrat_id, c.utilisateur_id, c.date_debut AS cdate, mis.*,
+    SELECT c.id AS contrat_id, c.utilisateur_id, c.date_debut AS cdate, c.date_debut AS jour, mis.*,
       ${statutRd("upper(trim(c.statut))")} AS statut_rd, ${timeDims('c.date_debut', 'mis.jour_depart')}
     FROM contrats c JOIN mis ON mis.mission_id = c.mission_id
     WHERE c.date_debut IS NOT NULL
@@ -581,14 +580,31 @@ ${aggSql('mm', metrics, pm, 'lot')}
 ORDER BY 3, 1, 2;`;
 }
 
-// Valeurs proposées par les filtres (toutes missions du périmètre, sans filtre).
-function buildFacetsQuery() {
-  const p = emptyParams();
-  const one = (k, col) => `SELECT '${k}' AS k, ${col}::text AS v FROM mis GROUP BY 2`;
-  return `WITH ${misCtes(p)}
+// Valeurs proposées par les filtres, restreintes par les AUTRES filtres de
+// mission déjà choisis (filtres en cascade). Le jour du lot restreint aux
+// missions dont la période recoupe l'intervalle.
+const FACET_DIMS = [['asso', 'asso'], ['mission', 'mission'], ['ville', 'ville'], ['lv_ms', 'lv_ms'], ['rm', 'rm'], ['re', 're'],
+  ['format', 'format_mission'], ['type_mission', 'type_mission'], ['cat_ville', 'cat_ville']];
+
+function buildFacetsQuery(p = emptyParams()) {
+  const f = p.filters || {};
+  const where = (except) => {
+    const c = [];
+    for (const [key, d] of Object.entries(DIMS)) {
+      if (key === except || d.level !== 'mission' || d.kind !== 'list' || !f[key]) continue;
+      c.push(`${d.col} IN (${f[key].list.map((v) => `'${v}'`).join(', ')})`);
+    }
+    if (f.jour) {
+      if (f.jour.from) c.push(`jour_fin >= '${f.jour.from}'::date`);
+      if (f.jour.to) c.push(`jour_depart <= '${f.jour.to}'::date`);
+    }
+    return c.length ? `WHERE ${c.join(' AND ')}` : '';
+  };
+  const parts = FACET_DIMS.map(([k, col]) => `SELECT '${k}' AS k, ${col}::text AS v FROM mis_raw ${where(k)} GROUP BY 2`);
+  parts.push(`SELECT 'statut_rd' AS k, v FROM (VALUES ('RD'), ('RDC'), ('RDE'), ('RE'), ('Autre'), ('Inconnu')) x(v)`);
+  return `WITH ${misCtes(emptyParams())}
 SELECT k, v FROM (
-  ${[['asso', 'asso'], ['mission', 'mission'], ['ville', 'ville'], ['lv_ms', 'lv_ms'], ['rm', 'rm'], ['re', 're'],
-    ['format', 'format_mission'], ['type_mission', 'type_mission'], ['cat_ville', 'cat_ville']].map(([k, c]) => one(k, c)).join('\n  UNION ALL\n  ')}
+  ${parts.join('\n  UNION ALL\n  ')}
 ) t WHERE v IS NOT NULL ORDER BY k, v;`;
 }
 
@@ -611,7 +627,7 @@ export function buildAnneQueries(section, p) {
     case 'dons': return buildDonsQueries(p);
     case 'emplacements': return buildEmplacementsQueries(p);
     case 'mobilisation': return { rows: buildMobilisationQuery(p) };
-    case 'facets': return { rows: buildFacetsQuery() };
+    case 'facets': return { rows: buildFacetsQuery(p) };
     default: return null;
   }
 }
