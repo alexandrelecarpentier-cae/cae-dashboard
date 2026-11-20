@@ -19,7 +19,7 @@ natif sur la base "Production").
 | RD | `/rd.html?id_mission=<uuid>&id_utilisateur=<uuid>` | Un recruteur, une mission |
 | RE Mobilisation | `/re-mobilisation.html?mission_id=<uuid>` | Porte-à-porte : suivi global d'une mission |
 | RD Mobilisation | `/rd-mobilisation.html?mission_id=<uuid>&user_id=<uuid>` | Porte-à-porte : un mobilisateur, une mission |
-| Planning | `/planning` | Liste des missions de l'année + Gantt (API `/api/planning`, SQL dans `sql-planning.js`) |
+| Planning | `/planning` | Liste des missions + Gantt, filtres année / mois (API `/api/planning`, SQL dans `sql-planning.js`, protégé par mot de passe) |
 | Moteur de planning | `/moteur-planning.html` | Moteur de planification (données figées au 09/10/2026, pas d'API, protégé par mot de passe) |
 
 Toutes les pages autres que RM et Challenge n'ont pas de champ de recherche
@@ -62,7 +62,7 @@ le dépôt mais n'est plus utilisé par le build — il peut être supprimé.
 
 - `METABASE_URL` — ex. `https://prod.metabase.cae.captive.dev`
 - `METABASE_API_KEY` — clé API Metabase
-- `PLANNING_PASSWORD` — mot de passe d'accès à `/moteur-planning` (sans lui, la page répond 503)
+- `PLANNING_PASSWORD` — mot de passe d'accès à `/moteur-planning`, `/planning` et `/anne` (sans lui, ces pages répondent 503)
 - `SCW_ACCESS_KEY` / `SCW_SECRET_KEY` — accès lecture seule au bucket S3 des
   logos clients (optionnel : sans ça, `/api/logo` répond une erreur claire au
   lieu de logos cassés silencieusement)

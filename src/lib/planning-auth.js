@@ -109,3 +109,43 @@ export async function guardAnne(request, env) {
   }
   return loginPage(false, 'Anne');
 }
+
+// ---------------------------------------------------------------
+// /planning (page + /api/planning) : même mot de passe (secret
+// PLANNING_PASSWORD), cookie et portée de signature distincts.
+// L'API répond 401 JSON sans session ; la page affiche le formulaire.
+// ---------------------------------------------------------------
+const PLANNING_DASH_COOKIE = 'planning_dash_auth';
+
+export function isPlanningDashPath(pathname) {
+  return /^\/planning(\.html|\/(index(\.html)?)?)?$/i.test(pathname) || pathname === '/api/planning';
+}
+
+export async function guardPlanningDash(request, env) {
+  const secret = env.PLANNING_PASSWORD;
+  const url = new URL(request.url);
+  const isApi = url.pathname === '/api/planning';
+  if (!secret) {
+    return new Response('Accès indisponible : secret PLANNING_PASSWORD non configuré.', { status: 503, headers: { 'Cache-Control': 'no-store' } });
+  }
+  if (await hasValidSession(request, secret, PLANNING_DASH_COOKIE, 'planning-dash')) return null;
+  if (isApi) {
+    return new Response(JSON.stringify({ error: 'non_authentifie' }), { status: 401, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
+  }
+  if (request.method === 'POST') {
+    let pwd = '';
+    try { pwd = String((await request.formData()).get('password') || ''); } catch (_) {}
+    if (!safeEqual(pwd, secret)) return loginPage(true, 'Planning');
+    const exp = Math.floor(Date.now() / 1000) + MAX_AGE;
+    const token = `${exp}.${await sign(secret, `planning-dash:${exp}`)}`;
+    return new Response(null, {
+      status: 303,
+      headers: {
+        Location: url.pathname + url.search,
+        'Set-Cookie': `${PLANNING_DASH_COOKIE}=${token}; Max-Age=${MAX_AGE}; Path=/; HttpOnly; Secure; SameSite=Lax`,
+        'Cache-Control': 'no-store',
+      },
+    });
+  }
+  return loginPage(false, 'Planning');
+}

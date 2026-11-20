@@ -74,15 +74,18 @@ Une ligne par indicateur : **ce qu'il mesure et comment il est calculé, en mots
 
 ## Dashboard /planning (11/2026)
 
-Liste et planning (Gantt) des missions d'une année. Pas de formule d'indicateur : ce sont des informations de fiche mission.
+Liste et planning (Gantt) des missions d'une année. Pas de formule d'indicateur : ce sont des informations de fiche mission. Accès protégé par le même mot de passe que /anne et /moteur-planning.
 
 - **Missions retenues** : toutes les missions de l'année choisie (celles qui commencent, finissent ou se déroulent pendant l'année), y compris celles en attente. Les missions annulées, de mobilisation et des clients de test sont exclues.
+- **Filtre mois** : ne garde que les missions qui se déroulent, même en partie, pendant le mois choisi. « Tous » affiche toute l'année.
+- **Statut** : en attente (orange), en cours (vert) ou terminée (gris). Les mêmes couleurs sont utilisées dans le Gantt.
 - **Nb de semaines** : durée de la mission du début à la fin, arrondie à la semaine supérieure.
 - **Rythme** : « LV » si la mission travaille du lundi au vendredi, « MS » si elle travaille du mardi au samedi.
 - **Ville principale** : ville renseignée sur la mission ; à défaut, ville déduite des 3 dernières lettres du code mission.
 - **Nombre de recruteurs** : salariés ayant au moins un lot (journée de travail) sur la mission ; la liste (Prénom NOM) s'affiche au survol.
 - **Nombre de lots** : nombre de journées de travail planifiées ou réalisées sur la mission.
-- **Nombre d'emplacements** : emplacements rattachés à la mission ou utilisés par ses lots, sans doublon.
+- **Emplacements Rue / SP** : emplacements rattachés à la mission ou utilisés par ses journées de travail, sans doublon, séparés entre emplacements de rue (« Rue ») et de sites privés (« SP »).
+- **Gantt** : une barre par mission, de son début à sa fin, regroupée par mission, client, format, type, ville principale, responsable d'équipe ou responsable de mission. Échelle « Mois » (vue d'ensemble) ou « Semaine » (colonnes S1, S2… avec la date du lundi).
 
 ## Formats d'affichage
 

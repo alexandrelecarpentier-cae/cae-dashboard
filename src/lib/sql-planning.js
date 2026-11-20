@@ -34,11 +34,18 @@ lt as (
 ),
 lc as (select l.mission_id, count(*) as nb_lots from lots l join sm on sm.id = l.mission_id group by 1),
 em as (
-  select x.mission_id, count(distinct x.emplacement_id) as nb_emplacements from (
-    select e.mission_id, e.emplacement_id from emplacements_missions e join sm on sm.id = e.mission_id
+  -- Emplacements rattachés à la mission ou utilisés par ses lots, sans doublon :
+  -- type "public" = Rue, type "prive" = SP (site privé).
+  select x.mission_id,
+    count(distinct x.emplacement_id) filter (where e.type_emplacement = 'public') as nb_emplacements_rue,
+    count(distinct x.emplacement_id) filter (where e.type_emplacement = 'prive') as nb_emplacements_sp
+  from (
+    select em0.mission_id, em0.emplacement_id from emplacements_missions em0 join sm on sm.id = em0.mission_id
     union
     select l.mission_id, l.emplacement_id from lots l join sm on sm.id = l.mission_id where l.emplacement_id is not null
-  ) x group by 1
+  ) x
+  join emplacements e on e.id = x.emplacement_id
+  group by 1
 )
 select m.id as mission_id, m.code_mission, c.nom as client, m.statut_mission as statut,
   case when m.format in ('sitesprives','site_prive','sites_privees') then 'site_prive'
@@ -57,7 +64,7 @@ select m.id as mission_id, m.code_mission, c.nom as client, m.statut_mission as 
   ${NOM_UTILISATEUR('uip_rm', 'u_rm')} as responsable_mission,
   m.objectif_bulletin_theorique as objectif,
   coalesce(lt.nb_recruteurs, 0) as nb_recruteurs, coalesce(lt.recruteurs, '') as recruteurs,
-  coalesce(lc.nb_lots, 0) as nb_lots, coalesce(em.nb_emplacements, 0) as nb_emplacements
+  coalesce(lc.nb_lots, 0) as nb_lots, coalesce(em.nb_emplacements_rue, 0) as nb_emplacements_rue, coalesce(em.nb_emplacements_sp, 0) as nb_emplacements_sp
 from sm m
 join clients c on c.id = m.client_id
 left join vm on vm.code = upper(right(regexp_replace(m.code_mission, '(SP|HYB)$', ''), 3))

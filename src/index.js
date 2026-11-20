@@ -52,7 +52,7 @@ import { isExcludedClient, buildMissionClientQuery, EXCLUDED_CLIENT_NAMES } from
 import { DIRECTION_SUIVI_SECTIONS, GRAINS as DIRECTION_SUIVI_GRAINS } from './lib/sql-direction-suivi.js';
 import { buildAnneQueries, parseAnneParams, ANNE_SECTIONS } from './lib/sql-anne.js';
 import { buildPlanningMissionsQuery, buildPlanningYearsQuery } from './lib/sql-planning.js';
-import { isPlanningPath, guardPlanning, isAnnePath, guardAnne } from './lib/planning-auth.js';
+import { isPlanningPath, guardPlanning, isAnnePath, guardAnne, isPlanningDashPath, guardPlanningDash } from './lib/planning-auth.js';
 import { handleRhSuivi, handleRhExport, handleRhValues } from './lib/rh-cards.js';
 
 // Mode staging/prod (demande explicite, 9/2026) : un cookie posé côté
@@ -79,6 +79,10 @@ export default {
     const url = new URL(request.url);
     if (isAnnePath(url.pathname)) {
       const blocked = await guardAnne(request, env);
+      if (blocked) return blocked;
+    }
+    if (isPlanningDashPath(url.pathname)) {
+      const blocked = await guardPlanningDash(request, env);
       if (blocked) return blocked;
     }
     const stagingDbId = resolveDatabaseId(url);
