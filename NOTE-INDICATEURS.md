@@ -61,6 +61,12 @@ Une ligne par indicateur : **ce qu'il mesure et comment il est calculé, en mots
 | **Taux de traitement** | Logements visités ÷ nombre de logements de l'habitation. | `/re-mobilisation`, `/rd-mobilisation` |
 | **Nb logements théorique / trouvés** | Théorique : nombre de logements annoncé. Trouvés : nombre de logements réellement comptés sur place. | `/re-mobilisation`, `/rd-mobilisation` |
 | **Passages par logement** | Nombre moyen de passages par logement visité ; le statut affiché est celui du dernier passage. | `/re-mobilisation`, `/rd-mobilisation` |
+| **Taux d'absence total** | Part des journées prévues de la personne où elle est absente **avec un code d'absence renseigné, sans aucune exclusion** (aucun code n'est écarté, contrairement au « Taux d'absence »). | `/anne` |
+| **Nb FPE total** | Part des contrats qui ont un avenant de fin de période d'essai **publié ou signé** (un avenant « signé » est compté). | `/anne` |
+| **Taux payé** | Nombre de dons valides ÷ heures rémunérées. | `/anne` |
+| **Nb heures contractuelles** | Nombre de lots existants × 7 heures (théorique ; un lot supprimé après une fin de période d'essai n'est plus compté). | `/anne` |
+| **Volume contractuel** | Objectif de dons de la mission (objectif théorique), compté une fois par mission. | `/anne` |
+| **Nb RD, RDC, RDE, RE (par grade)** | Nombre de personnes différentes ayant travaillé, par grade de leur contrat. | `/anne` |
 
 ## Dashboard /anne (11/2026)
 
