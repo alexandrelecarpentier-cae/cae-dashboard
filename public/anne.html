@@ -35,6 +35,7 @@
   .tile .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-top:2px;}
   .tbl-wrap{overflow:auto;border:1px solid var(--line);margin-bottom:18px;max-height:70vh;}
   table{border-collapse:collapse;width:100%;font-size:12.5px;}
+  .cut{display:inline-block;max-width:170px;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom;}
   th,td{padding:6px 9px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap;}
   th{position:sticky;top:0;background:var(--surface-2);font-size:11px;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;user-select:none;}
   th:first-child,td:first-child,th.l,td.l{text-align:left;}
@@ -126,6 +127,7 @@ function fmt(v,d){ if(v==null||!isFinite(v)) return '<span class="nd">—</span>
 function pct(v,d){ return v==null||!isFinite(v)?fmt(null):fmt(v*100,d==null?1:d)+' %'; }
 function div(a,b){ a=num(a); b=num(b); return (b==null||b===0||a==null)?null:a/b; }
 function txt(v){ return v==null?fmt(null):esc(v); }
+function txtCut(v){ return v==null?fmt(null):'<span class="cut" title="'+esc(v)+'">'+esc(v)+'</span>'; }
 
 function buildFilters(){
   var h='';
@@ -469,9 +471,8 @@ function renderRh(r0){
 function renderMissions(m){
   var t=function(k,h){return c(h,function(r){return r[k];},txt);};
   return '<div class="note">500 missions maximum (les plus récentes). Une ligne = une mission : le regroupement ne s’applique pas ici.</div>'+table('Missions',[
-    t('mission','Mission'),t('type_mission','Type mission'),t('format_mission','Format mission'),t('cat_ville','Catégorie de ville'),t('ville','Ville'),
+    t('mission','Mission'),t('type_mission','Type mission'),t('format_mission','Format mission'),t('cat_ville','Catégorie de ville'),c('Ville',function(r){return r.ville;},txtCut),
     c('Nb BS réels',nz('bs_reel'),I,'Dons valides (nouveau, en attente, transmis)'),
-    c('Nb BS réels / jour',K.bs_jour,D1,'BS réels ÷ jours d’activité'),
     c('Nb heures contractuelles',K.h_contrat,I,'Lots existants × 7 h'),
     c('Nb heures payées / rémunérées',nz('heures_rem'),I,'Heures rémunérées'),
     c('Nb heures rue',nz('heures_rue'),I,'Heures de rue (0 si recruteur absent)'),
