@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Planning — Dashboard CAE</title>
+<style>
+  :root{
+    --bg:#FFFFFF; --surface:#FFFFFF; --surface-2:#F5F5F6; --line:#E4E4E8;
+    --red:#E2173B; --text:#0F0F11; --muted:#75757C;
+    --street:#E2173B; --prive:#1F7A5A; --hybride:#C98A00; --autre:#75757C;
+    --sharp:2px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;}
+
+  header{
+    position:sticky; top:0; z-index:30;
+    background:rgba(255,255,255,.95); backdrop-filter:blur(8px);
+    padding:calc(env(safe-area-inset-top) + 14px) 16px 12px;
+    border-bottom:1px solid var(--line);
+  }
+  h1{margin:0 0 10px; font-size:21px; font-weight:800; letter-spacing:-.01em; line-height:1.15; text-transform:uppercase;}
+  h1 em{color:var(--red); font-style:normal;}
+  .row{display:flex; flex-wrap:wrap; gap:8px; align-items:flex-end; margin-bottom:10px;}
+  .label{font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); font-weight:700; line-height:1; margin-right:4px; align-self:center;}
+  .tag{
+    background:var(--surface-2); color:var(--text); border:1px solid var(--line);
+    border-radius:var(--sharp); padding:0 12px; height:32px; display:flex; align-items:center;
+    font-size:12.5px; font-weight:600; cursor:pointer; user-select:none; white-space:nowrap;
+  }
+  .tag.active{border-color:var(--red); color:#fff; background:var(--red);}
+  .tabs{display:flex; gap:0; margin-top:2px;}
+  .tab{
+    padding:9px 16px; font-size:12.5px; font-weight:800; text-transform:uppercase; letter-spacing:.04em;
+    border:1px solid var(--line); border-bottom:none; background:var(--surface-2); color:var(--muted); cursor:pointer;
+  }
+  .tab + .tab{border-left:none;}
+  .tab.active{background:#fff; color:var(--text); box-shadow:inset 0 2px 0 var(--red);}
+  select.control{
+    background:var(--surface-2); color:var(--text); border:1px solid var(--line); border-radius:var(--sharp);
+    padding:0 10px; font-size:13px; height:32px; font-family:inherit; font-weight:600;
+  }
+  .count{font-size:12px; color:var(--muted); margin-left:auto; align-self:center;}
+  .count b{color:var(--text);}
+
+  main{padding:0 0 40px;}
+  .error-banner{
+    margin:12px 16px; padding:10px 12px; border:1px solid var(--line); border-left:3px solid var(--red);
+    background:#FFF6F7; font-size:12px; color:#7A1225; display:none; line-height:1.5;
+  }
+  .error-banner.show{display:block;}
+  .empty{padding:32px 16px; text-align:center; color:var(--muted); font-size:13px;}
+  .view{display:none;}
+  .view.active{display:block;}
+
+  /* ---- Liste ---- */
+  .table-wrap{overflow:auto; max-height:calc(100vh - 170px);}
+  table{border-collapse:separate; border-spacing:0; width:100%; font-size:12.5px;}
+  th{
+    position:sticky; top:0; z-index:5; background:var(--surface-2); text-align:left; white-space:nowrap;
+    font-size:10px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); font-weight:800;
+    padding:9px 10px; border-bottom:1px solid var(--line);
+  }
+  td{padding:7px 10px; border-bottom:1px solid var(--line); white-space:nowrap; vertical-align:middle;}
+  tr:hover td{background:#FAFAFB;}
+  td.num, th.num{text-align:right; font-variant-numeric:tabular-nums;}
+  td.ctr, th.ctr{text-align:center;}
+  td.ville{max-width:120px; overflow:hidden; text-overflow:ellipsis;}
+  td.code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-weight:700;}
+  td.rec{cursor:help; text-decoration:underline dotted var(--muted); text-underline-offset:3px;}
+  .pill{display:inline-block; padding:2px 7px; border-radius:var(--sharp); font-size:10.5px; font-weight:800; text-transform:uppercase; color:#fff;}
+  .pill.street{background:var(--street);} .pill.site_prive{background:var(--prive);}
+  .pill.hybride{background:var(--hybride);} .pill.autre{background:var(--autre);}
+  .st-att{color:var(--muted); font-style:italic;}
+
+  /* ---- Gantt ---- */
+  .g-scroll{overflow:auto; max-height:calc(100vh - 210px);}
+  .g-head, .g-row{display:flex; width:max-content; min-width:100%;}
+  .g-head{position:sticky; top:0; z-index:6; background:#fff;}
+  .g-label{
+    position:sticky; left:0; z-index:4; width:220px; min-width:220px; flex:0 0 220px; background:#fff;
+    padding:6px 10px; border-right:1px solid var(--line); border-bottom:1px solid var(--line);
+    font-size:12px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .g-head .g-label{z-index:8; background:var(--surface-2); font-size:10px; text-transform:uppercase; color:var(--muted); letter-spacing:.04em; display:flex; align-items:center;}
+  .g-label small{display:block; color:var(--muted); font-weight:600; font-size:10.5px;}
+  .g-track{position:relative; flex:0 0 auto; border-bottom:1px solid var(--line);}
+  .g-head .g-track{height:30px; background:var(--surface-2); border-bottom:1px solid var(--line);}
+  .g-month{position:absolute; top:0; bottom:0; border-left:1px solid var(--line); font-size:10px; font-weight:800;
+    text-transform:uppercase; color:var(--muted); padding:9px 6px 0; letter-spacing:.04em;}
+  .g-row .g-month{padding:0; border-left:1px solid #EFEFF2;}
+  .g-today{position:absolute; top:0; bottom:0; width:2px; background:var(--red); opacity:.75; z-index:2;}
+  .g-bar{
+    position:absolute; height:18px; border-radius:var(--sharp); color:#fff; font-size:10.5px; font-weight:700;
+    line-height:18px; padding:0 5px; overflow:hidden; white-space:nowrap; cursor:default; z-index:1;
+  }
+  .g-bar.street{background:var(--street);} .g-bar.site_prive{background:var(--prive);}
+  .g-bar.hybride{background:var(--hybride);} .g-bar.autre{background:var(--autre);}
+  .g-bar.att{opacity:.55; background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.35) 0 4px,transparent 4px 8px);}
+  .g-bar.cl-l{border-top-left-radius:0; border-bottom-left-radius:0;}
+  .g-bar.cl-r{border-top-right-radius:0; border-bottom-right-radius:0;}
+  .legend{display:flex; gap:14px; flex-wrap:wrap; padding:10px 16px; font-size:11.5px; color:var(--muted); align-items:center;}
+  .legend i{display:inline-block; width:10px; height:10px; margin-right:5px; border-radius:1px; vertical-align:-1px;}
+
+  #tip{
+    position:fixed; z-index:100; display:none; max-width:320px; background:#0F0F11; color:#fff;
+    font-size:12px; line-height:1.45; padding:8px 10px; border-radius:var(--sharp); pointer-events:none;
+    box-shadow:0 4px 18px rgba(0,0,0,.28);
+  }
+  #tip b{font-weight:800;} #tip .m{color:#B8B8BE;}
+  #tip ul{margin:4px 0 0; padding:0 0 0 16px; max-height:260px; overflow:hidden;}
+</style>
+</head>
+<body>
+<script>
+// Mode staging : ?staging=1 est propagé à tous les appels /api/* (cf. index.js).
+(function(){
+  var isStaging = new URLSearchParams(window.location.search).get('staging') === '1';
+  if (!isStaging) return;
+  var origFetch = window.fetch;
+  window.fetch = function(input, init){
+    try {
+      var isApiCall = (typeof input === 'string' && input.indexOf('/api/') !== -1)
+        || (input && input.url && input.url.indexOf('/api/') !== -1);
+      if (isApiCall) {
+        var url = typeof input === 'string' ? input : input.url;
+        url += (url.indexOf('?') === -1 ? '?' : '&') + 'staging=1';
+        input = typeof input === 'string' ? url : new Request(url, input);
+      }
+    } catch (e) {}
+    return origFetch.call(this, input, init);
+  };
+  document.addEventListener('DOMContentLoaded', function(){
+    var b = document.createElement('div');
+    b.textContent = '◆ STAGING';
+    b.style.cssText = 'position:fixed;bottom:14px;right:14px;z-index:9999;'
+      + 'font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:11px;font-weight:700;'
+      + 'padding:7px 12px;border-radius:2px;letter-spacing:.03em;pointer-events:none;'
+      + 'box-shadow:0 2px 8px rgba(0,0,0,.25);color:#fff;background:#E2173B;';
+    document.body.appendChild(b);
+  });
+})();
+</script>
+
+<header>
+  <h1>Planning <em>CAE</em></h1>
+  <div class="row">
+    <span class="label">Année</span>
+    <div class="row" id="years" style="margin:0"></div>
+    <span class="count" id="count"></span>
+  </div>
+  <div class="tabs">
+    <div class="tab active" data-tab="liste">Liste des missions</div>
+    <div class="tab" data-tab="gantt">Planning (Gantt)</div>
+  </div>
+</header>
+
+<main>
+  <div class="error-banner" id="err"></div>
+
+  <section class="view active" id="v-liste">
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Format</th><th>Type</th><th>Client</th><th>Code mission</th>
+          <th class="num">Nb sem.</th><th class="ctr">Rythme</th>
+          <th>Formation (début)</th><th>Fin</th><th>Ville principale</th>
+          <th>Resp. d'équipe</th><th>Resp. de mission</th><th class="num">Objectif</th>
+          <th class="num">Recruteurs</th><th class="num">Lots</th><th class="num">Emplacements</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="empty" style="display:none">Aucune mission pour cette année.</div>
+  </section>
+
+  <section class="view" id="v-gantt">
+    <div class="row" style="padding:12px 16px 0; margin:0">
+      <span class="label">Regrouper par</span>
+      <select class="control" id="axis">
+        <option value="client">Client</option>
+        <option value="format">Format</option>
+        <option value="type">Type</option>
+        <option value="ville">Ville principale</option>
+        <option value="re">Responsable d'équipe (RE)</option>
+        <option value="rm">Responsable de mission (RM)</option>
+      </select>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--street)"></i>Street</span>
+      <span><i style="background:var(--prive)"></i>Site privé</span>
+      <span><i style="background:var(--hybride)"></i>Hybride</span>
+      <span><i style="background:var(--autre)"></i>Autre</span>
+      <span>Hachuré = mission en attente</span>
+    </div>
+    <div class="g-scroll" id="gantt"></div>
+  </section>
+</main>
+<div id="tip"></div>
+
+<script>
+(function(){
+  var FORMATS = {street:'Street', site_prive:'Site privé', hybride:'Hybride', non_renseigne:'Non renseigné'};
+  var TYPES = {paris:'Paris', province:'Province', lyon:'Lyon', itinerante:'Itinérante', speciale:'Spéciale', domtom:'DOM-TOM', non_renseigne:'Non renseigné'};
+  var NR = 'Non renseigné';
+  var PX_DAY = 4;          // largeur d'un jour dans le Gantt
+  var MONTHS = ['Janv.','Févr.','Mars','Avr.','Mai','Juin','Juil.','Août','Sept.','Oct.','Nov.','Déc.'];
+
+  var state = {annee: null, annees: [], missions: [], tab: 'liste'};
+  var cache = {};
+  var $ = function(id){ return document.getElementById(id); };
+
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function fmtDate(iso){ return iso ? iso.slice(8,10) + '/' + iso.slice(5,7) + '/' + iso.slice(0,4) : ''; }
+  function fmtLabel(m){ return FORMATS[m.format_mission] || m.format_mission || NR; }
+  function typeLabel(m){ return TYPES[m.type_mission] || m.type_mission || NR; }
+  function pillClass(f){ return f === 'street' || f === 'site_prive' || f === 'hybride' ? f : 'autre'; }
+  function utc(iso){ return Date.UTC(+iso.slice(0,4), +iso.slice(5,7)-1, +iso.slice(8,10)); }
+  function days(a, b){ return Math.round((b - a) / 86400000); }
+
+  function showError(msg){ var e = $('err'); e.textContent = msg || ''; e.classList.toggle('show', !!msg); }
+
+  /* ---------- chargement ---------- */
+  function load(annee){
+    showError('');
+    if (cache[annee]) { apply(cache[annee]); return; }
+    $('count').textContent = 'Chargement…';
+    fetch('/api/planning?annee=' + annee).then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; }); })
+      .then(function(x){
+        if (!x.ok || x.j.error) throw new Error(x.j.error || 'Erreur API');
+        cache[annee] = x.j; apply(x.j);
+      })
+      .catch(function(e){ $('count').textContent = ''; showError('Impossible de charger le planning : ' + e.message); });
+  }
+
+  function apply(d){
+    state.annee = d.annee; state.annees = d.annees; state.missions = d.missions;
+    renderYears(); renderList(); renderGantt();
+    $('count').innerHTML = '<b>' + d.missions.length + '</b> mission' + (d.missions.length > 1 ? 's' : '') + ' en ' + d.annee;
+  }
+
+  function renderYears(){
+    $('years').innerHTML = state.annees.map(function(y){
+      return '<div class="tag' + (y === state.annee ? ' active' : '') + '" data-y="' + y + '">' + y + '</div>';
+    }).join('');
+  }
+
+  /* ---------- liste ---------- */
+  function renderList(){
+    var ms = state.missions;
+    $('empty').style.display = ms.length ? 'none' : 'block';
+    $('tbody').innerHTML = ms.map(function(m, i){
+      var att = m.statut === 'en_attente' ? ' <span class="st-att" title="Mission en attente">(en attente)</span>' : '';
+      return '<tr>'
+        + '<td><span class="pill ' + pillClass(m.format_mission) + '">' + esc(fmtLabel(m)) + '</span></td>'
+        + '<td>' + esc(typeLabel(m)) + '</td>'
+        + '<td>' + esc(m.client) + '</td>'
+        + '<td class="code">' + esc(m.code_mission) + att + '</td>'
+        + '<td class="num">' + m.nb_semaines + '</td>'
+        + '<td class="ctr">' + esc(m.rythme || '—') + '</td>'
+        + '<td>' + fmtDate(m.date_debut) + '</td>'
+        + '<td>' + fmtDate(m.date_fin) + '</td>'
+        + '<td class="ville" title="' + esc(m.ville_principale || '') + '">' + esc(m.ville_principale || '—') + '</td>'
+        + '<td>' + esc(m.responsable_equipe || '—') + '</td>'
+        + '<td>' + esc(m.responsable_mission || '—') + '</td>'
+        + '<td class="num">' + (m.objectif == null ? '—' : m.objectif) + '</td>'
+        + '<td class="num' + (m.nb_recruteurs ? ' rec' : '') + '" data-rec="' + i + '">' + m.nb_recruteurs + '</td>'
+        + '<td class="num">' + m.nb_lots + '</td>'
+        + '<td class="num">' + m.nb_emplacements + '</td>'
+        + '</tr>';
+    }).join('');
+  }
+
+  /* ---------- Gantt ---------- */
+  function groupKey(m, axis){
+    var v;
+    if (axis === 'client') v = m.client;
+    else if (axis === 'format') v = fmtLabel(m);
+    else if (axis === 'type') v = typeLabel(m);
+    else if (axis === 'ville') v = m.ville_principale;
+    else if (axis === 're') v = m.responsable_equipe;
+    else v = m.responsable_mission;
+    return v && String(v).trim() ? String(v).trim() : NR;
+  }
+
+  function renderGantt(){
+    var axis = $('axis').value, y = state.annee;
+    var ms = state.missions;
+    if (!ms.length) { $('gantt').innerHTML = '<div class="empty">Aucune mission pour cette année.</div>'; return; }
+    var y0 = Date.UTC(y, 0, 1), nDays = days(y0, Date.UTC(y + 1, 0, 1));
+    var W = nDays * PX_DAY;
+
+    var groups = {};
+    ms.forEach(function(m, i){
+      var k = groupKey(m, axis);
+      (groups[k] = groups[k] || []).push(i);
+    });
+    var keys = Object.keys(groups).sort(function(a, b){
+      if (a === NR) return 1; if (b === NR) return -1;
+      return a.localeCompare(b, 'fr', {sensitivity:'base'});
+    });
+
+    // lignes de grille (mois) + trait "aujourd'hui"
+    var now = new Date(), todayUtc = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+    var grid = '', head = '';
+    for (var mo = 0; mo < 12; mo++) {
+      var left = days(y0, Date.UTC(y, mo, 1)) * PX_DAY, w = days(Date.UTC(y, mo, 1), Date.UTC(y, mo + 1, 1)) * PX_DAY;
+      grid += '<div class="g-month" style="left:' + left + 'px;width:' + w + 'px"></div>';
+      head += '<div class="g-month" style="left:' + left + 'px;width:' + w + 'px">' + MONTHS[mo] + '</div>';
+    }
+    if (todayUtc >= y0 && todayUtc < y0 + nDays * 86400000) {
+      grid += '<div class="g-today" style="left:' + (days(y0, todayUtc) * PX_DAY) + 'px" title="Aujourd\'hui"></div>';
+    }
+
+    var html = '<div class="g-head"><div class="g-label">' + esc($('axis').selectedOptions[0].text) + '</div>'
+      + '<div class="g-track" style="width:' + W + 'px">' + head + '</div></div>';
+
+    keys.forEach(function(k){
+      var idx = groups[k].slice().sort(function(a, b){ return ms[a].date_debut < ms[b].date_debut ? -1 : ms[a].date_debut > ms[b].date_debut ? 1 : 0; });
+      var laneEnd = [], bars = '';
+      idx.forEach(function(i){
+        var m = ms[i];
+        var s = Math.max(0, days(y0, utc(m.date_debut)));
+        var e = Math.min(nDays - 1, days(y0, utc(m.date_fin)));
+        if (e < s) return;
+        var lane = 0;
+        while (laneEnd[lane] !== undefined && laneEnd[lane] >= s) lane++;
+        laneEnd[lane] = e;
+        var clipL = utc(m.date_debut) < y0, clipR = utc(m.date_fin) >= y0 + nDays * 86400000;
+        bars += '<div class="g-bar ' + pillClass(m.format_mission) + (m.statut === 'en_attente' ? ' att' : '')
+          + (clipL ? ' cl-l' : '') + (clipR ? ' cl-r' : '') + '" data-bar="' + i + '" style="left:' + (s * PX_DAY) + 'px;width:'
+          + Math.max(3, (e - s + 1) * PX_DAY) + 'px;top:' + (5 + lane * 22) + 'px">' + esc(m.code_mission) + '</div>';
+      });
+      var h = Math.max(1, laneEnd.length) * 22 + 10;
+      html += '<div class="g-row"><div class="g-label" style="height:' + h + 'px" title="' + esc(k) + '">' + esc(k)
+        + '<small>' + idx.length + ' mission' + (idx.length > 1 ? 's' : '') + '</small></div>'
+        + '<div class="g-track" style="width:' + W + 'px;height:' + h + 'px">' + grid + bars + '</div></div>';
+    });
+    $('gantt').innerHTML = html;
+  }
+
+  /* ---------- infobulle ---------- */
+  var tip = $('tip');
+  function showTip(html, ev){
+    tip.innerHTML = html; tip.style.display = 'block';
+    var w = tip.offsetWidth, h = tip.offsetHeight;
+    var x = ev.clientX + 14, yy = ev.clientY + 14;
+    if (x + w > window.innerWidth - 8) x = ev.clientX - w - 14;
+    if (yy + h > window.innerHeight - 8) yy = ev.clientY - h - 14;
+    tip.style.left = Math.max(8, x) + 'px'; tip.style.top = Math.max(8, yy) + 'px';
+  }
+  function hideTip(){ tip.style.display = 'none'; }
+
+  function recTip(m){
+    var names = m.recruteurs ? m.recruteurs.split('|') : [];
+    if (!names.length) return '<b>' + esc(m.code_mission) + '</b><br><span class="m">Aucun recruteur associé</span>';
+    var max = 20, shown = names.slice(0, max);
+    return '<b>' + esc(m.code_mission) + '</b> <span class="m">· ' + names.length + ' recruteur' + (names.length > 1 ? 's' : '') + '</span><ul>'
+      + shown.map(function(n){ return '<li>' + esc(n) + '</li>'; }).join('') + '</ul>'
+      + (names.length > max ? '<span class="m">+ ' + (names.length - max) + ' autres</span>' : '');
+  }
+  function barTip(m){
+    return '<b>' + esc(m.code_mission) + '</b> <span class="m">· ' + esc(m.client) + '</span><br>'
+      + esc(fmtLabel(m)) + ' · ' + esc(typeLabel(m)) + (m.rythme ? ' · ' + m.rythme : '') + '<br>'
+      + fmtDate(m.date_debut) + ' → ' + fmtDate(m.date_fin) + ' (' + m.nb_semaines + ' sem.)<br>'
+      + '<span class="m">Ville</span> ' + esc(m.ville_principale || '—') + '<br>'
+      + '<span class="m">RE</span> ' + esc(m.responsable_equipe || '—') + ' · <span class="m">RM</span> ' + esc(m.responsable_mission || '—') + '<br>'
+      + '<span class="m">Recruteurs</span> ' + m.nb_recruteurs + ' · <span class="m">Lots</span> ' + m.nb_lots
+      + (m.statut === 'en_attente' ? '<br><span class="m">Mission en attente</span>' : '');
+  }
+
+  function bindTip(root, attr, builder){
+    function find(t){ while (t && t !== root) { if (t.getAttribute && t.getAttribute(attr) != null) return t; t = t.parentNode; } return null; }
+    root.addEventListener('mousemove', function(ev){
+      var el = find(ev.target);
+      if (!el) { hideTip(); return; }
+      var m = state.missions[+el.getAttribute(attr)];
+      if (m) showTip(builder(m), ev);
+    });
+    root.addEventListener('mouseleave', hideTip);
+    root.addEventListener('click', function(ev){
+      var el = find(ev.target);
+      if (!el) { hideTip(); return; }
+      var m = state.missions[+el.getAttribute(attr)];
+      if (m) showTip(builder(m), ev);
+    });
+  }
+  bindTip($('tbody'), 'data-rec', recTip);
+  bindTip($('gantt'), 'data-bar', barTip);
+  window.addEventListener('scroll', hideTip, true);
+
+  /* ---------- événements ---------- */
+  $('years').addEventListener('click', function(ev){
+    var y = ev.target.getAttribute && ev.target.getAttribute('data-y');
+    if (y) load(+y);
+  });
+  document.querySelector('.tabs').addEventListener('click', function(ev){
+    var t = ev.target.getAttribute && ev.target.getAttribute('data-tab');
+    if (!t) return;
+    state.tab = t; hideTip();
+    document.querySelectorAll('.tab').forEach(function(el){ el.classList.toggle('active', el.getAttribute('data-tab') === t); });
+    $('v-liste').classList.toggle('active', t === 'liste');
+    $('v-gantt').classList.toggle('active', t === 'gantt');
+  });
+  $('axis').addEventListener('change', renderGantt);
+
+  // Année par défaut : l'année en cours (la 1re fois, le Worker renvoie la liste des années).
+  load(new Date().getFullYear());
+})();
+</script>
+</body>
+</html>

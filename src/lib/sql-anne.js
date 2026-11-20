@@ -126,7 +126,7 @@ const timeDims = (d, s) => `extract(year FROM ${d})::int AS annee,
 
 // Villes connues (code = 3 dernières lettres du code mission) et catégorie de
 // ville street : même grille que les questions Metabase "DASHBOARDS ANNE".
-const VILLES = [
+export const VILLES = [
   ['PAR', 'PARIS', 'Hors street'], ['LYO', 'LYON', 'Cat. 1'], ['BOR', 'BORDEAUX', 'Cat. 1'], ['TOU', 'TOULOUSE', 'Cat. 1'],
   ['NAN', 'NANTES', 'Cat. 1'], ['LIL', 'LILLE', 'Cat. 1'], ['STR', 'STRASBOURG', 'Cat. 1'], ['MAR', 'MARSEILLE', 'Cat. 1'],
   ['GRE', 'GRENOBLE', 'Cat. 2'], ['NIC', 'NICE', 'Cat. 2'], ['REN', 'RENNES', 'Cat. 2'], ['MON', 'MONTPELLIER', 'Cat. 2'],

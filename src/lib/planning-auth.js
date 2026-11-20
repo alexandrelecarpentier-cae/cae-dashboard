@@ -1,5 +1,5 @@
-// Protection par mot de passe de /planning-cae (page statique "données
-// figées" : sans ce garde-fou, public/planning-cae.html est servi à tous).
+// Protection par mot de passe de /moteur-planning (page statique "données
+// figées" : sans ce garde-fou, public/moteur-planning.html est servi à tous).
 // Le mot de passe est le secret Worker PLANNING_PASSWORD (jamais dans le
 // dépôt). Session = cookie HttpOnly signé HMAC (30 jours) ; changer le
 // secret invalide toutes les sessions existantes.
@@ -8,9 +8,9 @@ const COOKIE = 'planning_auth';
 const MAX_AGE = 60 * 60 * 24 * 30;
 const enc = new TextEncoder();
 
-// Couvre /planning-cae, /planning-cae/, /planning-cae.html, /planning-cae/index.html
+// Couvre /moteur-planning, /moteur-planning/, /moteur-planning.html, /moteur-planning/index.html
 export function isPlanningPath(pathname) {
-  return /^\/planning-cae(\.html|\/(index(\.html)?)?)?$/i.test(pathname);
+  return /^\/moteur-planning(\.html|\/(index(\.html)?)?)?$/i.test(pathname);
 }
 
 async function sign(secret, payload) {
@@ -26,7 +26,7 @@ function safeEqual(a, b) {
   return d === 0;
 }
 
-async function hasValidSession(request, secret, cookie = COOKIE, scope = 'planning-cae') {
+async function hasValidSession(request, secret, cookie = COOKIE, scope = 'moteur-planning') {
   const m = (request.headers.get('Cookie') || '').match(new RegExp(`(?:^|;\\s*)${cookie}=(\\d+)\\.([0-9a-f]+)`));
   if (!m || Number(m[1]) < Date.now() / 1000) return false;
   return safeEqual(m[2], await sign(secret, `${scope}:${m[1]}`));
@@ -57,7 +57,7 @@ export async function guardPlanning(request, env) {
     try { pwd = String((await request.formData()).get('password') || ''); } catch (_) {}
     if (!safeEqual(pwd, secret)) return loginPage(true);
     const exp = Math.floor(Date.now() / 1000) + MAX_AGE;
-    const token = `${exp}.${await sign(secret, `planning-cae:${exp}`)}`;
+    const token = `${exp}.${await sign(secret, `moteur-planning:${exp}`)}`;
     return new Response(null, {
       status: 303,
       headers: {

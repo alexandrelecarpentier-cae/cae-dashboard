@@ -51,6 +51,7 @@ import { buildDirectionQueries, buildClientListQuery as buildDirectionClientList
 import { isExcludedClient, buildMissionClientQuery, EXCLUDED_CLIENT_NAMES } from './lib/excluded-clients.js';
 import { DIRECTION_SUIVI_SECTIONS, GRAINS as DIRECTION_SUIVI_GRAINS } from './lib/sql-direction-suivi.js';
 import { buildAnneQueries, parseAnneParams, ANNE_SECTIONS } from './lib/sql-anne.js';
+import { buildPlanningMissionsQuery, buildPlanningYearsQuery } from './lib/sql-planning.js';
 import { isPlanningPath, guardPlanning, isAnnePath, guardAnne } from './lib/planning-auth.js';
 import { handleRhSuivi, handleRhExport, handleRhValues } from './lib/rh-cards.js';
 
@@ -99,6 +100,7 @@ export default {
       if (url.pathname === '/api/assistant-site-prive') return await handleAssistantSitePrive(url, env);
       if (url.pathname === '/api/rh') return await handleRh(url, env);
       if (url.pathname === '/api/anne') return await handleAnne(url, env);
+      if (url.pathname === '/api/planning') return await handlePlanning(url, env);
       if (url.pathname === '/api/direction') return await handleDirection(url, env);
       if (url.pathname === '/api/direction-salaries') return await handleDirectionSalaries(env);
       if (url.pathname === '/api/direction-suivi') return await handleDirectionSuivi(url, env, ctx);
@@ -1141,6 +1143,27 @@ async function handleDirectionSalaries(env) {
 // ---------------------------------------------------------------
 // /api/challenge
 // ---------------------------------------------------------------
+// ---------------------------------------------------------------
+// /api/planning — dashboard /planning (liste des missions + Gantt)
+// ---------------------------------------------------------------
+async function handlePlanning(url, env) {
+  const configError = requireConfig(env);
+  if (configError) return jsonResponse({ error: configError }, 500);
+
+  const raw = url.searchParams.get('annee');
+  const annee = raw ? Number(raw) : new Date().getFullYear();
+  if (!Number.isInteger(annee) || annee < 2015 || annee > 2100) return jsonResponse({ error: 'annee invalide' }, 400);
+
+  try {
+    // Séquentiel (cf. platform-gotchas : requêtes parallèles = saturation du pool Metabase).
+    const missions = await runQuery(env, buildPlanningMissionsQuery(annee));
+    const annees = (await runQuery(env, buildPlanningYearsQuery())).map((r) => r.annee);
+    return jsonResponse({ annee, annees, missions });
+  } catch (e) {
+    return jsonResponse({ error: String(e.message || e) }, 502);
+  }
+}
+
 async function handleChallenge(env) {
   const configError = requireConfig(env);
   if (configError) return jsonResponse({ error: configError }, 500);

@@ -72,6 +72,18 @@ Une ligne par indicateur : **ce qu'il mesure et comment il est calculé, en mots
 
 `/anne` reprend **tous les indicateurs ci-dessus** avec les mêmes formules (on additionne d'abord, on divise ensuite), sur 10 onglets, filtrables et regroupables (2 niveaux max) par : association, mission, ville, jour du lot, LV-MS, RM, statut RD, format, type de mission, RE, catégorie de ville street, année, mois, semaine, index des jours (= jour du mois) / semaines, index jour / semaine de mission, heure du don (+ regroupement année-mois). Choix d'interprétation : **LV / MS** = mission lundi-vendredi ou mardi-samedi d'après `missions.jours` ; **ville** = déduite des 3 dernières lettres du code mission (suffixes SP / HYB ignorés ; sinon ville principale de la mission) ; **catégorie de ville** = grille Cat. 1 à 4 des questions Metabase « DASHBOARDS ANNE », Paris classé « Hors street » (« Hors grille » pour une ville street absente de la grille, « Hors street » pour les autres formats) ; **statut RD** = grade du contrat sur la mission (RDE+ = RDE ; RE/RER/RERF/REF = RE) ; index des jours = jour du mois (1 à 31), index des semaines = semaines depuis le lundi 30/12/2024. Limites : l'heure du don n'affecte que les indicateurs basés sur les dons ; l'onglet RH applique les dimensions de temps à la date de début des contrats ; l'onglet Mobilisation ne supporte que les dimensions de mission ; candidatures TeamTailor non disponibles ; tops du challenge remplacés par l'onglet Salariés ; missions et salariés limités à 500 lignes.
 
+## Dashboard /planning (11/2026)
+
+Liste et planning (Gantt) des missions d'une année. Pas de formule d'indicateur : ce sont des informations de fiche mission.
+
+- **Missions retenues** : toutes les missions de l'année choisie (celles qui commencent, finissent ou se déroulent pendant l'année), y compris celles en attente. Les missions annulées, de mobilisation et des clients de test sont exclues.
+- **Nb de semaines** : durée de la mission du début à la fin, arrondie à la semaine supérieure.
+- **Rythme** : « LV » si la mission travaille du lundi au vendredi, « MS » si elle travaille du mardi au samedi.
+- **Ville principale** : ville renseignée sur la mission ; à défaut, ville déduite des 3 dernières lettres du code mission.
+- **Nombre de recruteurs** : salariés ayant au moins un lot (journée de travail) sur la mission ; la liste (Prénom NOM) s'affiche au survol.
+- **Nombre de lots** : nombre de journées de travail planifiées ou réalisées sur la mission.
+- **Nombre d'emplacements** : emplacements rattachés à la mission ou utilisés par ses lots, sans doublon.
+
 ## Formats d'affichage
 
 Taux réel : 3 décimales · taux de transformation : sans décimale · ratio h, taux de présence, % −25 ans, taux de complétion : en %, 1 décimale · don moyen : en €, 2 décimales · âge médian et âge moyen : 1 décimale · comptages : nombres entiers.
