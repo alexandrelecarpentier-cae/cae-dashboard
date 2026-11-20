@@ -361,6 +361,7 @@ var K = {
   presence_rd: function(r){return div(r.rd_presents,r.rd_attendus);},
   completion: function(r){return div(r.lots_emplacement,r.nb_lots);},
   bs_jour: function(r){return div(r.bs_reel,r.nb_jours_activite);},
+  prix_bs: function(r){return div(r.montant_valide,r.bs_reel);},
   taux_paye: function(r){return div(r.bs_reel,r.heures_rem);},
   abs_total: function(r){return div(r.jours_absence_total,r.nb_lots);},
   h_contrat: function(r){var n=num(r.nb_lots); return n==null?null:n*7;},
@@ -377,9 +378,9 @@ function renderSynth(core,rh){
     c('Nb de missions',nz('nb_missions'),I,'Missions différentes ayant au moins une journée de travail'),
     c('Nb BS réels',nz('bs_reel'),I,'Dons valides (nouveau, en attente, transmis)'),
     c('Nb BS réels / jour',K.bs_jour,D1,'BS réels ÷ jours d’activité'),
-    c('Montant validé = CA BS',nz('montant_valide'),I,'Somme des montants des dons valides'),
-    c('Nb heures contractuelles',K.h_contrat,I,'Lots × 7 h (théorique)'),
-    c('Nb heures payées',nz('heures_rem'),I,'Heures rémunérées'),
+    c('Prix BS',K.prix_bs,D2,'Montant validé ÷ BS réels (€)'),
+    c('Nb heures contractuelles',K.h_contrat,I,'Lots existants × 7 h'),
+    c('Nb heures payées / rémunérées',nz('heures_rem'),I,'Heures rémunérées'),
     c('Nb heures rue',nz('heures_rue'),I,'Heures de rue (0 si recruteur absent)'),
     c('Taux réel',K.taux_reel,D3,'Nb BS ÷ Nb heures rue'),
     c('Ratio',K.ratio_h,P1,'Heures rue ÷ heures rémunérées'),
@@ -388,8 +389,7 @@ function renderSynth(core,rh){
     c('Nb FPE total',rf(K.fpe),P1,'Part des contrats avec un avenant de fin de période d’essai publié ou signé (basé sur la date de début des contrats)'),
     c('Nb RD',nz('nb_rd_simple'),I,'Salariés avec grade RD'), c('Nb RDC',nz('nb_rdc'),I,'Salariés avec grade RDC'), c('Nb RDE',nz('nb_rde'),I,'Salariés avec grade RDE'),
     c('Nb RE',nz('nb_re'),I,'Responsables d’équipe'),
-    c('Volume contractuel',nz('volume_contractuel'),I,'Objectif de BS du début de mission (compté une fois par mission)'),
-    c('Objectif',nz('objectif'),I,'Objectif théorique de BS (compté une fois par mission)')
+    c('Volume contractuel',nz('volume_contractuel'),I,'Objectif de BS de la mission (compté une fois par mission)')
   ],core.rows);
   return out;
 }
@@ -474,9 +474,8 @@ function renderMissions(m){
     t('mission','Mission'),t('type_mission','Type mission'),t('format_mission','Format mission'),t('cat_ville','Catégorie de ville'),t('ville','Ville'),
     c('Nb BS réels',nz('bs_reel'),I,'Dons valides (nouveau, en attente, transmis)'),
     c('Nb BS réels / jour',K.bs_jour,D1,'BS réels ÷ jours d’activité'),
-    c('Montant validé = CA BS',nz('montant_valide'),I,'Somme des montants des dons valides'),
-    c('Nb heures contractuelles',K.h_contrat,I,'Lots × 7 h'),
-    c('Nb heures payées',nz('heures_rem'),I,'Heures rémunérées'),
+    c('Nb heures contractuelles',K.h_contrat,I,'Lots existants × 7 h'),
+    c('Nb heures payées / rémunérées',nz('heures_rem'),I,'Heures rémunérées'),
     c('Nb heures rue',nz('heures_rue'),I,'Heures de rue (0 si recruteur absent)'),
     c('Taux réel',K.taux_reel,D3,'Nb BS ÷ Nb heures rue'),
     c('Ratio',K.ratio_h,P1,'Heures rue ÷ heures rémunérées'),
@@ -486,8 +485,7 @@ function renderMissions(m){
     c('Nb RD',nz('nb_rd_simple'),I,'Salariés avec grade RD'), c('Nb RDC',nz('nb_rdc'),I,'Salariés avec grade RDC'), c('Nb RDE',nz('nb_rde'),I,'Salariés avec grade RDE'),
     c('Nb RE',nz('nb_re'),I,'Responsables d’équipe'),
     t('re','Nom du RE'),t('rm','Nom du RM'),
-    c('Volume contractuel',nz('objectif_debut'),I,'Objectif de BS du début de mission'),
-    c('Objectif',nz('objectif'),I,'Objectif théorique de BS')
+    c('Volume contractuel',nz('objectif'),I,'Objectif de BS de la mission')
   ],z(m.rows),{noGroup:true});
 }
 function renderSalaries(s){

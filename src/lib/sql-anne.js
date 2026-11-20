@@ -147,14 +147,14 @@ mis_raw AS (
     CASE WHEN array_to_string(m.jours, ',') ILIKE '%lundi%' AND array_to_string(m.jours, ',') NOT ILIKE '%samedi%' THEN 'LV'
       WHEN array_to_string(m.jours, ',') ILIKE '%samedi%' AND array_to_string(m.jours, ',') NOT ILIKE '%lundi%' THEN 'MS'
       WHEN coalesce(array_to_string(m.jours, ','), '') = '' THEN 'Non renseigné' ELSE 'Autre' END AS lv_ms,
-    coalesce(uip_rm.prenom || ' ' || uip_rm.nom, u_rm.email, 'Non renseigné') AS rm,
-    coalesce(uip_re.prenom || ' ' || uip_re.nom, u_re.email, 'Non renseigné') AS re,
+    coalesce(uip_rm.prenom || ' ' || upper(uip_rm.nom), u_rm.email, 'Non renseigné') AS rm,
+    coalesce(uip_re.prenom || ' ' || upper(uip_re.nom), u_re.email, 'Non renseigné') AS re,
     ${FORMAT_EXPR} AS format_mission,
     CASE WHEN lower(m.type_mission) IN ('itinérante','itinerante') THEN 'itinerante'
       WHEN lower(m.type_mission) IN ('spéciale','speciale') THEN 'speciale'
       WHEN m.type_mission IS NULL THEN 'non_renseigne' ELSE lower(m.type_mission) END AS type_mission,
     CASE WHEN ${FORMAT_EXPR} = 'street' THEN coalesce(vm.cat, 'Hors grille') ELSE 'Hors street' END AS cat_ville,
-    m.objectif_bulletin_theorique AS objectif, m.objectif_bulletin_debut_mission AS objectif_debut
+    m.objectif_bulletin_theorique AS objectif
   FROM missions m
   JOIN clients c ON c.id = m.client_id
   LEFT JOIN vm ON vm.code = upper(right(regexp_replace(m.code_mission, '(SP|HYB)$', ''), 3))
@@ -270,8 +270,7 @@ const LOT_METRICS = [
   ['nb_rd_simple', "count(DISTINCT utilisateur_id) FILTER (WHERE statut_rd = 'RD')"],
   ['nb_rdc', "count(DISTINCT utilisateur_id) FILTER (WHERE statut_rd = 'RDC')"],
   ['nb_rde', "count(DISTINCT utilisateur_id) FILTER (WHERE statut_rd = 'RDE')"],
-  ['objectif', 'coalesce(sum(objectif) FILTER (WHERE prem), 0)'],
-  ['volume_contractuel', 'coalesce(sum(objectif_debut) FILTER (WHERE prem), 0)'],
+  ['volume_contractuel', 'coalesce(sum(objectif) FILTER (WHERE prem), 0)'],
   ['jours_absence_total', 'count(*) FILTER (WHERE NOT presente AND abs_code IS NOT NULL)'],
   ['heures_rue', 'coalesce(sum(hr), 0)'],
   ['heures_rem', 'coalesce(sum(hrem), 0)'],
@@ -460,7 +459,7 @@ jt AS (
 ),
 comp AS (SELECT c.mission_id, max(c.date_debut) AS derniere_arrivee FROM contrats c WHERE c.mission_id IN (SELECT mission_id FROM lm) GROUP BY 1)
 SELECT m.mission_id, m.mission, m.asso, m.ville, m.format_mission, m.type_mission, m.cat_ville, m.lv_ms, m.rm, m.re,
-  m.jour_depart, m.jour_fin, m.objectif, m.objectif_debut,
+  m.jour_depart, m.jour_fin, m.objectif,
   lm.nb_lots, lm.nb_recruteurs, lm.nb_rd, lm.nb_rd_simple, lm.nb_rdc, lm.nb_rde, lm.nb_re, lm.jours_absence_total,
   coalesce(dm.montant_valide, 0) AS montant_valide, coalesce(fp.nb_contrats, 0) AS nb_contrats, coalesce(fp.nb_fpe, 0) AS nb_fpe, lm.heures_rue, lm.heures_rem, lm.jours_activite,
   coalesce(dm.bs_reel, 0) AS bs_reel, coalesce(dm.bs_rue, 0) AS bs_rue, coalesce(cumul.bs_cumul, 0) AS bs_cumul,
