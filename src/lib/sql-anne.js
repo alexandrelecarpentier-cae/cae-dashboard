@@ -130,8 +130,8 @@ const VILLES = [
   ['PAR', 'PARIS', 'Hors street'], ['LYO', 'LYON', 'Cat. 1'], ['BOR', 'BORDEAUX', 'Cat. 1'], ['TOU', 'TOULOUSE', 'Cat. 1'],
   ['NAN', 'NANTES', 'Cat. 1'], ['LIL', 'LILLE', 'Cat. 1'], ['STR', 'STRASBOURG', 'Cat. 1'], ['MAR', 'MARSEILLE', 'Cat. 1'],
   ['GRE', 'GRENOBLE', 'Cat. 2'], ['NIC', 'NICE', 'Cat. 2'], ['REN', 'RENNES', 'Cat. 2'], ['MON', 'MONTPELLIER', 'Cat. 2'],
-  ['DIJ', 'DIJON', 'Cat. 3'], ['ANG', 'ANGERS', 'Cat. 3'], ['MET', 'METZ', 'Cat. 3'], ['ROU', 'ROUEN', 'Cat. 3'],
-  ['CLE', 'CLERMONT-FERRAND', 'Cat. 4'], ['RUN', 'LA RÉUNION', 'Hors grille'], ['TLS', 'TOULOUSE', 'Cat. 1'], ['PAU', 'PAU', 'Hors grille'], ['BAY', 'BAYONNE', 'Hors grille'], ['LIM', 'LIMOGES', 'Hors grille'], ['ANN', 'ANNECY', 'Cat. 4'], ['CAE', 'CAEN', 'Cat. 4'], ['TRS', 'TOURS', 'Cat. 4'],
+  ['DIJ', 'DIJON', 'Cat. 3'], ['ANG', 'ANGERS-LE MANS', 'Cat. 3'], ['MET', 'METZ NANCY', 'Cat. 3'], ['ROU', 'ROUEN-LE HAVRE', 'Cat. 3'],
+  ['CLE', 'CLERMONT-FERRAND', 'Cat. 4'], ['RUN', 'LA RÉUNION', 'Hors grille'], ['TLS', 'TOULOUSE', 'Cat. 1'], ['PAU', 'PAU', 'Hors grille'], ['BAY', 'BAYONNE', 'Hors grille'], ['LIM', 'LIMOGES', 'Hors grille'], ['ANN', 'ANNECY-CHAMBÉRY', 'Cat. 4'], ['CAE', 'CAEN', 'Cat. 4'], ['TRS', 'TOURS', 'Cat. 4'],
 ];
 
 // Missions du périmètre (filtres de niveau mission appliqués).
@@ -154,7 +154,7 @@ mis_raw AS (
       WHEN lower(m.type_mission) IN ('spéciale','speciale') THEN 'speciale'
       WHEN m.type_mission IS NULL THEN 'non_renseigne' ELSE lower(m.type_mission) END AS type_mission,
     CASE WHEN ${FORMAT_EXPR} = 'street' THEN coalesce(vm.cat, 'Hors grille') ELSE 'Hors street' END AS cat_ville,
-    m.objectif_bulletin_theorique AS objectif
+    m.objectif_bulletin_theorique AS objectif, m.objectif_bulletin_debut_mission AS objectif_debut
   FROM missions m
   JOIN clients c ON c.id = m.client_id
   LEFT JOIN vm ON vm.code = upper(right(regexp_replace(m.code_mission, '(SP|HYB)$', ''), 3))
@@ -199,7 +199,7 @@ lf AS (
     AND (coalesce(l.heures_remuneration_completes, true) OR l.date < CURRENT_DATE)
 ),
 lx AS (
-  SELECT * FROM (
+  SELECT t.*, (row_number() OVER (PARTITION BY t.mission_id ORDER BY t.jour, t.lot_id) = 1) AS prem FROM (
     SELECT lf.*, ${statutRd('lf.grade_raw')} AS statut_rd, ${timeDims('lf.jour', 'lf.jour_depart')},
       (NOT lf.presente AND coalesce(lf.abs_code IN ${CODES_ABSENCE_IGNORES}, false)) AS abs_ignoree
     FROM lf
@@ -267,6 +267,12 @@ const LOT_METRICS = [
   ['nb_recruteurs', 'count(DISTINCT utilisateur_id)'],
   ['nb_rd', "count(DISTINCT utilisateur_id) FILTER (WHERE statut_rd <> 'RE')"],
   ['nb_re', "count(DISTINCT utilisateur_id) FILTER (WHERE statut_rd = 'RE')"],
+  ['nb_rd_simple', "count(DISTINCT utilisateur_id) FILTER (WHERE statut_rd = 'RD')"],
+  ['nb_rdc', "count(DISTINCT utilisateur_id) FILTER (WHERE statut_rd = 'RDC')"],
+  ['nb_rde', "count(DISTINCT utilisateur_id) FILTER (WHERE statut_rd = 'RDE')"],
+  ['objectif', 'coalesce(sum(objectif) FILTER (WHERE prem), 0)'],
+  ['volume_contractuel', 'coalesce(sum(objectif_debut) FILTER (WHERE prem), 0)'],
+  ['jours_absence_total', 'count(*) FILTER (WHERE NOT presente AND abs_code IS NOT NULL)'],
   ['heures_rue', 'coalesce(sum(hr), 0)'],
   ['heures_rem', 'coalesce(sum(hrem), 0)'],
   ['jours_presents', 'count(*) FILTER (WHERE presente)'],
@@ -405,7 +411,7 @@ fpe AS (
   SELECT av.contrat_id AS fpe_contrat,
     bool_or(ta.libelle ILIKE '%employeur%') AS fpe_emp, bool_or(ta.libelle ILIKE '%salari%') AS fpe_sal
   FROM avenants av JOIN types_avenants ta ON ta.id = av.type_avenant_id
-  WHERE ta.categorie = 'fin_period_essai' AND av.oneflow_status = 'publie'
+  WHERE ta.categorie = 'fin_period_essai' AND av.oneflow_status IN ('signe', 'publie')
     AND av.contrat_id IN (SELECT contrat_id FROM cx)
   GROUP BY 1
 ),
@@ -426,10 +432,23 @@ function buildMissionsQuery(p) {
 lm AS (
   SELECT mission_id, count(*) AS nb_lots, count(DISTINCT utilisateur_id) AS nb_recruteurs,
     count(DISTINCT utilisateur_id) FILTER (WHERE statut_rd <> 'RE') AS nb_rd,
+    count(DISTINCT utilisateur_id) FILTER (WHERE statut_rd = 'RD') AS nb_rd_simple,
+    count(DISTINCT utilisateur_id) FILTER (WHERE statut_rd = 'RDC') AS nb_rdc,
+    count(DISTINCT utilisateur_id) FILTER (WHERE statut_rd = 'RDE') AS nb_rde,
+    count(DISTINCT utilisateur_id) FILTER (WHERE statut_rd = 'RE') AS nb_re,
+    count(*) FILTER (WHERE NOT presente AND abs_code IS NOT NULL) AS jours_absence_total,
     coalesce(sum(hr), 0) AS heures_rue, coalesce(sum(hrem), 0) AS heures_rem, count(DISTINCT jour) AS jours_activite
   FROM lx GROUP BY 1
 ),
-dm AS (SELECT mission_id, count(*) FILTER (WHERE ${V}) AS bs_reel, count(*) AS bs_rue FROM dn GROUP BY 1),
+dm AS (SELECT mission_id, count(*) FILTER (WHERE ${V}) AS bs_reel, count(*) AS bs_rue,
+  coalesce(sum(montant) FILTER (WHERE ${V}), 0) AS montant_valide FROM dn GROUP BY 1),
+fp AS (
+  SELECT c.mission_id, count(DISTINCT c.id) AS nb_contrats,
+    count(DISTINCT c.id) FILTER (WHERE EXISTS (
+      SELECT 1 FROM avenants av JOIN types_avenants ta ON ta.id = av.type_avenant_id
+      WHERE av.contrat_id = c.id AND ta.categorie = 'fin_period_essai' AND av.oneflow_status IN ('signe', 'publie'))) AS nb_fpe
+  FROM contrats c WHERE c.mission_id IN (SELECT mission_id FROM lm) GROUP BY 1
+),
 cumul AS (
   SELECT l.mission_id, count(*) AS bs_cumul FROM dons d JOIN lots l ON l.id = d.lot_id
   WHERE l.mission_id IN (SELECT mission_id FROM lm) AND d.statut IN ${VALID} AND l.date <= CURRENT_DATE GROUP BY 1
@@ -441,13 +460,15 @@ jt AS (
 ),
 comp AS (SELECT c.mission_id, max(c.date_debut) AS derniere_arrivee FROM contrats c WHERE c.mission_id IN (SELECT mission_id FROM lm) GROUP BY 1)
 SELECT m.mission_id, m.mission, m.asso, m.ville, m.format_mission, m.type_mission, m.cat_ville, m.lv_ms, m.rm, m.re,
-  m.jour_depart, m.jour_fin, m.objectif,
-  lm.nb_lots, lm.nb_recruteurs, lm.nb_rd, lm.heures_rue, lm.heures_rem, lm.jours_activite,
+  m.jour_depart, m.jour_fin, m.objectif, m.objectif_debut,
+  lm.nb_lots, lm.nb_recruteurs, lm.nb_rd, lm.nb_rd_simple, lm.nb_rdc, lm.nb_rde, lm.nb_re, lm.jours_absence_total,
+  coalesce(dm.montant_valide, 0) AS montant_valide, coalesce(fp.nb_contrats, 0) AS nb_contrats, coalesce(fp.nb_fpe, 0) AS nb_fpe, lm.heures_rue, lm.heures_rem, lm.jours_activite,
   coalesce(dm.bs_reel, 0) AS bs_reel, coalesce(dm.bs_rue, 0) AS bs_rue, coalesce(cumul.bs_cumul, 0) AS bs_cumul,
   jt.jours_total, jt.jours_echus, (comp.derniere_arrivee - m.jour_depart) AS delai_completion
 FROM mis m
 JOIN lm ON lm.mission_id = m.mission_id
 LEFT JOIN dm ON dm.mission_id = m.mission_id
+LEFT JOIN fp ON fp.mission_id = m.mission_id
 LEFT JOIN cumul ON cumul.mission_id = m.mission_id
 LEFT JOIN jt ON jt.mission_id = m.mission_id
 LEFT JOIN comp ON comp.mission_id = m.mission_id

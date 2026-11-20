@@ -360,26 +360,36 @@ var K = {
   absenteisme: function(r){ var a=num(r.jours_absence_hors_am), p=num(r.jours_presents); if(a==null||p==null) return null; var d=a+p; return d? a/d : null; },
   presence_rd: function(r){return div(r.rd_presents,r.rd_attendus);},
   completion: function(r){return div(r.lots_emplacement,r.nb_lots);},
-  bs_jour: function(r){return div(r.bs_reel,r.nb_jours_activite);}
+  bs_jour: function(r){return div(r.bs_reel,r.nb_jours_activite);},
+  taux_paye: function(r){return div(r.bs_reel,r.heures_rem);},
+  abs_total: function(r){return div(r.jours_absence_total,r.nb_lots);},
+  h_contrat: function(r){var n=num(r.nb_lots); return n==null?null:n*7;},
+  fpe: function(r){return div(r.nb_fpe,r.nb_contrats);}
 };
 function nz(k){ return function(r){return num(r[k]);}; }
 
-function renderSynth(core){
+function renderSynth(core,rh){
   var t=totalRow(core.rows);
   var out=tiles([['BS réel',fmt(t.bs_reel)],['Heures de rue',fmt(t.heures_rue,0)],['Taux réel',D3(K.taux_reel(t))],['Transformation',P0(K.transfo(t))],['Don moyen',D2(K.don_moyen(t))+' €'],['Score qualité',D2(K.score(t))],['Missions',fmt(t.nb_missions)],['Lots',fmt(t.nb_lots)]]);
+  var rm={}; (rh.rows||[]).forEach(function(r){rm[keyOf(r)]=r;});
+  var rf=function(f){return function(r){var x=rm[keyOf(r)]; return x?f(x):null;};};
   out+=table('Indicateurs clés',[
-    c('Missions',nz('nb_missions'),I,'Missions différentes ayant au moins une journée de travail'),
-    c('Lots',nz('nb_lots'),I,'Journées de travail'),
-    c('Jours d’activité',nz('nb_jours_activite'),I,'Dates différentes avec du travail'),
-    c('BS réel',nz('bs_reel'),I,'Dons valides (nouveau, en attente, transmis)'),
-    c('BS rue',nz('bs_rue'),I,'Valides + incomplets + annulés'),
-    c('Heures rue',nz('heures_rue'),I,'Heures de rue (0 si recruteur absent)'),
-    c('Taux réel',K.taux_reel,D3,'BS réel ÷ heures de rue'),
-    c('Transfo',K.transfo,P0,'BS réel ÷ BS rue'),
-    c('Montant validé (€)',nz('montant_valide'),I,'Somme des montants des dons valides'),
-    c('Don moyen',K.don_moyen,D2,'€'),
-    c('Score qualité',K.score,D2,'Don moyen × (1 − part des −25 ans)'),
-    c('BS / jour',K.bs_jour,D1,'BS réel ÷ jours d’activité')
+    c('Nb de missions',nz('nb_missions'),I,'Missions différentes ayant au moins une journée de travail'),
+    c('Nb BS réels',nz('bs_reel'),I,'Dons valides (nouveau, en attente, transmis)'),
+    c('Nb BS réels / jour',K.bs_jour,D1,'BS réels ÷ jours d’activité'),
+    c('Montant validé = CA BS',nz('montant_valide'),I,'Somme des montants des dons valides'),
+    c('Nb heures contractuelles',K.h_contrat,I,'Lots × 7 h (théorique)'),
+    c('Nb heures payées',nz('heures_rem'),I,'Heures rémunérées'),
+    c('Nb heures rue',nz('heures_rue'),I,'Heures de rue (0 si recruteur absent)'),
+    c('Taux réel',K.taux_reel,D3,'Nb BS ÷ Nb heures rue'),
+    c('Ratio',K.ratio_h,P1,'Heures rue ÷ heures rémunérées'),
+    c('Taux payé',K.taux_paye,D3,'Nb BS ÷ heures rémunérées'),
+    c('Taux absence total',K.abs_total,P1,'Journées prévues où la personne est absente avec un code d’absence renseigné, sans aucune exclusion'),
+    c('Nb FPE total',rf(K.fpe),P1,'Part des contrats avec un avenant de fin de période d’essai publié ou signé (basé sur la date de début des contrats)'),
+    c('Nb RD',nz('nb_rd_simple'),I,'Salariés avec grade RD'), c('Nb RDC',nz('nb_rdc'),I,'Salariés avec grade RDC'), c('Nb RDE',nz('nb_rde'),I,'Salariés avec grade RDE'),
+    c('Nb RE',nz('nb_re'),I,'Responsables d’équipe'),
+    c('Volume contractuel',nz('volume_contractuel'),I,'Objectif de BS du début de mission (compté une fois par mission)'),
+    c('Objectif',nz('objectif'),I,'Objectif théorique de BS (compté une fois par mission)')
   ],core.rows);
   return out;
 }
@@ -461,15 +471,23 @@ function renderRh(r0){
 function renderMissions(m){
   var t=function(k,h){return c(h,function(r){return r[k];},txt);};
   return '<div class="note">500 missions maximum (les plus récentes). Une ligne = une mission : le regroupement ne s’applique pas ici.</div>'+table('Missions',[
-    t('mission','Mission'),t('asso','Asso'),t('ville','Ville'),t('format_mission','Format'),t('type_mission','Type'),t('cat_ville','Cat.'),t('lv_ms','LV/MS'),t('rm','RM'),t('re','RE'),t('jour_depart','Départ'),t('jour_fin','Fin'),
-    c('Lots',nz('nb_lots'),I,''), c('Recruteurs',nz('nb_recruteurs'),I,''), c('Heures rue',nz('heures_rue'),I,''),
-    c('BS réel',nz('bs_reel'),I,''), c('BS rue',nz('bs_rue'),I,''),
-    c('Taux réel',K.taux_reel,D3,'BS réel ÷ heures de rue'),
-    c('Objectif',nz('objectif'),I,'Objectif théorique de bulletins'),
-    c('BS cumulés',nz('bs_cumul'),I,'Tous les dons valides depuis le début de la mission'),
-    c('% atteint',function(r){return div(r.bs_cumul,r.objectif);},P0,'BS cumulés ÷ objectif'),
-    c('Jours échus / total',function(r){return r.jours_echus==null?null:r.jours_echus+' / '+r.jours_total;},txt,'Jours de mission écoulés'),
-    c('Délai complétion (j)',nz('delai_completion'),I,'Jours entre le début de la mission et l’arrivée du dernier recruteur')
+    t('mission','Mission'),t('type_mission','Type mission'),t('format_mission','Format mission'),t('cat_ville','Catégorie de ville'),t('ville','Ville'),
+    c('Nb BS réels',nz('bs_reel'),I,'Dons valides (nouveau, en attente, transmis)'),
+    c('Nb BS réels / jour',K.bs_jour,D1,'BS réels ÷ jours d’activité'),
+    c('Montant validé = CA BS',nz('montant_valide'),I,'Somme des montants des dons valides'),
+    c('Nb heures contractuelles',K.h_contrat,I,'Lots × 7 h'),
+    c('Nb heures payées',nz('heures_rem'),I,'Heures rémunérées'),
+    c('Nb heures rue',nz('heures_rue'),I,'Heures de rue (0 si recruteur absent)'),
+    c('Taux réel',K.taux_reel,D3,'Nb BS ÷ Nb heures rue'),
+    c('Ratio',K.ratio_h,P1,'Heures rue ÷ heures rémunérées'),
+    c('Taux payé',K.taux_paye,D3,'Nb BS ÷ heures rémunérées'),
+    c('Taux absence total',K.abs_total,P1,'Journées prévues où la personne est absente avec un code d’absence renseigné, sans aucune exclusion'),
+    c('Nb FPE total',K.fpe,P1,'Part des contrats avec un avenant de fin de période d’essai publié ou signé'),
+    c('Nb RD',nz('nb_rd_simple'),I,'Salariés avec grade RD'), c('Nb RDC',nz('nb_rdc'),I,'Salariés avec grade RDC'), c('Nb RDE',nz('nb_rde'),I,'Salariés avec grade RDE'),
+    c('Nb RE',nz('nb_re'),I,'Responsables d’équipe'),
+    t('re','Nom du RE'),t('rm','Nom du RM'),
+    c('Volume contractuel',nz('objectif_debut'),I,'Objectif de BS du début de mission'),
+    c('Objectif',nz('objectif'),I,'Objectif théorique de BS')
   ],z(m.rows),{noGroup:true});
 }
 function renderSalaries(s){
@@ -506,7 +524,7 @@ function drawTabs(){
 function load(){
   var main=document.getElementById('main'); main.innerHTML='<div class="empty">Chargement…</div>'; lastExport=[]; TB={};
   var p;
-  if(tab==='synth') p=getSection('core').then(renderSynth);
+  if(tab==='synth') p=getSection('core').then(function(core){ return getSection('rh').then(function(rh){return renderSynth(core,rh);}); });
   else if(tab==='heures') p=getSection('core').then(function(core){ return getSection('horaires').then(function(h){return renderHeures(core,h);}); });
   else if(tab==='donateurs') p=getSection('core').then(renderDonateurs);
   else if(tab==='dons') p=getSection('dons').then(renderDons);

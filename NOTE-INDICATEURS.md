@@ -83,4 +83,6 @@ Taux réel : 3 décimales · taux de transformation : sans décimale · ratio h,
 
 _La page `/indicateurs` est générée depuis ce fichier : après toute modification, relancer `python3 scripts/build-indicateurs.py` puis commit._
 
+**Onglets Synthèse et Mission de `/anne` (11/2026, demande d'Anne)** — définitions propres à `/anne` : *Nb heures contractuelles* = lots × 7 h ; *Taux payé* = BS réels ÷ heures rémunérées ; *Taux absence total* = journées sans heure payée avec un code d'absence ÷ lots, sans aucune exclusion de code ; *Nb FPE total* = part des contrats avec un avenant de fin de période d'essai **signé ou publié** (sur `/anne` uniquement, y compris l'onglet RH ; les autres dashboards ne comptent que les « publié ») ; *Volume contractuel* = objectif de BS du début de mission ; *Objectif* = objectif théorique de BS. Objectif et volume contractuel sont comptés une fois par mission (dans la première période où elle a des lots quand on regroupe par date). *Prix BS* volontairement non affiché. Le champ « bleu » d'Anne n'est pas distingué : les noms de colonnes suivent sa liste.
+
 Formules précises et exemples chiffrés de /indicateurs : `scripts/indicateurs-details.json` (clé = nom de l'indicateur ci-dessus). Les infobulles sont lues automatiquement dans `public/anne.html`. Régénérer avec `python3 scripts/build-indicateurs.py`.
