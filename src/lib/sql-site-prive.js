@@ -45,7 +45,9 @@ function departementSqlExpr(col) {
 function filtersClause(p) {
   const clauses = [
     // emplacements privés + lots sans emplacement (14/10/2026 : pour que les totaux d'une mission collent à /mission)
-    `(e.type_emplacement = 'prive' or l.emplacement_id is null)`,
+    p.avec_public_hybride
+      ? `(e.type_emplacement = 'prive' or l.emplacement_id is null or (e.type_emplacement = 'public' and m.format = 'hybride'))`
+      : `(e.type_emplacement = 'prive' or l.emplacement_id is null)`,
     `m.format in (${sqlList(formatValuesFor(p.format))})`,
   ];
   if (p.id_mission) clauses.push(`m.id = '${p.id_mission}'`);
@@ -65,7 +67,7 @@ function baseCte(p) {
   return `with lots_f as (
   select l.id, l.mission_id, l.emplacement_id, l.date, case when l.presence_recruteur is distinct from false then l.nombre_horaires_rue else 0 end as nombre_horaires_rue, l.nombre_horaires_remuneration,
     l.utilisateur_id, m.responsable_equipe_id,
-    e.categorie, e.nom as emplacement_nom
+    e.categorie, e.nom as emplacement_nom, e.type_emplacement
   from lots l
   left join emplacements e on e.id = l.emplacement_id
   join missions m on m.id = l.mission_id
@@ -181,15 +183,18 @@ order by bs_reel desc nulls last;`;
 // logique que roleLabel() sur /salarie. Utilisé par /assistant-site-prive
 // pour afficher l'effectif "3+1" (3 RD + 1 RE) sans avoir à ouvrir les
 // diagrammes de performance de la mission (demande explicite, 9/2026).
+// Seule requête qui sort du périmètre "emplacements privés" : elle remonte aussi les jours
+// travaillés SANS emplacement associé (toutes missions) et, pour les missions hybrides, ceux sur
+// un emplacement PUBLIC (avec_public_hybride) — colonne `kind` = prive | public | sans.
 function buildEmplacementsActiviteQuery(p) {
-  return `${baseCte(p)},
+  return `${baseCte({ ...p, avec_public_hybride: true })},
 jours_ei as (
-  select l.date, l.emplacement_id, l.mission_id, l.emplacement_nom, l.categorie,
+  select l.date, l.emplacement_id, l.mission_id, l.emplacement_nom, l.categorie, l.type_emplacement,
     sum(l.nombre_horaires_rue) as heures_rue,
     count(distinct l.utilisateur_id) filter (where l.responsable_equipe_id is null or l.utilisateur_id <> l.responsable_equipe_id) as nb_rd,
     count(distinct l.utilisateur_id) filter (where l.responsable_equipe_id is not null and l.utilisateur_id = l.responsable_equipe_id) as nb_re
   from lots_f l
-  group by 1,2,3,4,5
+  group by 1,2,3,4,5,6
 ),
 dons_ei as (
   select l.date, l.emplacement_id, l.mission_id, count(distinct d.id) as bs_reel
@@ -198,14 +203,15 @@ dons_ei as (
   group by 1,2,3
 )
 select j.date, j.emplacement_nom, e.ville, j.categorie, m.code_mission, cl.nom as client_nom,
+  case when j.emplacement_id is null then 'sans' when j.type_emplacement = 'public' then 'public' else 'prive' end as kind,
   j.heures_rue, coalesce(dj.bs_reel, 0) as bs_reel,
   case when coalesce(j.heures_rue,0) > 0 then coalesce(dj.bs_reel,0)::float / j.heures_rue else null end as taux_reel,
   j.nb_rd, j.nb_re
 from jours_ei j
-join emplacements e on e.id = j.emplacement_id
+left join emplacements e on e.id = j.emplacement_id
 join missions m on m.id = j.mission_id
 left join clients cl on cl.id = m.client_id
-left join dons_ei dj on dj.date = j.date and dj.emplacement_id = j.emplacement_id and dj.mission_id = j.mission_id
+left join dons_ei dj on dj.date = j.date and dj.emplacement_id is not distinct from j.emplacement_id and dj.mission_id = j.mission_id
 order by j.date desc
 limit 300;`;
 }
