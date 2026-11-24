@@ -57,6 +57,7 @@ function filtersClause(p) {
   if (p.departement) clauses.push(`${departementSqlExpr('e.code_postal')} = '${p.departement}'`);
   if (p.date_from) clauses.push(`l.date >= '${p.date_from}'`);
   if (p.date_to) clauses.push(`l.date <= '${p.date_to}'`);
+  if (p.exclure_futur) clauses.push(`l.date <= CURRENT_DATE`);
   return clauses.join(' AND ');
 }
 
@@ -187,7 +188,7 @@ order by bs_reel desc nulls last;`;
 // travaillés SANS emplacement associé (toutes missions) et, pour les missions hybrides, ceux sur
 // un emplacement PUBLIC (avec_public_hybride) — colonne `kind` = prive | public | sans.
 function buildEmplacementsActiviteQuery(p) {
-  return `${baseCte({ ...p, avec_public_hybride: true })},
+  return `${baseCte({ ...p, avec_public_hybride: true, exclure_futur: true })},
 jours_ei as (
   select l.date, l.emplacement_id, l.mission_id, l.emplacement_nom, l.categorie, l.type_emplacement,
     sum(l.nombre_horaires_rue) as heures_rue,
