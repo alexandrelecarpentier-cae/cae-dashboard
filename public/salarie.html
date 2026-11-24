@@ -342,6 +342,7 @@
             <tr>
               <th>Mission</th><th>Client</th><th data-tip="Grade inscrit sur le contrat le plus récent de la mission (RD, RDC, RDE…). Affiche RE ou RM si la personne était responsable d'équipe ou de mission.">Rôle</th><th>Format</th><th data-tip="Responsable d'équipe (RE) de la mission.">RE</th><th data-tip="Responsable de mission (RM).">RM</th>
               <th>Début</th><th>Fin</th>
+              <th data-tip="Heures passées sur le terrain par la personne sur cette mission. Les journées où elle était notée absente comptent 0, et les journées à venir ne sont pas comptées." class="num">Heures rue</th>
               <th data-tip="Nombre de dons valides (nouveaux, en attente ou transmis) récoltés par la personne sur cette mission." class="num">BS réel</th><th data-tip="Nombre de dons ÷ heures de rue. Exemple : 0,250 = 1 don toutes les 4 heures." class="num">Taux réel</th>
               <th data-tip="Heures passées sur le terrain ÷ heures payées. Plus le chiffre est proche de 100 %, plus les heures payées ont été passées sur le terrain." class="num">Ratio h</th>
               <th data-tip="Part des journées prévues où la personne est absente avec un code d'absence renseigné (hors absences légales ou autorisées). Une journée sans heure payée et sans code d'absence n'est pas comptée comme une absence. Les journées d'absence légale ou autorisée (congés payés, maladie, accident, maternité/paternité, formation, repos compensateur, absence autorisée…) ne comptent pas : elles sont écartées du calcul." class="num">Taux d'absence</th>
@@ -389,7 +390,7 @@
 
     const listEl = document.getElementById('missionList');
     if (!missions.length) {
-      listEl.innerHTML = '<tr><td colspan="17" class="empty">Aucune mission enregistrée</td></tr>';
+      listEl.innerHTML = '<tr><td colspan="18" class="empty">Aucune mission enregistrée</td></tr>';
       return;
     }
     const formatLabel = (f) => ({ street: 'Street', sitesprives: 'Site privé', hybride: 'Hybride' }[f] || f || '—');
@@ -405,6 +406,7 @@
         <td>${m.rm || '—'}</td>
         <td>${fmtDate(m.date_debut)}</td>
         <td>${fmtDate(m.date_fin)}</td>
+        <td class="num">${m.heures_rue != null ? fmtNum(m.heures_rue, 1) : '—'}</td>
         <td class="num">${fmtNum(m.bs_reel)}</td>
         <td class="num">${m.taux_reel != null ? fmtNum(m.taux_reel, 3) : '—'}</td>
         <td class="num">${fmtPct(m.ratio_h)}</td>
