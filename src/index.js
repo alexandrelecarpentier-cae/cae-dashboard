@@ -837,6 +837,14 @@ async function handleSitePriveCalendrier(url, env) {
   const id_emplacement = url.searchParams.get('id_emplacement') || '';
   if (id_emplacement && !RE_UUID.test(id_emplacement)) return jsonResponse({ error: 'id_emplacement invalide' }, 400);
 
+  const id_client = url.searchParams.get('id_client') || '';
+  if (id_client && !RE_UUID.test(id_client)) return jsonResponse({ error: 'id_client invalide' }, 400);
+
+  const format = url.searchParams.get('format') || '';
+  if (format && !['site_prive', 'hybride'].includes(format)) {
+    return jsonResponse({ error: 'format invalide' }, 400);
+  }
+
   const villeRaw = url.searchParams.get('ville') || '';
   let ville = null;
   if (villeRaw) {
@@ -854,6 +862,8 @@ async function handleSitePriveCalendrier(url, env) {
     const jours = await runQuery(env, buildSitePriveCalendrierQuery({
       id_mission,
       id_emplacement: id_emplacement || null,
+      id_client: id_client || null,
+      format: format || null,
       ville: ville || null,
       departement: departement || null,
     }));

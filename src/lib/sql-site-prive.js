@@ -471,9 +471,10 @@ function buildCalendrierQuery(p) {
   const clauses = [
     `em.mission_id = '${p.id_mission}'`,
     `e.type_emplacement = 'prive'`,
-    `m.format in (${ALLOWED_FORMATS_SQL})`,
+    `m.format in (${sqlList(formatValuesFor(p.format))})`,
     `j.txt ~ '^[0-9]{2}/[0-9]{2}/[0-9]{4}$'`,
   ];
+  if (p.id_client) clauses.push(`m.client_id = '${p.id_client}'`);
   if (p.id_emplacement) clauses.push(`e.id = '${p.id_emplacement}'`);
   if (p.ville) clauses.push(`e.ville = '${p.ville}'`);
   if (p.departement) clauses.push(`${departementSqlExpr('e.code_postal')} = '${p.departement}'`);
