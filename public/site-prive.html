@@ -149,6 +149,12 @@
   .cal-list li{padding:8px 4px; border-bottom:1px solid var(--line); font-size:13px; display:flex; gap:8px; flex-wrap:wrap; align-items:baseline;}
   .cal-list li:last-child{border-bottom:none;}
   .cal-list .sub{color:var(--muted); font-size:11.5px;}
+  .cal-cell .nm.pub{color:#1B5FA8; font-weight:700;}
+  .cal-cell .nm.sans{color:var(--muted); font-style:italic;}
+  .cal-cell.has.only-travail{border-left-color:var(--muted);}
+  .cal-tag{font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; padding:1px 6px; border-radius:var(--sharp); border:1px solid var(--line); color:var(--muted);}
+  .cal-tag.pub{color:#1B5FA8; border-color:#1B5FA8;}
+  .cal-legend{font-size:11.5px; color:var(--muted); margin:0 0 8px;}
 </style>
 </head>
 <body>
@@ -344,7 +350,7 @@
 
 <main id="calendrierContent" class="hidden">
   <div class="section-label"><span class="diamond"></span>Calendrier de la mission
-    <span class="note">Jours renseignés dans « jours disponibles » de chaque emplacement de la mission — ce ne sont pas les jours effectivement travaillés</span>
+    <span class="note">Emplacements privés : « jours disponibles » renseignés (pas les jours travaillés). Jours travaillés : sans emplacement associé et, pour les missions hybrides, sur un emplacement public.</span>
   </div>
   <div id="calMessage" class="empty">Sélectionnez une mission dans le filtre « Mission » pour afficher son calendrier.</div>
   <div id="calBody" class="hidden">
@@ -354,6 +360,7 @@
       <button class="cal-nav" id="calNext" type="button" aria-label="Mois suivant">›</button>
       <div class="cal-summary" id="calSummary"></div>
     </div>
+    <div class="cal-legend">Nom normal = emplacement privé disponible · <span style="color:#1B5FA8;font-weight:700;">bleu = emplacement public (jour travaillé, hybride)</span> · <i>italique = jour travaillé sans emplacement associé</i></div>
     <div class="card"><div class="card-inner">
       <div class="cal-grid" id="calGrid"></div>
     </div></div>
@@ -944,7 +951,7 @@
       calMonths = Array.from(new Set(days.map((d) => d.slice(0, 7))));
       if (selectedMissionId !== calLoadedMissionId || !calMonths.includes(calMonth)) {
         const today = ymd(new Date());
-        const next = days.find((d) => d >= today) || days[0];
+        const next = days.find((d) => d >= today) || days[days.length - 1];
         calMonth = next ? next.slice(0, 7) : '';
         calSelectedDay = '';
       }
@@ -964,7 +971,7 @@
   function renderCalendar() {
     if (!calRows.length) {
       calBodyEl.classList.add('hidden');
-      calMessageEl.textContent = 'Aucun jour disponible renseigné pour les emplacements de cette mission.';
+      calMessageEl.textContent = 'Aucun jour disponible ou travaillé à afficher pour cette mission.';
       calMessageEl.classList.remove('hidden');
       return;
     }
@@ -976,7 +983,7 @@
     const idx = calMonths.indexOf(calMonth);
     document.getElementById('calPrev').disabled = idx <= 0;
     document.getElementById('calNext').disabled = idx < 0 || idx >= calMonths.length - 1;
-    const nbSites = new Set(calRows.map((r) => r.emplacement_id)).size;
+    const nbSites = new Set(calRows.filter((r) => r.emplacement_id).map((r) => r.emplacement_id)).size;
     document.getElementById('calSummary').textContent =
       nbSites + ' emplacement' + (nbSites > 1 ? 's' : '') + ' · ' + Object.keys(calByDay).length + ' jour' + (Object.keys(calByDay).length > 1 ? 's' : '');
 
@@ -997,7 +1004,7 @@
       if (rows.length) cls.push('has');
       if (key === today) cls.push('today');
       if (key === calSelectedDay) cls.push('sel');
-      const names = rows.slice(0, 3).map((r) => `<span class="nm">${esc(r.emplacement_nom)}</span>`).join('') +
+      const names = rows.slice(0, 3).map((r) => `<span class="nm${r.kind === 'public' ? ' pub' : r.kind === 'sans' ? ' sans' : ''}">${esc(r.emplacement_nom)}</span>`).join('') +
         (rows.length > 3 ? `<span class="nm">+${rows.length - 3}</span>` : '');
       html += rows.length
         ? `<button type="button" class="${cls.join(' ')}" data-day="${key}"><span class="dn">${d}</span><span class="cnt">${rows.length}</span>${names}</button>`
@@ -1012,7 +1019,9 @@
       ? fmtDayLong(calSelectedDay) + ' — ' + list.length + ' emplacement' + (list.length > 1 ? 's' : '')
       : 'Emplacements du jour';
     document.getElementById('calDayList').innerHTML = list.map((r) =>
-      `<li><b>${esc(r.emplacement_nom)}</b><span class="sub">${esc([r.ville, categorieLabel(r.categorie)].filter(Boolean).join(' · '))}</span></li>`
+      r.kind === 'sans'
+        ? `<li><b><i>Sans emplacement associé</i></b><span class="cal-tag">Jour travaillé</span></li>`
+        : `<li><b>${esc(r.emplacement_nom)}</b><span class="sub">${esc([r.ville, categorieLabel(r.categorie)].filter(Boolean).join(' · '))}</span>${r.kind === 'public' ? '<span class="cal-tag pub">Public · jour travaillé</span>' : ''}</li>`
     ).join('') || '<li class="sub">Aucun emplacement ce mois-ci.</li>';
   }
 

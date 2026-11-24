@@ -467,26 +467,53 @@ order by 1;`;
 // pour la mission, pas les jours effectivement travaillés. Mission
 // obligatoire ; ville / département / site privé optionnels (mêmes filtres
 // que le reste de la page). Les valeurs mal formées sont ignorées.
+// Calendrier d'UNE mission. Trois types de lignes (colonne "kind") :
+// - prive  : jours disponibles (jours_disponibles) des emplacements privés
+// - public : jours réellement travaillés (lots) sur un emplacement public,
+//            missions hybrides uniquement
+// - sans   : jours réellement travaillés (lots) sans emplacement associé
+//            (une ligne par jour) — masqués dès qu'un filtre porte sur un
+//            emplacement / une ville / un département
 function buildCalendrierQuery(p) {
-  const clauses = [
-    `em.mission_id = '${p.id_mission}'`,
-    `e.type_emplacement = 'prive'`,
-    `m.format in (${sqlList(formatValuesFor(p.format))})`,
-    `j.txt ~ '^[0-9]{2}/[0-9]{2}/[0-9]{4}$'`,
-  ];
-  if (p.id_client) clauses.push(`m.client_id = '${p.id_client}'`);
-  if (p.id_emplacement) clauses.push(`e.id = '${p.id_emplacement}'`);
-  if (p.ville) clauses.push(`e.ville = '${p.ville}'`);
-  if (p.departement) clauses.push(`${departementSqlExpr('e.code_postal')} = '${p.departement}'`);
-  return `select to_date(j.txt, 'DD/MM/YYYY') as jour,
-  e.id as emplacement_id, e.nom as emplacement_nom, e.ville, e.categorie
+  const formats = sqlList(formatValuesFor(p.format));
+  const mClauses = [`m.id = '${p.id_mission}'`, `m.format in (${formats})`];
+  if (p.id_client) mClauses.push(`m.client_id = '${p.id_client}'`);
+  const eClauses = [];
+  if (p.id_emplacement) eClauses.push(`e.id = '${p.id_emplacement}'`);
+  if (p.ville) eClauses.push(`e.ville = '${p.ville}'`);
+  if (p.departement) eClauses.push(`${departementSqlExpr('e.code_postal')} = '${p.departement}'`);
+  const eWhere = eClauses.length ? ' and ' + eClauses.join(' and ') : '';
+  const sansBlock = eClauses.length
+    ? ''
+    : `
+union all
+select l.date as jour, null::uuid as emplacement_id, 'Sans emplacement' as emplacement_nom, null as ville, null as categorie, 'sans' as kind
+from lots l
+join missions m on m.id = l.mission_id
+where ${mClauses.join(' and ')} and l.emplacement_id is null and l.date is not null
+  ${excludeClientsClause('m')}
+group by l.date`;
+  return `select jour, emplacement_id, emplacement_nom, ville, categorie, kind from (
+select to_date(j.txt, 'DD/MM/YYYY') as jour,
+  e.id as emplacement_id, e.nom as emplacement_nom, e.ville, e.categorie, 'prive' as kind
 from emplacements_missions em
 join missions m on m.id = em.mission_id
 join emplacements e on e.id = em.emplacement_id
 cross join lateral unnest(em.jours_disponibles) as j(txt)
-where ${clauses.join(' and ')}
+where ${mClauses.join(' and ')} and em.mission_id = '${p.id_mission}'
+  and e.type_emplacement = 'prive' and j.txt ~ '^[0-9]{2}/[0-9]{2}/[0-9]{4}$'${eWhere}
   ${excludeClientsClause('m')}
-order by jour, e.nom;`;
+union all
+select l.date as jour, e.id, e.nom, e.ville, e.categorie, 'public' as kind
+from lots l
+join missions m on m.id = l.mission_id
+join emplacements e on e.id = l.emplacement_id
+where ${mClauses.join(' and ')} and m.format = 'hybride'
+  and e.type_emplacement = 'public' and l.date is not null${eWhere}
+  ${excludeClientsClause('m')}
+group by l.date, e.id, e.nom, e.ville, e.categorie${sansBlock}
+) c
+order by jour, kind, emplacement_nom;`;
 }
 
 function buildSitePriveQueries(p) {
