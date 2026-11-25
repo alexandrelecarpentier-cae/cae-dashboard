@@ -178,7 +178,7 @@ fpe_f as (
   from avenants av
   join types_avenants ta on ta.id = av.type_avenant_id
   join contrats_f cf on cf.id = av.contrat_id
-  where ta.categorie = 'fin_period_essai' and av.oneflow_status = 'publie'
+  where ta.categorie = 'fin_period_essai' and av.oneflow_status IN ('signe', 'publie')
 )
 select
   count(distinct cf.id) as nb_contrats,
