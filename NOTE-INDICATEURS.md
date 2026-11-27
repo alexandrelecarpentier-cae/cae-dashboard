@@ -87,6 +87,23 @@ Liste et planning (Gantt) des missions d'une année. Pas de formule d'indicateur
 - **Emplacements Rue / SP** : emplacements rattachés à la mission ou utilisés par ses journées de travail, sans doublon, séparés entre emplacements de rue (« Rue ») et de sites privés (« SP »).
 - **Gantt** : une barre par mission, de son début à sa fin, regroupée par mission, client, format, type, ville principale, responsable d'équipe ou responsable de mission. Échelle « Mois » (vue d'ensemble) ou « Semaine » (colonnes S1, S2… avec la date du lundi).
 
+## Dashboard /rrh (11/2026)
+
+Contrôle de conformité RH (besoins du 24/11 et réunion du 26/11 avec Asmaa). Filtres : période (du / au), mission, ville, statut du contrat, CDI / CDD ; la date « au » sert de date de référence pour les photos à un instant donné. Les contrats FRGEN (hors terrain), les clients de test et les missions de mobilisation sont exclus.
+
+- **Salariés actifs** : salariés ayant un contrat en cours à la date de référence. **Contrats en cours** : un salarié peut en avoir plusieurs, on distingue donc salariés et contrats. **Salariés uniques** : chaque personne comptée une fois sur la période. **Entrées** : salariés dont le tout premier contrat commence sur la période. **Sorties** : salariés dont le dernier contrat se termine sur la période, sans autre contrat derrière. **Effectif maximal simultané** : le plus grand nombre de salariés actifs un même jour de la période.
+- **Ville** : 3 dernières lettres du code mission, suffixes SP / HYB ignorés. Les CDI terrain n'ont pas de mission rattachée : ils comptent dans les effectifs (« sans mission ») tant qu'on ne filtre pas sur une mission ou une ville.
+- **Contrats** : *attendus* = contrats générés + salariés ayant des lots sur une mission sans aucun contrat pour cette mission ; *envoyés* = publiés ou signés ; *en attente* = publiés non signés ; *taux de signature* = signés ÷ envoyés. Alerte « mission commencée sans contrat signé » : contrat non signé alors que le salarié a déjà des lots sur la mission.
+- **Avenants** : même logique (envoyés / signés / en attente) ; un avenant créé mais jamais publié est « non envoyé ». Seuls les avenants de la catégorie « avenant » sont comptés ici (les FPE et ruptures ont leur propre onglet).
+- **Dates d'envoi et de signature** : l'application n'en conserve pas de dédiée. On affiche la date de création du contrat ou de l'avenant (envoi) et sa dernière mise à jour quand il est signé (signature).
+- **CDI terrain** : contrats CDI hors FRGEN en cours à la date de référence ; indicateurs par mission depuis la première entrée du salarié (lots, absences, taux d'absence = lots avec une absence ÷ tous les lots, heures de rue). Les badges d'alerte attendent les règles d'Asmaa.
+- **Dossiers incomplets** (règle provisoire, à valider par le service RH) : salarié en contrat auquel manque le n° de sécurité sociale (13 ou 15 chiffres), le RIB, la date ou le lieu de naissance, ou une pièce d'identité (carte, passeport ou titre de séjour).
+- **Absences** : journées avec une absence saisie ou moins de 7 h rémunérées, hors journée en cours. *Qualifiée* = un code d'absence est renseigné ; sinon « à qualifier ». Le regroupement des codes est à confirmer par le service RH.
+- **FPE et ruptures anticipées** : même règle que sur les autres dashboards — avenants **signés ou publiés** (les erreurs d'envoi ne comptent pas). Initiative employeur / salarié lue dans le libellé de l'avenant. *Taux de FPE* (ou de rupture) = nombre ÷ salariés ayant un contrat signé sur la mission pendant la période. RE et RM = ceux de la mission aujourd'hui (pas ceux du début de mission). Le motif de rupture n'est pas enregistré dans l'application.
+- **Acomptes et saisies** : éléments de paie de type acompte ou saisie, rattachés au contrat en cours à leur **date de création** (pas à leur date d'effet). Les avances de mission ne sont pas enregistrées.
+- **Titres-restaurant** (règle provisoire) : un droit = une journée avec horaires rémunérés le matin ET l'après-midi, sans absence. Écarts : droit sans titre attribué, titre attribué sans droit, titre attribué puis horaires modifiés.
+- **Visites médicales** (règle provisoire) : salariés en contrat ayant eu 2 missions ou plus, travailleurs handicapés, ou responsables d'équipe ; on affiche la date de la dernière attestation de visite enregistrée. Aucune action possible depuis la page.
+
 ## Formats d'affichage
 
 Taux réel : 3 décimales · taux de transformation : sans décimale · ratio h, taux de présence, % −25 ans, taux de complétion : en %, 1 décimale · don moyen : en €, 2 décimales · âge médian et âge moyen : 1 décimale · comptages : nombres entiers.

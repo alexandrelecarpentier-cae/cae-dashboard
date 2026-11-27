@@ -54,6 +54,7 @@ import { buildAnneQueries, parseAnneParams, ANNE_SECTIONS } from './lib/sql-anne
 import { buildPlanningMissionsQuery, buildPlanningYearsQuery } from './lib/sql-planning.js';
 import { isPlanningPath, guardPlanning, isAnnePath, guardAnne, isPlanningDashPath, guardPlanningDash } from './lib/planning-auth.js';
 import { handleRhSuivi, handleRhExport, handleRhValues } from './lib/rh-cards.js';
+import { handleRrh } from './lib/rrh-api.js';
 
 // Mode staging/prod (demande explicite, 9/2026) : un cookie posé côté
 // navigateur par le petit widget présent sur chaque page (cf. public/*.html)
@@ -103,6 +104,7 @@ export default {
       if (url.pathname === '/api/site-prive-calendrier') return await handleSitePriveCalendrier(url, env);
       if (url.pathname === '/api/assistant-site-prive') return await handleAssistantSitePrive(url, env);
       if (url.pathname === '/api/rh') return await handleRh(url, env);
+      if (url.pathname === '/api/rrh') return await handleRrh(url, env);
       if (url.pathname === '/api/anne') return await handleAnne(url, env);
       if (url.pathname === '/api/planning') return await handlePlanning(url, env);
       if (url.pathname === '/api/direction') return await handleDirection(url, env);

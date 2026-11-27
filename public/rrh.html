@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard RRH</title>
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--tx:#1d2330;--mut:#6b7385;--bd:#e2e5ec;--ac:#2f5bea;--ok:#1a8a4a;--wa:#c77700;--ko:#c62828;--okb:#e3f5ea;--wab:#fff1da;--kob:#fde7e7}
+*{box-sizing:border-box}body{margin:0;font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--tx)}
+header{background:#fff;border-bottom:1px solid var(--bd);padding:12px 16px;position:sticky;top:0;z-index:5}
+h1{font-size:18px;margin:0 0 8px}h2{font-size:15px;margin:22px 0 8px}h3{font-size:13px;margin:0 0 6px;color:var(--mut);font-weight:600}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:end}.filters label{display:flex;flex-direction:column;font-size:11px;color:var(--mut);gap:2px}
+input,select,button{font:inherit;padding:6px 8px;border:1px solid var(--bd);border-radius:6px;background:#fff}
+button{background:var(--ac);color:#fff;border-color:var(--ac);cursor:pointer}button.sec{background:#fff;color:var(--tx);border-color:var(--bd)}
+.stg{background:var(--ko);color:#fff;border-radius:6px;padding:2px 8px;font-size:12px;margin-left:8px}
+nav{display:flex;gap:4px;overflow-x:auto;padding:8px 16px 0;background:#fff;border-bottom:1px solid var(--bd)}
+nav button{background:transparent;color:var(--mut);border:0;border-bottom:2px solid transparent;border-radius:0;white-space:nowrap}
+nav button.on{color:var(--ac);border-bottom-color:var(--ac);font-weight:600}
+main{padding:14px 16px 60px;max-width:1280px;margin:0 auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.kpi{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px 12px}
+.kpi b{display:block;font-size:24px;line-height:1.1}.kpi span{display:block;font-weight:600;font-size:12px;margin-top:2px}.kpi small{display:block;color:var(--mut);font-size:11px;margin-top:2px}
+.kpi.ok b{color:var(--ok)}.kpi.wa b{color:var(--wa)}.kpi.ko b{color:var(--ko)}
+.box{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-top:10px;overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}th,td{padding:5px 8px;border-bottom:1px solid var(--bd);text-align:left;white-space:nowrap}
+th{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.02em;position:sticky;top:0;background:#fff}td.n,th.n{text-align:right}
+.tag{display:inline-block;border-radius:10px;padding:1px 8px;font-size:11px;font-weight:600;margin:1px 2px 1px 0}
+.tag.ok{background:var(--okb);color:var(--ok)}.tag.wa{background:var(--wab);color:var(--wa)}.tag.ko{background:var(--kob);color:var(--ko)}.tag.gr{background:#eceef3;color:var(--mut)}
+.note{background:#eef3ff;border:1px solid #cfdcff;border-radius:8px;padding:8px 10px;margin:10px 0;font-size:12px;color:#2a3b6b}
+.note.wa{background:var(--wab);border-color:#f2d9a6;color:#6d4500}
+.err{background:var(--kob);color:var(--ko);padding:10px;border-radius:8px}.load{color:var(--mut);padding:30px;text-align:center}
+details{border-top:1px solid var(--bd);padding:6px 0}summary{cursor:pointer;font-weight:600}
+a{color:var(--ac)}
+@media(max-width:640px){main{padding:10px}.kpi b{font-size:20px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Dashboard RRH <span id="stg" class="stg" hidden>◆ STAGING</span></h1>
+  <div class="filters">
+    <label>Du<input type="date" id="du"></label>
+    <label>Au (date de référence)<input type="date" id="au"></label>
+    <label>Mission<select id="mission"><option value="">Toutes</option></select></label>
+    <label>Ville (3 lettres du code mission)<select id="ville"><option value="">Toutes</option></select></label>
+    <label>Statut<select id="statut"><option value="">Tous</option><option>RD</option><option>RDC</option><option>RDE</option><option>RE</option><option>RER</option><option>RM</option></select></label>
+    <label>Contrat<select id="nature"><option value="">CDI + CDD</option><option value="cdi">CDI</option><option value="cdd">CDD</option></select></label>
+    <button id="go">Actualiser</button>
+  </div>
+</header>
+<nav id="tabs"></nav>
+<main id="view"><div class="load">Chargement…</div></main>
+
+<script>
+// ---------- Réglages à confirmer avec le service RH ----------
+const FICHE_URL = 'https://app.causeaeffet.fr/admin/utilisateurs/'; // à confirmer : adresse de la fiche salarié dans le back-office
+const LOT_URL = 'https://app.causeaeffet.fr/admin/lots/';
+// Regroupement des codes d'absence (à fournir par Asmaa). Code -> groupe. Les codes absents de la liste vont dans « Autre ».
+const ABSENCE_GROUPES = {};            // ex. { '100': 'Maladie', '120': 'Accident du travail' }
+// Règles d'alerte CDI terrain (à fournir par Asmaa), par statut. Valeurs en % de lots avec absence. null = pas de règle.
+const CDI_REGLES = { tauxAbsenceMax: null };
+
+// ---------- Outils ----------
+const $ = (id) => document.getElementById(id);
+const STAGING = new URLSearchParams(location.search).get('staging') === '1';
+if (STAGING) $('stg').hidden = false;
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const d10 = (v) => (v ? String(v).slice(0, 10) : '');
+const fr = (v) => { const s = d10(v); return s ? s.split('-').reverse().join('/') : '—'; };
+const pct = (a, b) => (b ? Math.round((1000 * a) / b) / 10 + ' %' : '—');
+const uniq = (a) => [...new Set(a)];
+const cnt = (arr, f) => arr.filter(f).length;
+const group = (arr, f) => { const m = new Map(); arr.forEach((x) => { const k = f(x); if (!m.has(k)) m.set(k, []); m.get(k).push(x); }); return m; };
+const kpi = (v, label, tip, cls = '') => `<div class="kpi ${cls}"><b>${esc(v)}</b><span>${esc(label)}</span><small>${esc(tip || '')}</small></div>`;
+const grid = (items) => `<div class="grid">${items.join('')}</div>`;
+const note = (t, wa) => `<div class="note ${wa ? 'wa' : ''}">${t}</div>`;
+const tag = (t, c) => `<span class="tag ${c}">${esc(t)}</span>`;
+const sigTag = (s) => s === 'signe' ? tag('Signé', 'ok') : s === 'publie' ? tag('En attente de signature', 'wa') : s === 'erreur' ? tag('Erreur d’envoi', 'ko') : tag('Non envoyé', 'gr');
+function table(cols, rows, empty = 'Rien à signaler.') {
+  if (!rows.length) return `<div class="box">${esc(empty)}</div>`;
+  const h = cols.map((c) => `<th class="${c.n ? 'n' : ''}">${esc(c.l)}</th>`).join('');
+  const b = rows.map((r) => `<tr>${cols.map((c) => `<td class="${c.n ? 'n' : ''}">${c.f ? c.f(r) : esc(r[c.k] ?? '')}</td>`).join('')}</tr>`).join('');
+  return `<div class="box"><table><thead><tr>${h}</tr></thead><tbody>${b}</tbody></table></div>`;
+}
+const people = (r) => `<a href="${FICHE_URL}${esc(r.utilisateur_id)}" target="_blank" rel="noopener">${esc(r.salarie || '(sans nom)')}</a>`;
+
+// ---------- Appels API (un à la fois) ----------
+function params() {
+  const p = new URLSearchParams();
+  ['du', 'au', 'mission', 'ville', 'statut', 'nature'].forEach((k) => { if ($(k).value) p.set(k, $(k).value); });
+  if (STAGING) p.set('staging', '1');
+  return p;
+}
+const cache = new Map();
+async function api(section) {
+  const p = params(); p.set('section', section);
+  const key = p.toString();
+  if (cache.has(key)) return cache.get(key);
+  const r = await fetch('/api/rrh?' + key);
+  const j = await r.json().catch(() => ({ error: 'Réponse illisible' }));
+  if (!r.ok || j.error) throw new Error(j.error || 'Erreur ' + r.status);
+  cache.set(key, j);
+  return j;
+}
+const truncNote = (j) => (j.truncated && j.truncated.length ? note('Affichage limité à 2 000 lignes : affinez la période ou la mission pour tout voir.', true) : '');
+
+// ---------- Onglets ----------
+const TABS = [
+  ['effectifs', 'Effectifs', rEffectifs], ['contrats', 'Contrats', rContrats], ['avenants', 'Avenants', rAvenants],
+  ['cdi', 'CDI terrain', rCdi], ['dossiers', 'Dossiers salariés', rDossiers], ['absences', 'Absences', rAbsences],
+  ['fpe', 'FPE & ruptures', rFpe], ['acomptes', 'Acomptes & saisies', rAcomptes], ['titres', 'Titres-restaurant', rTitres], ['visites', 'Visites médicales', rVisites],
+];
+let cur = 'effectifs';
+$('tabs').innerHTML = TABS.map((t) => `<button data-t="${t[0]}">${t[1]}</button>`).join('');
+$('tabs').onclick = (e) => { const t = e.target.dataset && e.target.dataset.t; if (t) { cur = t; show(); } };
+async function show() {
+  [...$('tabs').children].forEach((b) => b.classList.toggle('on', b.dataset.t === cur));
+  $('view').innerHTML = '<div class="load">Chargement…</div>';
+  const t = TABS.find((x) => x[0] === cur);
+  try { $('view').innerHTML = await t[2](await api(cur)); }
+  catch (e) { $('view').innerHTML = `<div class="err">Impossible de charger cette vue : ${esc(e.message)}</div>`; }
+}
+
+// ---------- 1.1 Effectifs ----------
+function rEffectifs(j) {
+  const rows = j.data.contrats.map((r) => ({ ...r, d: d10(r.date_debut), f: d10(r.date_fin) || '9999-12-31', pe: d10(r.premiere_entree) }));
+  const du = $('du').value, au = $('au').value;
+  const actifAu = (r, day) => r.d <= day && r.f >= day;
+  const aujourdhui = rows.filter((r) => actifAu(r, au));
+  const salAu = uniq(aujourdhui.map((r) => r.utilisateur_id)).length;
+  const uniques = uniq(rows.map((r) => r.utilisateur_id)).length;
+  const entrees = uniq(rows.filter((r) => r.pe >= du && r.pe <= au).map((r) => r.utilisateur_id)).length;
+  const byUser = group(rows, (r) => r.utilisateur_id);
+  let sorties = 0; byUser.forEach((rs) => { const fin = rs.map((r) => r.f).sort().pop(); if (fin >= du && fin < au) sorties++; });
+  // effectif maximal simultané : on compte jour par jour
+  let max = 0, maxDay = '';
+  const days = []; for (let t = new Date(du + 'T00:00:00Z'), end = new Date(au + 'T00:00:00Z'); t <= end && days.length < 400; t = new Date(t.getTime() + 864e5)) days.push(t.toISOString().slice(0, 10));
+  days.forEach((day) => { const n = uniq(rows.filter((r) => actifAu(r, day)).map((r) => r.utilisateur_id)).length; if (n > max) { max = n; maxDay = day; } });
+  // évolution mensuelle
+  const mois = uniq(days.map((x) => x.slice(0, 7)));
+  const evo = mois.map((m) => {
+    const fin = days.filter((x) => x.startsWith(m)).pop();
+    const e = uniq(rows.filter((r) => r.pe.startsWith(m) && r.pe >= du && r.pe <= au).map((r) => r.utilisateur_id)).length;
+    let s = 0; byUser.forEach((rs) => { const f = rs.map((r) => r.f).sort().pop(); if (f.startsWith(m) && f < au) s++; });
+    return { mois: m, entrees: e, sorties: s, effectif: uniq(rows.filter((r) => actifAu(r, fin)).map((r) => r.utilisateur_id)).length };
+  });
+  const dim = (k, label) => {
+    const g = [...group(aujourdhui, (r) => r[k] || '—')].map(([x, rs]) => ({ x, sal: uniq(rs.map((r) => r.utilisateur_id)).length, c: rs.length })).sort((a, b) => b.sal - a.sal);
+    return `<h3>${label}</h3>` + table([{ k: 'x', l: label }, { k: 'sal', l: 'Salariés', n: 1 }, { k: 'c', l: 'Contrats', n: 1 }], g);
+  };
+  return truncNote(j) + grid([
+    kpi(salAu, 'Salariés actifs', `Salariés ayant un contrat en cours le ${fr(au)} (hors FRGEN).`),
+    kpi(aujourdhui.length, 'Contrats en cours', 'Un salarié peut avoir plusieurs contrats : on distingue salariés et contrats.'),
+    kpi(uniques, 'Salariés uniques sur la période', 'Chaque personne n’est comptée qu’une fois.'),
+    kpi(entrees, 'Entrées', 'Salariés dont le tout premier contrat commence sur la période.'),
+    kpi(sorties, 'Sorties', 'Salariés dont le dernier contrat se termine sur la période, sans contrat qui prend le relais.'),
+    kpi(max, 'Effectif maximal simultané', max ? `Atteint le ${fr(maxDay)}.` : ''),
+  ]) + '<h2>Évolution mensuelle</h2>' + table([{ k: 'mois', l: 'Mois' }, { k: 'entrees', l: 'Entrées', n: 1 }, { k: 'sorties', l: 'Sorties', n: 1 }, { k: 'effectif', l: 'Effectif fin de mois', n: 1 }], evo)
+    + `<h2>Répartition au ${fr(au)}</h2>` + dim('statut', 'Statut') + dim('nature', 'Type de contrat') + dim('ville', 'Ville') + dim('mission', 'Mission')
+    + note('La ville est lue dans les 3 dernières lettres du code mission (plus fiable que le champ « ville principale »). Les dates de contrat sont celles du contrat initial : les avenants de durée ne sont pas appliqués.');
+}
+
+// ---------- 1.2 Contrats ----------
+function rContrats(j) {
+  const L = j.data.liste, S = j.data.sans_contrat;
+  const env = cnt(L, (r) => r.statut_signature === 'publie' || r.statut_signature === 'signe');
+  const sig = cnt(L, (r) => r.statut_signature === 'signe'), att = cnt(L, (r) => r.statut_signature === 'publie'), err = cnt(L, (r) => r.statut_signature === 'erreur');
+  const sansSignature = L.filter((r) => r.statut_signature !== 'signe' && Number(r.nb_lots) > 0);
+  const parMission = [...group(L, (r) => r.mission)].map(([m, rs]) => ({
+    mission: m, n: rs.length, env: cnt(rs, (r) => r.statut_signature), sig: cnt(rs, (r) => r.statut_signature === 'signe'),
+    att: cnt(rs, (r) => r.statut_signature === 'publie'), lots: rs.reduce((a, r) => a + Number(r.nb_lots || 0), 0), rows: rs,
+  })).sort((a, b) => (b.n - b.sig) - (a.n - a.sig));
+  const detail = (rs) => table([
+    { l: 'Salarié', f: people }, { k: 'statut', l: 'Statut' }, { k: 'nature', l: 'Type' }, { l: 'Début', f: (r) => fr(r.date_debut) }, { l: 'Fin', f: (r) => fr(r.date_fin) },
+    { l: 'Signature', f: (r) => sigTag(r.statut_signature) }, { l: 'Envoyé le', f: (r) => fr(r.date_envoi) }, { l: 'Signé le', f: (r) => fr(r.date_signature) }, { l: 'Premier lot', f: (r) => fr(r.premier_lot) },
+  ], rs);
+  return truncNote(j) + grid([
+    kpi(L.length + S.length, 'Contrats attendus', 'Contrats générés + salariés ayant travaillé sans aucun contrat.'),
+    kpi(env, 'Envoyés', 'Contrats publiés pour signature.'),
+    kpi(sig, 'Signés', '', 'ok'), kpi(att, 'En attente de signature', 'Envoyés mais pas encore signés.', att ? 'wa' : ''),
+    kpi(S.length, 'Non générés', 'Salariés avec des lots sur une mission mais aucun contrat pour cette mission.', S.length ? 'ko' : ''),
+    kpi(pct(sig, env), 'Taux de signature', 'Signés ÷ envoyés.'), kpi(err, 'Erreurs d’envoi', '', err ? 'ko' : ''),
+  ]) + `<h2>À contrôler : mission commencée sans contrat signé</h2>`
+    + table([{ l: 'Salarié', f: people }, { k: 'mission', l: 'Mission' }, { l: 'Signature', f: (r) => sigTag(r.statut_signature) }, { l: 'Début contrat', f: (r) => fr(r.date_debut) }, { l: 'Premier lot', f: (r) => fr(r.premier_lot) }, { k: 'nb_lots', l: 'Lots', n: 1 }], sansSignature)
+    + `<h2>Sans aucun contrat</h2>` + table([{ l: 'Salarié', f: people }, { k: 'mission', l: 'Mission' }, { l: 'Premier lot', f: (r) => fr(r.premier_lot) }, { k: 'nb_lots', l: 'Lots', n: 1 }], S)
+    + `<h2>Par mission</h2><div class="box">` + parMission.map((m) => `<details><summary>${esc(m.mission)} — ${m.n} contrats, ${m.sig} signés, ${m.att} en attente, ${m.lots} lots</summary>${detail(m.rows)}</details>`).join('') + '</div>'
+    + note('Les dates d’envoi et de signature sont les dates de création et de dernière mise à jour du contrat (l’application ne conserve pas de date de signature dédiée).');
+}
+
+// ---------- 1.3 Avenants ----------
+function rAvenants(j) {
+  const L = j.data.liste;
+  const non = cnt(L, (r) => !r.statut_signature), sig = cnt(L, (r) => r.statut_signature === 'signe'), att = cnt(L, (r) => r.statut_signature === 'publie');
+  const env = sig + att;
+  const parMission = [...group(L, (r) => r.mission)].map(([m, rs]) => ({ mission: m, n: rs.length, sig: cnt(rs, (r) => r.statut_signature === 'signe'), att: cnt(rs, (r) => r.statut_signature === 'publie'), non: cnt(rs, (r) => !r.statut_signature) })).sort((a, b) => (b.att + b.non) - (a.att + a.non));
+  return truncNote(j) + grid([
+    kpi(L.length, 'Avenants créés sur la période', ''), kpi(env, 'Envoyés', 'Publiés pour signature.'), kpi(sig, 'Signés', '', 'ok'),
+    kpi(att, 'En attente de signature', '', att ? 'wa' : ''), kpi(non, 'Créés mais non envoyés', 'Avenants nécessaires qui n’ont pas été envoyés au salarié.', non ? 'ko' : ''), kpi(pct(sig, env), 'Taux de signature', 'Signés ÷ envoyés.'),
+  ]) + '<h2>Par mission</h2>' + table([{ k: 'mission', l: 'Mission' }, { k: 'n', l: 'Avenants', n: 1 }, { k: 'sig', l: 'Signés', n: 1 }, { k: 'att', l: 'En attente', n: 1 }, { k: 'non', l: 'Non envoyés', n: 1 }], parMission)
+    + '<h2>Liste nominative</h2>' + table([{ l: 'Salarié', f: people }, { k: 'mission', l: 'Mission' }, { k: 'type_avenant', l: 'Avenant' }, { l: 'Statut', f: (r) => sigTag(r.statut_signature) }, { l: 'Envoyé le', f: (r) => fr(r.date_envoi) }, { l: 'Signé le', f: (r) => fr(r.date_signature) }], L);
+}
+
+// ---------- 1.4 CDI terrain ----------
+function rCdi(j) {
+  const L = j.data.liste, M = group(j.data.missions, (r) => r.utilisateur_id);
+  const stats = (id) => { const ms = M.get(id) || []; const lots = ms.reduce((a, r) => a + Number(r.nb_lots), 0), ab = ms.reduce((a, r) => a + Number(r.nb_absences), 0); return { ms, lots, ab, taux: lots ? (100 * ab) / lots : 0 }; };
+  const alerte = (s) => CDI_REGLES.tauxAbsenceMax != null && s.taux > CDI_REGLES.tauxAbsenceMax;
+  const rows = L.map((r) => ({ ...r, s: stats(r.utilisateur_id) }));
+  return grid([kpi(L.length, 'CDI terrain en cours', `Au ${fr($('au').value)}, hors FRGEN.`), kpi(cnt(rows, (r) => alerte(r.s)), 'CDI en alerte', CDI_REGLES.tauxAbsenceMax == null ? 'Règles d’alerte à définir avec le service RH.' : 'Hors des seuils attendus.', 'ko')])
+    + (CDI_REGLES.tauxAbsenceMax == null ? note('Les badges d’alerte s’activeront dès que les règles (taux d’absence, etc.) seront renseignées en haut de la page (CDI_REGLES).', true) : '')
+    + '<h2>Liste des CDI</h2><div class="box">' + rows.map((r) => `<details><summary>${people(r)} — ${esc(r.statut)}, entré le ${fr(r.entree)} · ${r.s.ms.length} missions · absence ${pct(r.s.ab, r.s.lots)} ${alerte(r.s) ? tag('Alerte', 'ko') : ''}</summary>`
+      + table([{ k: 'mission', l: 'Mission' }, { l: 'Du', f: (x) => fr(x.debut) }, { l: 'Au', f: (x) => fr(x.fin) }, { k: 'nb_lots', l: 'Lots', n: 1 }, { k: 'nb_absences', l: 'Absences', n: 1 }, { l: 'Taux d’absence', n: 1, f: (x) => pct(Number(x.nb_absences), Number(x.nb_lots)) }, { k: 'heures_rue', l: 'Heures de rue', n: 1 }], r.s.ms) + '</details>').join('') + '</div>';
+}
+
+// ---------- 1.4 bis Dossiers ----------
+function rDossiers(j) {
+  const L = j.data.liste.map((r) => ({ ...r, manq: Array.isArray(r.manquants) ? r.manquants : [] }));
+  const inc = L.filter((r) => r.manq.length);
+  return grid([kpi(L.length, 'Salariés en contrat', ''), kpi(L.length - inc.length, 'Dossiers complets', '', 'ok'), kpi(inc.length, 'Dossiers incomplets', '', inc.length ? 'ko' : ''), kpi(pct(L.length - inc.length, L.length), 'Taux de complétude', '')])
+    + '<h2>Dossiers incomplets</h2>' + table([{ l: 'Salarié', f: people }, { l: 'Éléments manquants', f: (r) => r.manq.map((m) => tag(m, 'ko')).join('') }], inc, 'Tous les dossiers sont complets.')
+    + note('Règles provisoires : n° de sécurité sociale (13 ou 15 chiffres), RIB, date et lieu de naissance, pièce d’identité (carte, passeport ou titre de séjour). La liste officielle des pièces essentielles reste à valider par le service RH ; l’adresse de la fiche salarié est à confirmer (FICHE_URL).', true);
+}
+
+// ---------- 1.5 Absences ----------
+function rAbsences(j) {
+  const P = j.data.par_code, L = j.data.liste;
+  const grp = (r) => (r.qualifiee ? ABSENCE_GROUPES[r.code] || (Object.keys(ABSENCE_GROUPES).length ? 'Autre' : `${r.code} · ${r.libelle}`) : 'Non qualifiée');
+  const q = P.filter((r) => r.qualifiee), nq = P.filter((r) => !r.qualifiee);
+  const sum = (a, k) => a.reduce((x, r) => x + Number(r[k] || 0), 0);
+  const par = [...group(P, grp)].map(([g, rs]) => ({ g, nb: sum(rs, 'nb'), h: Math.round(sum(rs, 'heures') * 10) / 10 })).sort((a, b) => b.nb - a.nb);
+  const parMission = [...group(P, (r) => r.mission)].map(([m, rs]) => ({ m, q: sum(rs.filter((r) => r.qualifiee), 'nb'), nq: sum(rs.filter((r) => !r.qualifiee), 'nb'), h: Math.round(sum(rs, 'heures') * 10) / 10 })).sort((a, b) => b.nq - a.nq);
+  return truncNote(j) + grid([
+    kpi(sum(q, 'nb') + sum(nq, 'nb'), 'Journées concernées', 'Lots avec une absence ou moins de 7 h rémunérées (hors journée en cours).'),
+    kpi(sum(q, 'nb'), 'Absences qualifiées', 'Un code d’absence est renseigné.', 'ok'), kpi(sum(nq, 'nb'), 'À qualifier', 'Aucun code d’absence : à traiter par les RH.', sum(nq, 'nb') ? 'wa' : ''),
+    kpi(Math.round(sum(P, 'heures')), 'Heures d’absence', 'Total des absences saisies.'),
+  ]) + '<h2>Par code d’absence</h2>' + table([{ k: 'g', l: 'Code · libellé' }, { k: 'nb', l: 'Journées', n: 1 }, { k: 'h', l: 'Heures', n: 1 }], par)
+    + '<h2>Par mission</h2>' + table([{ k: 'm', l: 'Mission' }, { k: 'q', l: 'Qualifiées', n: 1 }, { k: 'nq', l: 'À qualifier', n: 1 }, { k: 'h', l: 'Heures', n: 1 }], parMission)
+    + '<h2>Lots à qualifier (les plus récents)</h2>' + table([{ l: 'Date', f: (r) => fr(r.date) }, { l: 'Salarié', f: people }, { k: 'mission', l: 'Mission' }, { l: 'Absence', f: (r) => r.qualifiee ? tag(`${r.code} · ${r.libelle}`, 'ok') : tag('À qualifier', 'wa') }, { k: 'heures_remunerees', l: 'Heures rémunérées', n: 1 }, { l: 'Lot', f: (r) => `<a href="${LOT_URL}${esc(r.lot_id)}" target="_blank" rel="noopener">Ouvrir le lot</a>` }], L)
+    + (Object.keys(ABSENCE_GROUPES).length ? '' : note('Le regroupement des codes d’absence est à confirmer par le service RH : en attendant, chaque code est affiché avec son libellé.', true));
+}
+
+// ---------- 1.6 / 1.7 FPE et ruptures ----------
+function rFpe(j) {
+  const L = j.data.liste, base = j.data.base.reduce((a, r) => a + Number(r.salaries_signes), 0);
+  const F = L.filter((r) => r.categorie === 'fin_period_essai'), R = L.filter((r) => r.categorie === 'rupture');
+  const st = (a, s) => cnt(a, (r) => r.statut_signature === s);
+  const dim = (a, f, label) => table([{ k: 'x', l: label }, { k: 'n', l: 'Nombre', n: 1 }, { k: 'e', l: 'Employeur', n: 1 }, { k: 's', l: 'Salarié', n: 1 }], [...group(a, f)].map(([x, rs]) => ({ x: x || '—', n: rs.length, e: cnt(rs, (r) => r.initiateur === 'employeur'), s: cnt(rs, (r) => r.initiateur === 'salarie') })).sort((p, q) => q.n - p.n));
+  const liste = (a) => table([{ l: 'Salarié', f: people }, { k: 'mission', l: 'Mission' }, { k: 'statut', l: 'Statut' }, { l: 'Initiative', f: (r) => r.initiateur === 'employeur' ? 'Employeur' : r.initiateur === 'salarie' ? 'Salarié' : '—' }, { l: 'Signature', f: (r) => sigTag(r.statut_signature) }, { l: 'Envoyé le', f: (r) => fr(r.date_envoi) }, { l: 'Signé le', f: (r) => fr(r.date_signature) }, { k: 're', l: 'RE' }, { k: 'rm', l: 'RM' }], a);
+  return truncNote(j) + '<h2>Fins de période d’essai</h2>' + grid([
+    kpi(F.length, 'FPE', 'Signées ou en attente de signature.'), kpi(cnt(F, (r) => r.initiateur === 'employeur'), 'À l’initiative de l’employeur', ''), kpi(cnt(F, (r) => r.initiateur === 'salarie'), 'À l’initiative du salarié', ''),
+    kpi(st(F, 'signe'), 'Signées', '', 'ok'), kpi(st(F, 'publie'), 'En attente de signature', '', st(F, 'publie') ? 'wa' : ''), kpi(pct(F.length, base), 'Taux de FPE', 'FPE ÷ salariés ayant un contrat signé sur la période.'),
+  ]) + '<h2>Par mission</h2>' + dim(F, (r) => r.mission, 'Mission') + '<h2>Par RE</h2>' + dim(F, (r) => r.re, 'Responsable d’équipe') + '<h2>Par RM</h2>' + dim(F, (r) => r.rm, 'Responsable de mission') + '<h2>Liste nominative des FPE</h2>' + liste(F)
+    + '<h2>Ruptures anticipées de CDD (hors FPE)</h2>' + grid([kpi(R.length, 'Ruptures anticipées', ''), kpi(st(R, 'signe'), 'Signées', '', 'ok'), kpi(st(R, 'publie'), 'En attente de signature', '', st(R, 'publie') ? 'wa' : ''), kpi(pct(R.length, base), 'Taux de rupture', 'Ruptures ÷ salariés ayant un contrat signé.')])
+    + '<h2>Par mission</h2>' + dim(R, (r) => r.mission, 'Mission') + '<h2>Par mois</h2>' + dim(R, (r) => d10(r.date_envoi).slice(0, 7), 'Mois') + '<h2>Liste nominative</h2>' + liste(R)
+    + note('Le RE et le RM affichés sont ceux de la mission aujourd’hui, pas ceux du début de mission. Le motif de rupture n’est pas enregistré dans l’application : il ne peut pas encore être affiché (évolution à prévoir).', true);
+}
+
+// ---------- 1.8 Acomptes et saisies ----------
+function rAcomptes(j) {
+  const L = j.data.liste, A = L.filter((r) => r.type === 'acompte'), S = L.filter((r) => r.type !== 'acompte');
+  const tot = (a) => a.reduce((x, r) => x + Number(r.montant || 0), 0);
+  const eur = (n) => Math.round(n).toLocaleString('fr-FR') + ' €';
+  const dim = (a) => table([{ k: 'm', l: 'Mission' }, { k: 'n', l: 'Nombre', n: 1 }, { k: 't', l: 'Montant', n: 1 }], [...group(a, (r) => r.mission || (r.contrat_id ? 'CDI (sans mission)' : 'Aucun contrat en cours'))].map(([m, rs]) => ({ m, n: rs.length, t: eur(tot(rs)) })).sort((p, q) => q.n - p.n));
+  return truncNote(j) + grid([kpi(A.length, 'Acomptes', `Montant : ${eur(tot(A))}`), kpi(S.length, 'Saisies sur salaire', `Montant : ${eur(tot(S))}`), kpi(cnt(L, (r) => !r.contrat_id), 'Sans contrat en cours', 'Aucun contrat actif à la date de création.', cnt(L, (r) => !r.contrat_id) ? 'ko' : '')])
+    + note('Fonctionnement actuel : acomptes et saisies sont le même objet (« élément de paie »), de type acompte ou saisie. Chacun est rattaché à la mission du contrat en cours à sa <b>date de création</b> (et non à sa date d’effet). Les avances de mission ne sont pas suivies : l’application ne les enregistre pas.')
+    + '<h2>Acomptes par mission</h2>' + dim(A) + '<h2>Saisies par mission</h2>' + dim(S)
+    + '<h2>Détail</h2>' + table([{ l: 'Salarié', f: people }, { k: 'type', l: 'Type' }, { k: 'montant', l: 'Montant', n: 1 }, { l: 'Créé le', f: (r) => fr(r.date_creation) }, { l: 'Date d’effet', f: (r) => fr(r.date_effective) }, { l: 'Mission', f: (r) => esc(r.mission || (r.contrat_id ? 'CDI (sans mission)' : 'Aucun contrat')) }], L);
+}
+
+// ---------- Titres-restaurant ----------
+function rTitres(j) {
+  const P = j.data.par_mission, E = j.data.ecarts;
+  const s = (k) => P.reduce((a, r) => a + Number(r[k] || 0), 0);
+  const lib = { non_attribue: tag('Droit sans titre attribué', 'ko'), attribue_sans_droit: tag('Titre sans droit calculé', 'wa'), modifie_apres: tag('Attribué puis horaires modifiés', 'wa') };
+  return truncNote(j) + grid([kpi(s('droits'), 'Droits calculés', 'Journées complètes (matin + après-midi) sans absence.'), kpi(s('attribues'), 'Titres attribués', ''), kpi(s('non_attribues'), 'Droits non attribués', '', s('non_attribues') ? 'ko' : ''), kpi(s('attribues_sans_droit'), 'Attribués sans droit', '', s('attribues_sans_droit') ? 'wa' : ''), kpi(s('modifies_apres'), 'Horaires modifiés après attribution', '', s('modifies_apres') ? 'wa' : '')])
+    + '<h2>Par mission</h2>' + table([{ k: 'mission', l: 'Mission' }, { k: 'droits', l: 'Droits', n: 1 }, { k: 'attribues', l: 'Attribués', n: 1 }, { k: 'non_attribues', l: 'Non attribués', n: 1 }, { k: 'attribues_sans_droit', l: 'Sans droit', n: 1 }, { k: 'modifies_apres', l: 'Modifiés après', n: 1 }], P)
+    + '<h2>Écarts à contrôler</h2>' + table([{ l: 'Date', f: (r) => fr(r.date) }, { l: 'Salarié', f: people }, { k: 'mission', l: 'Mission' }, { l: 'Écart', f: (r) => lib[r.ecart] }, { l: 'Matin', f: (r) => esc([r.m1, r.m2].filter(Boolean).join(' – ') || '—') }, { l: 'Après-midi', f: (r) => esc([r.a1, r.a2].filter(Boolean).join(' – ') || '—') }], E)
+    + note('Règle de calcul provisoire à valider par le service RH : un droit = une journée avec horaires rémunérés le matin ET l’après-midi, sans absence. Le rapprochement avec Swile reste manuel.', true);
+}
+
+// ---------- Visites médicales ----------
+function rVisites(j) {
+  const L = j.data.liste.map((r) => ({ ...r, mo: Array.isArray(r.motifs) ? r.motifs : [] }));
+  const sans = L.filter((r) => !r.derniere_vm);
+  return grid([kpi(L.length, 'Salariés concernés', '2e mission ou plus, travailleur handicapé ou responsable d’équipe.'), kpi(sans.length, 'Sans visite enregistrée', 'Aucune attestation de visite médicale dans le dossier.', sans.length ? 'ko' : ''), kpi(L.length - sans.length, 'Visite déjà enregistrée', '', 'ok')])
+    + '<h2>Salariés à vérifier</h2>' + table([{ l: 'Salarié', f: people }, { k: 'statut', l: 'Statut' }, { k: 'mission', l: 'Mission en cours' }, { k: 'nb_missions', l: 'Missions', n: 1 }, { l: 'Motif', f: (r) => r.mo.map((m) => tag(m, 'gr')).join('') }, { l: 'Dernière visite', f: (r) => r.derniere_vm ? fr(r.derniere_vm) : tag('Aucune', 'ko') }], [...sans, ...L.filter((r) => r.derniere_vm)])
+    + note('Liste d’aide au contrôle : aucune action n’est possible depuis cette page (contrôle manuel par les RH).');
+}
+
+// ---------- Filtres et démarrage ----------
+(function init() {
+  const t = new Date(); const iso = (d) => d.toISOString().slice(0, 10);
+  $('au').value = iso(t); $('du').value = iso(t).slice(0, 8) + '01';
+  $('go').onclick = () => { cache.clear(); show(); };
+  // un appel à la fois : d'abord la vue, ensuite la liste des missions pour les filtres
+  show().then(() => api('missions')).then((j) => {
+    const ms = j.data.liste;
+    $('mission').innerHTML += ms.map((r) => `<option>${esc(r.mission)}</option>`).join('');
+    $('ville').innerHTML += uniq(ms.map((r) => r.ville)).sort().map((v) => `<option>${esc(v)}</option>`).join('');
+  }).catch(() => {});
+})();
+</script>
+</body>
+</html>

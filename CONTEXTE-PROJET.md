@@ -32,6 +32,7 @@ Un Worker Cloudflare unique qui sert ~17 dashboards internes (RH, suivi de missi
 | `site-prive.html`             | `/api/site-prive`                              | `sql-site-prive.js` |
 | `assistant-site-prive.html`   | `/api/assistant-site-prive`                    | `sql-site-prive.js` (réutilisé) |
 | `rh.html`                     | `/api/rh`                                      | `sql-rh.js` |
+| `rrh.html` | `/api/rrh` (handler `src/lib/rrh-api.js`) | `sql-rrh.js` |
 | `rh-suivi.html`               | `/api/rh-suivi`, `/api/rh-values`              | — (cartes du dashboard Metabase 39, `rh-cards.js`) |
 | `rh-export.html`              | `/api/rh-export`, `/api/rh-values`             | — (cartes du dashboard Metabase 39, `rh-cards.js` ; valeurs au format Silae : `silae-format.js`, `silae-codes.js`, doc `EXPORT-SILAE.md`) |
 | `direction.html`              | `/api/direction`                               | `sql-direction.js` |
